@@ -173,27 +173,28 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Dashboard", page: "dashboard" },
 
       // User Management
-      { name: "Enroll Staff", page: "enroll-user" },
-      { name: "Bulk Upload Faculty", page: "bulk-upload" },
+      { name: "Enroll Counselor/MIS", page: "enroll-user" },
 
-      // Academic Structure
-      { name: "Branches", page: "branches" },
+      // Academic Monitoring
+      { name: "Batches (View)", page: "batches" },
       { name: "Faculty Assignments", page: "teacher-assignments" },
       { name: "Question Paper Approvals", page: "qp-approvals" },
-      { name: "Batches", page: "batches" },
 
       // Communication
       { name: "Announcement Management", page: "announcement-management" },
 
-      // Leaves
-      { name: "HOD Leaves", page: "hod-leaves" },
-      { name: "HOD Attendance", page: "hod-attendance" },
+      // Approvals
+      { name: "Leave Approvals", page: "hod-leaves" },
+      { name: "Short Permission Requests", page: "short-permissions" },
+      { name: "Staff Attendance", page: "hod-attendance" },
 
+      // Monitoring
+      { name: "Scan / Search User", page: "scan-search" },
+      { name: "Users Audit", page: "users" },
+
+      // Self
       { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leave", page: "apply-leave" },
-
-      // User & Profile
-      { name: "Users", page: "users" },
       { name: "Profile", page: "profile" },
     ],
 
@@ -201,32 +202,29 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       // Main
       { name: "Dashboard", page: "dashboard" },
 
-      // Academic Management
-      { name: "Semester Management", page: "semesters" },
+      // Enrollment & Setup
       { name: "Students Enrollment", page: "students" },
-      { name: "Elective Course Enrollment", page: "student-enrollment" },
+      { name: "Bulk Students Enrollment", page: "bulk-upload" },
       { name: "Courses", page: "subjects" },
+      { name: "Semester Setup", page: "semesters" },
+
+      // Operations (Batch Hub)
+      { name: "Batch Assignment", page: "batches" },
       { name: "Faculty Assignments", page: "faculty-assignments" },
-      { name: "Question Paper Approvals", page: "qp-approvals" },
       { name: "Timetable", page: "timetable" },
-      { name: "Proctors", page: "proctors" },
+      { name: "Study Material", page: "study-materials" },
 
-      // Attendance & Marks
-      // { name: "Attendance", page: "attendance" },
-
+      // Academic Monitoring
       { name: "Low Attendance", page: "low-attendance" },
-      { name: "Faculty Attendance", page: "faculty-attendance" },
-      { name: "My Attendance", page: "my-attendance" },
       { name: "Promotion Management", page: "promotion-management" },
 
-      // Leaves
-      { name: "Faculty Leaves", page: "leaves" },
+      // Self & Requests
+      { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leaves", page: "apply-leaves" },
+      { name: "Short Permission Request", page: "short-permission-request" },
 
-      // Resources & Communication
-      { name: "Study Material", page: "study-materials" },
-      { name: "Scan for Student Info", page: "scan-student-info" },
-      { name: "Branch Announcements", page: "hod-announcement-management" },
+      // Tools
+      { name: "Scan / Search", page: "scan-student-info" },
 
       // Profile
       { name: "Profile", page: "hod-profile" },

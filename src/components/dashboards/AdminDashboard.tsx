@@ -20,6 +20,8 @@ import AdminAttendance from "../admin/AdminAttendance";
 import ApplyLeaveAdmin from "../admin/ApplyLeaveAdmin";
 import { isPageAllowed } from "../../utils/planGating";
 import UpgradeRequired from "../common/UpgradeRequired";
+import ShortPermissionsManagement from "../admin/ShortPermissionsManagement";
+import ScanSearch from "../common/ScanSearch";
 
 import {
   Users,
@@ -125,7 +127,7 @@ const AdminDashboard = ({ user, setPage }: AdminDashboardProps) => {
       case "batches":
         return (
           <div>
-            <BatchManagement setError={setError} toast={toast} />
+            <BatchManagement setError={setError} toast={toast} viewOnly={true} />
           </div>
         );
       case "notifications":
@@ -178,6 +180,18 @@ const AdminDashboard = ({ user, setPage }: AdminDashboardProps) => {
           </div>
         );
       
+      case "short-permissions":
+        return (
+          <div>
+            <ShortPermissionsManagement setError={setError} toast={toast} />
+          </div>
+        );
+      case "scan-search":
+        return (
+          <div>
+            <ScanSearch role="admin" setError={setError} />
+          </div>
+        );
       case "profile":
         return (
           <div>
