@@ -1,0 +1,79 @@
+# Logs
+logs/
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Virtual Environment
+venv/
+env/
+
+# Python Bytecode Files
+__pycache__/
+*.py[cod]
+
+# Django Database
+db.sqlite3
+
+# Django Migrations
+*/migrations/*
+
+# Sensitive Credentials & Config Files
+# Ignore all env files (local, staging, production). Keep `.env.example` in repo.
+.env
+.env.*
+!.env.example
+.env.local
+.env.development
+.env.staging
+.env.production
+
+# Vercel / Now
+.vercel
+.vercel/*
+.now
+
+# Secrets and credentials
+*.key
+*.pem
+*.crt
+credentials.json  # Your Google API credentials file
+SECRET_KEY
+
+# Static & Media Files
+staticfiles/
+media/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Dlib and Face Recognition Model Files
+*.dat
+shape_predictor_*.dat
+dlib_face_recognition_resnet_model_v1.dat
+
+# Node Modules and Build Directories
+node_modules
+dist
+dist-ssr
+*.local
+django_backend/credentials.json
+venv/
+.venv/
+.venv/*
+
+# UI/UX Pro Max
+.agent/
+.agent/*    
