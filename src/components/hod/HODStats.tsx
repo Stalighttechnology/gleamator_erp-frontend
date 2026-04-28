@@ -103,16 +103,16 @@ export default function HODStats({ setError, setPage, onBootstrapData }: HODStat
       const res = await getHODDashboardBootstrap(['profile', 'overview', 'attendance_trend', 'leaves', 'faculty_attendance']);
       if (res.success && res.data) {
         // Set profile data
-        setBranchId(res.data.profile.branch_id);
-        setHodName(res.data.profile.first_name || "HOD");
-        setBranchName(res.data.profile.branch || "your");
+        setBranchId(res.data.profile?.branch_id || null);
+        setHodName(res.data.profile?.first_name || "HOD");
+        setBranchName(res.data.profile?.branch || "your");
 
         // Set stats data
         if (res.data.overview) {
           setStats({
-            faculty_count: res.data.overview.faculty_count,
-            student_count: res.data.overview.student_count,
-            pending_leaves: res.data.overview.pending_leaves,
+            faculty_count: res.data.overview.faculty_count || 0,
+            student_count: res.data.overview.student_count || 0,
+            pending_leaves: res.data.overview.pending_leaves || 0,
             average_attendance: 0,
             attendance_trend: res.data.attendance_trend || [],
           });
@@ -145,7 +145,7 @@ export default function HODStats({ setError, setPage, onBootstrapData }: HODStat
         // Pass bootstrap data to parent (only pass available data)
         if (onBootstrapData) {
           onBootstrapData({
-            branch_id: res.data.profile.branch_id,
+            branch_id: res.data.profile?.branch_id || "",
             semesters: res.data.semesters || [],
             sections: res.data.sections || [],
           });
@@ -336,21 +336,21 @@ const handleApprove = async (index: number) => {
           {
             title: "Total Faculty",
             className: "text-gray-600",
-            value: stats?.faculty_count.toString() || "0",
+            value: stats?.faculty_count?.toString() || "0",
             icon: <Users className="text-gray-600" />,
             change: "+2.5% since last month",
             color: "text-gray-600",
           },
           {
             title: "Total Students",
-            value: stats?.student_count.toString() || "0",
+            value: stats?.student_count?.toString() || "0",
             icon: <Users className="text-gray-600" />,
             change: "+5.1% since last semester",
             color: "text-gray-600",
           },
           {
             title: "Faculty Present Today",
-            value: stats?.faculty_attendance_today?.present.toString() || "0",
+            value: stats?.faculty_attendance_today?.present?.toString() || "0",
             icon: <CheckCircle className="text-green-600" />,
             change: `${stats?.faculty_attendance_today ? Math.round((stats.faculty_attendance_today.present / stats.faculty_attendance_today.total_faculty) * 100) : 0}% attendance`,
             color: "text-green-600",

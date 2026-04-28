@@ -28,10 +28,12 @@ import StudentEnrollment from "../hod/StudentEnrollment";
 import QPApprovals from "../hod/QPApprovals";
 import HODAnnouncementManagement from "../hod/HODAnnouncementManagement";
 import ShortPermissionRequest from "../hod/ShortPermissionRequest";
+import ShortPermissionsManagement from "../hod/ShortPermissionsManagement";
 import BatchManagement from "../admin/BatchManagement";
 import ScanSearch from "../common/ScanSearch";
 import { HODBootstrapProvider } from "../../context/HODBootstrapContext";
 import { useTheme } from "../../context/ThemeContext";
+import { useToast } from "../../hooks/use-toast";
 import { isPageAllowed } from "../../utils/planGating";
 import { getHODDashboardBootstrap } from "../../utils/hod_api";
 import UpgradeRequired from "../common/UpgradeRequired";
@@ -102,7 +104,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 }
 
 const validateUser = (user: HODUser): boolean => {
-  return !!(user && user.role === "hod"); // Only require role to be 'hod'
+  return !!(user && (user.role === "hod" || user.role === "mis")); // Allow hod or mis
 };
 
 const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
@@ -137,6 +139,7 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'scan-student-info': 'scan-student-info',
       'hod-profile': 'hod-profile',
       'short-permission-request': 'short-permission-request',
+      'short-permissions': 'short-permissions',
       'batches': 'batches'
     };
     
@@ -148,6 +151,7 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [bootstrap, setBootstrap] = useState<BootstrapData | null>(null);
   const { theme } = useTheme();
+  const { toast } = useToast();
 
   // Update active page when location changes
   useEffect(() => {
@@ -212,6 +216,7 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'scan-student-info': '/hod/scan-student-info',
       'hod-profile': '/hod/hod-profile',
       'short-permission-request': '/hod/short-permission-request',
+      'short-permissions': '/hod/short-permissions',
       'batches': '/hod/batches'
     };
     
@@ -258,7 +263,7 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       case "promotion-management":
         return <PromotionManagement />;
       case "low-attendance":
-        return <LowAttendance setError={setError} />;
+        return <LowAttendance setError={setError} user={user} />;
       case "semesters":
         return <SemesterManagement />;
       case "students":
@@ -297,6 +302,8 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
         return <HodProfile user={user} setError={setError} />;
       case "short-permission-request":
         return <ShortPermissionRequest />;
+      case "short-permissions":
+        return <ShortPermissionsManagement setError={setError} />;
       case "batches":
         return <BatchManagement setError={setError} toast={toast} />;
       case "scan-student-info":
@@ -309,12 +316,12 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
   return (
     <HODBootstrapProvider value={bootstrap}>
       <DashboardLayout
-        role="hod"
+        role={user.role as any}
         user={user}
         activePage={activePage}
         onPageChange={handlePageChange}
         onNotificationClick={handleNotificationClick}
-        pageTitle="HOD Dashboard"
+        pageTitle={user.role === "mis" ? "MIS Dashboard" : "Counselor Dashboard"}
       >
         {error && (
           <div className={`p-3 rounded-lg mb-4 ${theme === 'dark' ? 'bg-destructive/10 border border-destructive/20 text-destructive-foreground' : 'bg-red-100 border border-red-200 text-red-700'}`}>

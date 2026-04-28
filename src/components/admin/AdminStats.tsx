@@ -475,10 +475,10 @@ const AdminStats = ({ setError, onNavigate }: AdminStatsProps) => {
             onClick={() => handleCardClick("branches")}
           />
           <DashboardCard
-            title="Faculty Assignments"
-            description="Assign teachers to branches & subjects"
-            icon={<UserCheck size={20} />}
-            onClick={() => handleCardClick("teacher-assignments")}
+            title="Low Attendance"
+            description="View students with low attendance"
+            icon={<User size={20} />}
+            onClick={() => handleCardClick("low-attendance")}
           />
           <DashboardCard
             title="Manage Batches"
@@ -493,8 +493,8 @@ const AdminStats = ({ setError, onNavigate }: AdminStatsProps) => {
             onClick={() => handleCardClick("notifications")}
           />
           <DashboardCard
-            title="HOD Leaves"
-            description="Manage HOD leave requests"
+            title="Leave Approvals"
+            description="Manage staff leave requests"
             icon={<UserCheck size={20} />}
             onClick={() => handleCardClick("hod-leaves")}
           />

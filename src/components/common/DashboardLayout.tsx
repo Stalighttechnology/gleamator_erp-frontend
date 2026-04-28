@@ -18,7 +18,7 @@ interface User {
 }
 
 interface DashboardLayoutProps {
-  role: "admin" | "hod" | "faculty" | "student" | "fees_manager" | "coe" | "dean" | "hms";
+  role: "admin" | "hod" | "faculty" | "student" | "fees_manager" | "coe" | "dean" | "hms" | "mis";
   user: User;
   activePage: string;
   onPageChange: (page: string) => void;

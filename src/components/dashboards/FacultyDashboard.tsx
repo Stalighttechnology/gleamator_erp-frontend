@@ -23,6 +23,7 @@ import StudyMaterial from "../faculty/StudyMaterial";
 import { logoutUser, fetchWithTokenRefresh } from "../../utils/authService";
 import FacultyAnnouncementManagement from "../faculty/FacultyAnnouncementManagement";
 import { API_ENDPOINT } from "../../utils/config";
+import ShortPermissionRequest from "../hod/ShortPermissionRequest";
 import { useTheme } from "../../context/ThemeContext";
 import { useProctorStudentsQuery } from "../../hooks/useApiQueries";
 import { isPageAllowed } from "../../utils/planGating";
@@ -69,7 +70,8 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       'faculty-profile': 'faculty-profile',
       'statistics': 'statistics',
       'scan-student-info': 'scan-student-info',
-      'study-materials': 'study-materials'
+      'study-materials': 'study-materials',
+      'short-permission-request': 'short-permission-request'
     };
 
     // Add direct mappings for additional top-level routes
@@ -134,7 +136,8 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       'statistics': '/faculty/statistics',
       'scan-student-info': '/faculty/scan-student-info',
       'study-materials': '/faculty/study-materials',
-      'faculty-announcement-management': '/faculty/announcements'
+      'faculty-announcement-management': '/faculty/announcements',
+      'short-permission-request': '/faculty/short-permission-request'
     };
 
     const path = pathMap[page] || '/faculty/dashboard';
@@ -212,6 +215,8 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
         return <StudentInfoScanner />;
       case "study-materials":
         return <StudyMaterial />;
+      case "short-permission-request":
+        return <ShortPermissionRequest />;
       default:
         return <FacultyStats setActivePage={handlePageChange} />;
     }

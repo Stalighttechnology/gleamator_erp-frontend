@@ -204,7 +204,7 @@ const AdminAnnouncementManagement = () => {
     });
   };
 
-  const roles = ["student", "hod", "faculty"];
+  const roles = ["student", "hod", "faculty", "mis"];
 
   return (
     <>
@@ -337,6 +337,11 @@ const AdminAnnouncementManagement = () => {
                                   }
                                   setExpiresOpen(false);
                                 }}
+                                disabled={(date) => {
+                                  const today = new Date();
+                                  today.setHours(0, 0, 0, 0);
+                                  return date < today;
+                                }}
                                 className={theme === 'dark' ? 'rounded-md bg-background text-foreground' : 'rounded-md bg-white text-gray-900'}
                               />
                             </div>
@@ -394,7 +399,7 @@ const AdminAnnouncementManagement = () => {
                               }}
                             />
                             <Label htmlFor={role} className="font-normal capitalize">
-                              {role}
+                              {role === "hod" ? "Counselor" : role === "mis" ? "MIS" : role}
                             </Label>
                           </div>
                         ))}

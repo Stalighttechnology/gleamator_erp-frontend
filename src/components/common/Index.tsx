@@ -56,6 +56,7 @@ const Index = () => {
                 navigate("/admin", { replace: true });
                 break;
               case "hod":
+              case "mis":
                 navigate("/hod", { replace: true });
                 break;
               case "fees_manager":

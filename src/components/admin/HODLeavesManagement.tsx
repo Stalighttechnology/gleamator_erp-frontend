@@ -21,6 +21,7 @@ import { SkeletonTable } from "../ui/skeleton";
 interface LeaveRequest {
   id: number;
   name: string;
+  role: string;
   department: string;
   from: string;
   to: string;
@@ -96,7 +97,8 @@ const HODLeavesManagement = ({ setError, toast }: HODLeavesManagementProps) => {
         const leaveData = Array.isArray(dataSource.leaves)
           ? dataSource.leaves.map((leave: any) => ({
               id: leave.id,
-              name: leave.hod?.username || leave.hod_name || "N/A",
+              name: leave.staff_name || "N/A",
+              role: leave.role || "N/A",
               department: leave.branch || "N/A",
               from: leave.start_date || "N/A",
               to: leave.end_date || "N/A",
@@ -267,8 +269,8 @@ const HODLeavesManagement = ({ setError, toast }: HODLeavesManagementProps) => {
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <CardTitle className={`mb-2 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Leave Requests</CardTitle>
-              <p className={`text-sm ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>Review and approve leave requests from Heads of Departments</p>
+              <CardTitle className={`mb-2 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Staff Leave Requests</CardTitle>
+              <p className={`text-sm ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>Review and approve leave requests from staff (HODs, Faculty, etc.)</p>
             </div>
             <div className="flex items-center gap-2">
               <label className={`text-sm ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Month:</label>
@@ -364,7 +366,7 @@ const HODLeavesManagement = ({ setError, toast }: HODLeavesManagementProps) => {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="font-medium">{leave.name}</div>
-                        <div className="text-xs text-muted-foreground">{leave.department}</div>
+                        <div className="text-xs text-muted-foreground">{leave.role.toUpperCase()} - {leave.department}</div>
                         <div className="text-sm mt-1">{leave.from} <span className={theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}>to</span> {leave.to}</div>
                       </div>
                       <div className="shrink-0">{getStatusBadge(leave.status, theme)}</div>
@@ -398,7 +400,7 @@ const HODLeavesManagement = ({ setError, toast }: HODLeavesManagementProps) => {
             <table className="hidden md:table w-full text-sm text-left border-collapse">
               <thead className={`border-b ${theme === 'dark' ? 'border-border bg-card' : 'border-gray-200 bg-gray-50'}`}>
                 <tr>
-                  <th className={`py-2 px-2 md:px-4 text-left ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>HOD</th>
+                  <th className={`py-2 px-2 md:px-4 text-left ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Staff Member</th>
                   <th className={`py-2 px-4 md:px-12 text-left ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Period</th>
                   <th className={`py-2 px-2 text-left ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Reason</th>
                   <th className={`py-2 px-2 text-left ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Status</th>
@@ -414,7 +416,7 @@ const HODLeavesManagement = ({ setError, toast }: HODLeavesManagementProps) => {
                     >
                       <td className="py-3 px-2 md:px-4">
                         <div className={`font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>{leave.name}</div>
-                        <div className={`text-xs ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>{leave.department}</div>
+                        <div className={`text-xs ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>{leave.role.toUpperCase()} - {leave.department}</div>
                       </td>
                       <td className={`py-3 px-2 md:px-4 text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
                         {leave.from} <span className={theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}>to</span> {leave.to}

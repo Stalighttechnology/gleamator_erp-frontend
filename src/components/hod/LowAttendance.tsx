@@ -15,6 +15,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { SkeletonCard, SkeletonTable } from "../ui/skeleton";
 import { manageSections, sendNotification, getLowAttendanceStudents, getHODDashboardBootstrap } from "../../utils/hod_api";
+import { manageBranches } from "../../utils/admin_api";
 import { useTheme } from "../../context/ThemeContext";
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useHODBootstrap } from "../../context/HODBootstrapContext";
@@ -22,6 +23,7 @@ import { useHODBootstrap } from "../../context/HODBootstrapContext";
 // Interfaces
 interface LowAttendanceProps {
   setError: (error: string | null) => void;
+  user?: any;
 }
 
 interface ErrorBoundaryProps {
@@ -246,6 +248,7 @@ const LowAttendance = ({ setError }: LowAttendanceProps) => {
     branchId: bootstrap?.branch_id || "",
     notifyingStudents: {} as Record<string, boolean>,
     notifiedStudents: {} as Record<string, boolean>,
+    branches: [] as any[],
     // Pagination state
     currentPage: 1,
     totalCount: 0,
@@ -314,29 +317,52 @@ const LowAttendance = ({ setError }: LowAttendanceProps) => {
   // Load metadata on component mount
   useEffect(() => {
     const loadMetadata = async () => {
-      // If we already have bootstrap data, don't show loading and don't re-fetch
-      if (bootstrap?.branch_id && bootstrap?.semesters) {
+      // If we already have bootstrap data and it's an HOD, don't show loading and don't re-fetch
+      if (user?.role !== 'admin' && bootstrap?.branch_id && bootstrap?.semesters) {
         return;
       }
       
       updateState({ loading: true });
       try {
-        // Get branch ID and semesters from bootstrap endpoint
-        const bootstrapResponse = await getHODDashboardBootstrap(["profile", "semesters"]);
-        if (!bootstrapResponse.success || !bootstrapResponse.data) {
-          throw new Error("Failed to fetch bootstrap data");
-        }
+        if (user?.role === 'admin') {
+          // Fetch branches for admin
+          const branchesResponse = await manageBranches();
+          if (branchesResponse.success && branchesResponse.branches) {
+            const branches = branchesResponse.branches;
+            updateState({ 
+              branches: branches,
+              branchId: branches.length > 0 ? branches[0].id.toString() : "",
+              loading: false 
+            });
+            
+            // If we have a branch, fetch its semesters
+            if (branches.length > 0) {
+              const semRes = await getHODDashboardBootstrap(["semesters"], branches[0].id.toString());
+              if (semRes.success && semRes.data?.semesters) {
+                updateState({ semesters: semRes.data.semesters });
+              }
+            }
+          } else {
+            throw new Error(branchesResponse.message || "Failed to fetch branches");
+          }
+        } else {
+          // Get branch ID and semesters from bootstrap endpoint for HOD
+          const bootstrapResponse = await getHODDashboardBootstrap(["profile", "semesters"]);
+          if (!bootstrapResponse.success || !bootstrapResponse.data) {
+            throw new Error("Failed to fetch bootstrap data");
+          }
 
-        const branchId = bootstrapResponse.data.profile?.branch_id;
-        if (!branchId) {
-          throw new Error("Branch ID not found in profile");
-        }
+          const branchId = bootstrapResponse.data.profile?.branch_id;
+          if (!branchId) {
+            throw new Error("Branch ID not found in profile");
+          }
 
-        updateState({
-          branchId: branchId,
-          semesters: bootstrapResponse.data.semesters || [],
-          loading: false
-        });
+          updateState({
+            branchId: branchId,
+            semesters: bootstrapResponse.data.semesters || [],
+            loading: false
+          });
+        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to fetch metadata";
         toast({ variant: "destructive", title: "Error", description: errorMessage });
@@ -345,7 +371,27 @@ const LowAttendance = ({ setError }: LowAttendanceProps) => {
       }
     };
     loadMetadata();
-  }, [toast, setError]);
+  }, [toast, setError, user?.role]);
+
+  // Handle branch change for Admin
+  const handleBranchChange = async (value: string) => {
+    updateState({ 
+      branchId: value,
+      selectedSemester: "",
+      selectedSection: "",
+      students: [],
+      semesters: []
+    });
+    
+    try {
+      const semRes = await getHODDashboardBootstrap(["semesters"], value);
+      if (semRes.success && semRes.data?.semesters) {
+        updateState({ semesters: semRes.data.semesters });
+      }
+    } catch (err) {
+      console.error("Failed to fetch semesters for branch:", err);
+    }
+  };
 
   // Load students when both semester and section are selected
   useEffect(() => {
@@ -632,7 +678,28 @@ const LowAttendance = ({ setError }: LowAttendanceProps) => {
           {/* Filters */}
           <div className={`px-4 sm:px-6 py-3 border-t ${theme === 'dark' ? 'border-border' : 'border-gray-200'}`}>
             <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
-              <div className="flex flex-row gap-3 items-start md:items-end w-full sm:w-auto">
+              <div className="flex flex-row gap-3 items-start md:items-end w-full sm:w-auto flex-wrap">
+                {/* Branch Filter for Admin */}
+                {user?.role === 'admin' && (
+                  <div className="flex flex-col w-full sm:w-56">
+                    <label className={`text-sm mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Branch</label>
+                    <Select
+                      value={state.branchId}
+                      onValueChange={handleBranchChange}
+                    >
+                      <SelectTrigger className={`text-sm ${theme === 'dark' ? 'bg-card border border-border text-foreground' : 'bg-white border border-gray-300 text-gray-900'}`}>
+                        <SelectValue placeholder="Select Branch" />
+                      </SelectTrigger>
+                      <SelectContent className={theme === 'dark' ? 'bg-card border border-border text-foreground' : 'bg-white border border-gray-300 text-gray-900'}>
+                        {state.branches.map((branch) => (
+                          <SelectItem key={branch.id} value={branch.id.toString()}>
+                            {branch.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {/* Semester Filter */}
                 <div className="flex flex-col flex-1 sm:flex-none sm:w-56">
                   <label className={`text-sm mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Semester</label>

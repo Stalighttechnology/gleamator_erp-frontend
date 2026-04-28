@@ -29,6 +29,7 @@ import {
   Home,
   Utensils,
   AlertCircle,
+  Clock,
 } from "lucide-react";
 import { useIsMobile } from "../../hooks/use-mobile";
 import {
@@ -145,6 +146,8 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       "hod-announcement-management": <Bell size={20} />,
       "faculty-announcement-management": <Bell size={20} />,
       "student-hostel-details": <Home size={20} />,
+      "short-permission-request": <Clock size={20} />,
+      "short-permissions": <UserCheck size={20} />,
     };
     return iconMap[page] || <LayoutDashboard size={20} />;
   };
@@ -177,8 +180,8 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
 
       // Academic Monitoring
       { name: "Batches (View)", page: "batches" },
-      { name: "Faculty Assignments", page: "teacher-assignments" },
       { name: "Question Paper Approvals", page: "qp-approvals" },
+      { name: "Low Attendance", page: "low-attendance" },
 
       // Communication
       { name: "Announcement Management", page: "announcement-management" },
@@ -193,8 +196,6 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Users Audit", page: "users" },
 
       // Self
-      { name: "My Attendance", page: "my-attendance" },
-      { name: "Apply Leave", page: "apply-leave" },
       { name: "Profile", page: "profile" },
     ],
 
@@ -222,6 +223,40 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leaves", page: "apply-leaves" },
       { name: "Short Permission Request", page: "short-permission-request" },
+      { name: "Short Permission Approvals", page: "short-permissions" },
+
+      // Tools
+      { name: "Scan / Search", page: "scan-student-info" },
+
+      // Profile
+      { name: "Profile", page: "hod-profile" },
+    ],
+
+    mis: [
+      // Main
+      { name: "Dashboard", page: "dashboard" },
+
+      // Enrollment & Setup
+      { name: "Students Enrollment", page: "students" },
+      { name: "Bulk Students Enrollment", page: "bulk-upload" },
+      { name: "Courses", page: "subjects" },
+      { name: "Semester Setup", page: "semesters" },
+
+      // Operations (Batch Hub)
+      { name: "Batch Assignment", page: "batches" },
+      { name: "Faculty Assignments", page: "faculty-assignments" },
+      { name: "Timetable", page: "timetable" },
+      { name: "Study Material", page: "study-materials" },
+
+      // Academic Monitoring
+      { name: "Low Attendance", page: "low-attendance" },
+      { name: "Promotion Management", page: "promotion-management" },
+
+      // Self & Requests
+      { name: "My Attendance", page: "my-attendance" },
+      { name: "Apply Leaves", page: "apply-leaves" },
+      { name: "Short Permission Request", page: "short-permission-request" },
+      { name: "Short Permission Approvals", page: "short-permissions" },
 
       // Tools
       { name: "Scan / Search", page: "scan-student-info" },
@@ -245,6 +280,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
 
       // Leave Management
       { name: "Apply Leave", page: "apply-leave" },
+      { name: "Short Permission Request", page: "short-permission-request" },
       { name: "Manage Student Leave", page: "student-leave" },
 
       // Academic

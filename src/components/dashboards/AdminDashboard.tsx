@@ -13,11 +13,9 @@ import HODLeavesManagement from "../admin/HODLeavesManagement";
 import UsersManagement from "../admin/UsersManagement";
 import AdminProfile from "../admin/AdminProfile";
 import AdminQPApprovals from "../admin/AdminQPApprovals";
-import TeacherBranchAssignment from "../admin/TeacherBranchAssignment";
+import LowAttendance from "../hod/LowAttendance";
 import AnnouncementManagement from "../admin/AnnouncementManagement";
 import { useToast } from "../../hooks/use-toast";
-import AdminAttendance from "../admin/AdminAttendance";
-import ApplyLeaveAdmin from "../admin/ApplyLeaveAdmin";
 import { isPageAllowed } from "../../utils/planGating";
 import UpgradeRequired from "../common/UpgradeRequired";
 import ShortPermissionsManagement from "../admin/ShortPermissionsManagement";
@@ -118,10 +116,10 @@ const AdminDashboard = ({ user, setPage }: AdminDashboardProps) => {
             <BranchesManagement setError={setError} toast={toast} />
           </div>
         );
-      case "teacher-assignments":
+      case "low-attendance":
         return (
           <div>
-            <TeacherBranchAssignment setError={setError} toast={toast} />
+            <LowAttendance setError={setError} user={user} />
           </div>
         );
       case "batches":
@@ -148,18 +146,7 @@ const AdminDashboard = ({ user, setPage }: AdminDashboardProps) => {
             <AdminHODAttendance setError={setError} />
           </div>
         );
-      case "my-attendance":
-        return(
-          <div>
-            <AdminAttendance />
-          </div> 
-        )
-      case "apply-leave":
-        return (
-          <div>
-            <ApplyLeaveAdmin />
-          </div>
-        );
+
       case "users":
         return (
           <div>
@@ -210,7 +197,7 @@ const AdminDashboard = ({ user, setPage }: AdminDashboardProps) => {
       activePage={activePage}
       onPageChange={handlePageChange}
       onNotificationClick={handleNotificationClick}
-      pageTitle="Admin Dashboard"
+      pageTitle="Center Manager Dashboard"
     >
       <div key={activePage}>
         {renderContent()}

@@ -32,7 +32,7 @@ interface AdminStatsResponse {
 interface EnrollUserRequest {
   username: string;
   email: string;
-  role: "hod" | "teacher" | "coe" | "hms_admin";
+  role: "hod" | "teacher" | "coe" | "hms_admin" | "mis";
   first_name: string;
   last_name?: string;
   phone?: string;

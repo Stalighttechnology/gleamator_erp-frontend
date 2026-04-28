@@ -162,11 +162,8 @@ const EnrollUser = ({ setError, toast }: EnrollUserProps) => {
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border border-border' : 'bg-white text-gray-900 border border-gray-300'}>
-                    <SelectItem value="hod">HOD</SelectItem>
-                    <SelectItem value="teacher">Faculty/Teacher</SelectItem>
-                    <SelectItem value="dean">Dean</SelectItem>
-                    <SelectItem value="coe">COE</SelectItem>
-                    <SelectItem value="hms_admin">HMS Admin</SelectItem>
+                    <SelectItem value="hod">Counselor</SelectItem>
+                    <SelectItem value="mis">MIS</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

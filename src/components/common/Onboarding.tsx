@@ -150,7 +150,7 @@ const Onboarding = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-900">Admin/Principal Name</label>
+              <label className="text-sm font-medium text-gray-900">Admin/Center Manager Name</label>
               <div className="relative">
                 <User className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                 <Input
@@ -170,7 +170,7 @@ const Onboarding = () => {
                 <Input
                   required
                   type="email"
-                  placeholder="principal@institution.edu"
+                  placeholder="manager@institution.edu"
                   className="pl-10 bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:ring-[hsl(var(--primary))]/20 rounded-lg h-12 transition-all"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}

@@ -1065,7 +1065,8 @@ export const getHODDashboard = async (
 
 // Combined HOD dashboard bootstrap (profile + stats + leaves in one call)
 export const getHODDashboardBootstrap = async (
-  include: string[] = ['profile', 'overview', 'attendance_trend', 'leaves', 'semesters', 'sections']
+  include: string[] = ['profile', 'overview', 'attendance_trend', 'leaves', 'semesters', 'sections'],
+  branch_id?: string
 ): Promise<{
   success: boolean;
   message?: string;
@@ -1116,6 +1117,7 @@ export const getHODDashboardBootstrap = async (
   try {
     const params: Record<string, string> = {};
     params.include = include.join(',');
+    if (branch_id) params.branch_id = branch_id;
     const query = new URLSearchParams(params).toString();
     const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/dashboard/?${query}`, {
       method: "GET",

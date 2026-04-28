@@ -288,6 +288,7 @@ const FacultyAnnouncementManagement = () => {
                       <Input
                         id="expires_at"
                         type="date"
+                        min={new Date().toISOString().split("T")[0]}
                         value={formData.expires_at}
                         onChange={(e) =>
                           setFormData({ ...formData, expires_at: e.target.value })

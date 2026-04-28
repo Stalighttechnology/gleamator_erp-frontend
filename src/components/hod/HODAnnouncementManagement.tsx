@@ -29,7 +29,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Calendar as CalendarIcon } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 import { useTheme } from "@/context/ThemeContext";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import {
@@ -63,6 +66,7 @@ const HODAnnouncementManagement = () => {
     expires_at: "",
     priority: "normal",
   });
+  const [expiresOpen, setExpiresOpen] = useState(false);
 
   const loadAnnouncements = async () => {
     setLoading(true);
@@ -201,7 +205,7 @@ const HODAnnouncementManagement = () => {
     });
   };
 
-  const roles = ["student", "faculty"];
+  const roles = ["student", "faculty", "hod", "mis"];
 
   return (
     <div className="w-full max-w-none mx-auto space-y-6">
@@ -284,14 +288,50 @@ const HODAnnouncementManagement = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="expires_at">Expires At</Label>
-                    <Input
-                      id="expires_at"
-                      type="date"
-                      value={formData.expires_at}
-                      onChange={(e) =>
-                        setFormData({ ...formData, expires_at: e.target.value })
-                      }
-                    />
+                    <Popover open={expiresOpen} onOpenChange={setExpiresOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={theme === 'dark' ? 'w-full justify-start text-left font-normal bg-card text-foreground border-border' : 'w-full justify-start text-left font-normal bg-white text-gray-900 border-gray-300'}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {formData.expires_at ? (
+                            (() => {
+                              try {
+                                return format(new Date(formData.expires_at), 'PPP');
+                              } catch (e) {
+                                return formData.expires_at;
+                              }
+                            })()
+                          ) : (
+                            <span className={theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}>Select date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent className={theme === 'dark' ? 'w-auto p-0 bg-background text-foreground border-border shadow-lg' : 'w-auto p-0 bg-white text-gray-900 border-gray-200 shadow-lg'}>
+                        <div className="p-2">
+                          <Calendar
+                            mode="single"
+                            selected={formData.expires_at ? new Date(formData.expires_at) : undefined}
+                            onSelect={(date: Date | undefined) => {
+                              if (date) {
+                                setFormData({ ...formData, expires_at: format(date, 'yyyy-MM-dd') });
+                              } else {
+                                setFormData({ ...formData, expires_at: '' });
+                              }
+                              setExpiresOpen(false);
+                            }}
+                            disabled={(date) => {
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              return date < today;
+                            }}
+                            className={theme === 'dark' ? 'rounded-md bg-background text-foreground' : 'rounded-md bg-white text-gray-900'}
+                          />
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
 
@@ -329,7 +369,7 @@ const HODAnnouncementManagement = () => {
                           }}
                         />
                         <Label htmlFor={role} className="font-normal capitalize">
-                          {role}
+                          {role === "hod" ? "Counselor" : role === "mis" ? "MIS" : role}
                         </Label>
                       </div>
                     ))}

@@ -349,7 +349,7 @@ const App = () => {
 
           {/* HOD routes */}
           <Route path="/hod/*" element={
-            <ProtectedRoute allowedRoles={["hod"]}>
+            <ProtectedRoute allowedRoles={["hod", "mis"]}>
               <>
                 <HODDashboard user={userData} setPage={() => { }} />
                 {shouldShowFloatingAssistant() && <FloatingAssistant />}
