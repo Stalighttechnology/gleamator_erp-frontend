@@ -17,6 +17,7 @@ interface TodayRow {
   branch: string;
   hod_name: string;
   hod_id: string;
+  role: string;
   contact: string;
   status: string;
   marked_at: string | null;
@@ -44,6 +45,7 @@ interface RecordRow {
   faculty_name: string;
   faculty_id: string;
   branch: string;
+  role: string;
   date: string;
   status: string;
   marked_at: string | null;
@@ -62,6 +64,7 @@ const AdminHODAttendance: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'today' | 'records'>('today');
   const [isLoading, setIsLoading] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [roleFilter, setRoleFilter] = useState("all");
 
   // Today's snapshot
   const [todayRows, setTodayRows] = useState<TodayRow[]>([]);
@@ -94,6 +97,12 @@ const AdminHODAttendance: React.FC = () => {
       default:
         return `${base} bg-gray-100 text-gray-800`;
     }
+  };
+
+  const getRoleLabel = (role: string) => {
+    if (role === "hod") return "Counselor";
+    if (role === "mis") return "MIS";
+    return "Faculty";
   };
 
   const fetchToday = async () => {
@@ -222,13 +231,25 @@ const AdminHODAttendance: React.FC = () => {
           </div>
 
           <div className={`rounded-lg shadow-sm ${theme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-gray-200'} overflow-hidden`}>
-            <div className="px-6 py-4 border-b border-gray-200"><h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Today's Counselor Attendance ({new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })})</h3></div>
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Today's Counselor Attendance ({new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })})</h3>
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className={`px-3 py-2 border rounded-md text-sm ${theme === 'dark' ? 'bg-background border-border text-foreground' : 'bg-white border-gray-300 text-gray-900'}`}
+              >
+                <option value="all">All</option>
+                <option value="hod">Counselor</option>
+                <option value="mis">MIS</option>
+                <option value="teacher">Faculty</option>
+              </select>
+            </div>
             {/* Desktop / Tablet (md+) Table; show cards on sm and below */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full table-fixed">
                 <thead className={`sticky top-0 ${theme === 'dark' ? 'bg-card' : 'bg-gray-50'}`}>
                   <tr className={`border-b ${theme === 'dark' ? 'border-border' : 'border-gray-200'}`}>
-                    <th className="px-3 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Branch</th>
+                    <th className="px-3 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Role</th>
                     <th className="px-3 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Counselor</th>
                     <th className="px-3 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hidden lg:table-cell">Contact</th>
                     <th className="px-3 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
@@ -238,10 +259,14 @@ const AdminHODAttendance: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${theme === 'dark' ? 'divide-border' : 'divide-gray-200'}`}>
-                  {todayRows.length === 0 ? (<tr><td colSpan={7} className={`px-6 py-4 text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>No counselor attendance records for today</td></tr>) : (
-                    todayRows.map((r, idx) => (
+                  {todayRows.filter((r) => roleFilter === "all" || r.role === roleFilter).length === 0 ? (<tr><td colSpan={7} className={`px-6 py-4 text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>No counselor attendance records for today</td></tr>) : (
+                    todayRows.filter((r) => roleFilter === "all" || r.role === roleFilter).map((r, idx) => (
                       <tr key={idx} className={`hover:${theme === 'dark' ? 'bg-accent' : 'bg-gray-50'}`}>
-                        <td className="px-3 py-4 font-medium text-gray-900 truncate md:whitespace-normal md:break-words">{r.branch}</td>
+                        <td className="px-3 py-4">
+                          <span className="px-2 py-1 text-xs rounded bg-gray-200">
+                            {getRoleLabel(r.role || "teacher")}
+                          </span>
+                        </td>
                         <td className="px-3 py-4 text-gray-900 truncate md:whitespace-normal md:break-words">{r.hod_name}</td>
                         <td className="px-3 py-4 hidden lg:table-cell text-sm text-gray-600 truncate md:whitespace-normal md:break-words">{r.contact || '-'}</td>
                         <td className="px-3 py-4"><div className="flex items-center gap-2">{getStatusIcon(r.status)}<span className={getStatusBadge(r.status)}>{r.status}</span></div></td>
@@ -264,14 +289,16 @@ const AdminHODAttendance: React.FC = () => {
             </div>
             {/* Card List for sm and below */}
             <div className="md:hidden p-4 space-y-3">
-              {todayRows.length === 0 ? (
+              {todayRows.filter((r) => roleFilter === "all" || r.role === roleFilter).length === 0 ? (
                 <div className={`text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>No HOD attendance records for today</div>
               ) : (
-                todayRows.map((r, idx) => (
+                todayRows.filter((r) => roleFilter === "all" || r.role === roleFilter).map((r, idx) => (
                   <div key={idx} className={`p-3 rounded-lg border ${theme === 'dark' ? 'border-border bg-card' : 'border-gray-200 bg-white'}`}>
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-sm text-gray-500">{r.branch}</div>
+                        <div className="text-xs text-gray-500">
+                          {getRoleLabel(r.role || "teacher")}
+                        </div>
                         <div className="font-medium text-gray-900 truncate">{r.hod_name}</div>
                       </div>
                       <div className="text-sm text-right">
@@ -325,7 +352,6 @@ const AdminHODAttendance: React.FC = () => {
                     <div className="flex justify-between items-center">
                       <div>
                         <div className="font-medium text-gray-900 truncate">{s.hod_name}</div>
-                        <div className="text-sm text-gray-500">{s.branch}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-gray-600">{s.attendance_percentage.toFixed(1)}%</div>
@@ -341,12 +367,24 @@ const AdminHODAttendance: React.FC = () => {
           <div className={`rounded-lg shadow-sm ${theme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-gray-200'} overflow-hidden`}>
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Detailed Attendance Records</h3>
-              <button 
-                onClick={() => setFilterOpen(!filterOpen)}
-                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md font-medium transition-colors text-sm"
-              >
-                Filter
-              </button>
+              <div className="flex items-center gap-2">
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className={`px-3 py-2 border rounded-md text-sm ${theme === 'dark' ? 'bg-background border-border text-foreground' : 'bg-white border-gray-300 text-gray-900'}`}
+                >
+                  <option value="all">All</option>
+                  <option value="hod">Counselor</option>
+                  <option value="mis">MIS</option>
+                  <option value="teacher">Faculty</option>
+                </select>
+                <button 
+                  onClick={() => setFilterOpen(!filterOpen)}
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md font-medium transition-colors text-sm"
+                >
+                  Filter
+                </button>
+              </div>
             </div>
 
             {/* Filter Dialog */}
@@ -385,6 +423,7 @@ const AdminHODAttendance: React.FC = () => {
               <table className="w-full table-fixed">
                 <thead className={`sticky top-0 ${theme === 'dark' ? 'bg-card' : 'bg-gray-50'}`}>
                   <tr className={`border-b ${theme === 'dark' ? 'border-border' : 'border-gray-200'}`}>
+                    <th className="px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Role</th>
                     <th className="px-6 py-3 w-2/6 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Faculty</th>
                     <th className="px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
                     <th className="px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
@@ -394,9 +433,14 @@ const AdminHODAttendance: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${theme === 'dark' ? 'divide-border' : 'divide-gray-200'}`}>
-                  {records.length === 0 ? (<tr><td colSpan={6} className={`px-6 py-4 text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>No attendance records found for the selected date range</td></tr>) : (
-                    records.map((r, idx) => (
+                  {records.filter((r) => roleFilter === "all" || r.role === roleFilter).length === 0 ? (<tr><td colSpan={7} className={`px-6 py-4 text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>No attendance records found for the selected date range</td></tr>) : (
+                    records.filter((r) => roleFilter === "all" || r.role === roleFilter).map((r, idx) => (
                       <tr key={idx} className={`hover:${theme === 'dark' ? 'bg-accent' : 'bg-gray-50'}`}>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-1 text-xs rounded bg-gray-200">
+                            {getRoleLabel(r.role || "teacher")}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 font-medium text-gray-900 truncate md:whitespace-normal md:break-words">{r.faculty_name}</td>
                         <td className="px-6 py-4 text-gray-900">{formatDate(r.date)}</td>
                         <td className="px-6 py-4"><div className="flex items-center gap-2">{getStatusIcon(r.status)}<span className={getStatusBadge(r.status)}>{r.status}</span></div></td>
@@ -411,13 +455,16 @@ const AdminHODAttendance: React.FC = () => {
             </div>
             {/* Card List for sm and below */}
             <div className="md:hidden p-4 space-y-3">
-              {records.length === 0 ? (
+              {records.filter((r) => roleFilter === "all" || r.role === roleFilter).length === 0 ? (
                 <div className={`text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>No attendance records found for the selected date range</div>
               ) : (
-                records.map((r, idx) => (
+                records.filter((r) => roleFilter === "all" || r.role === roleFilter).map((r, idx) => (
                   <div key={idx} className={`p-3 rounded-lg border ${theme === 'dark' ? 'border-border bg-card' : 'border-gray-200 bg-white'}`}>
                     <div className="flex justify-between items-start">
                       <div>
+                        <div className="text-xs text-gray-500">
+                          {getRoleLabel(r.role || "teacher")}
+                        </div>
                         <div className="font-medium text-gray-900 truncate">{r.faculty_name}</div>
                         <div className="text-sm text-gray-500">{formatDate(r.date)}</div>
                       </div>
