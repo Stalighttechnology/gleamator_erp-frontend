@@ -101,7 +101,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   // Format page title
   const formatTitle = (title: string) => {
-    if (title === "dashboard") return `${role.charAt(0).toUpperCase() + role.slice(1)} Dashboard`;
+    if (title === "dashboard") {
+      if (!role) return "Dashboard";
+      return `${role.charAt(0).toUpperCase() + role.slice(1)} Dashboard`;
+    }
     return title
       .split("-")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

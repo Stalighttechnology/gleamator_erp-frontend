@@ -6,7 +6,8 @@ import { Clock, Check, X, User, Calendar, Filter, History } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useToast } from "../../hooks/use-toast";
 import { SkeletonTable } from "../ui/skeleton";
-import api from "../../utils/api";
+import { fetchWithTokenRefresh } from "../../utils/authService";
+import { API_ENDPOINT } from "../../utils/config";
 
 interface PermissionRequest {
   id: number;
@@ -28,14 +29,20 @@ const ShortPermissionsManagement: React.FC<{ setError: any }> = ({ setError }) =
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/hod/short-permissions/');
-      if (response.data.success) {
-        setRequests(response.data.results || response.data.data || []);
+      const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/short-permissions/`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setRequests(data.results || data.data || []);
       } else {
-        setError(response.data.message || "Failed to fetch requests.");
+        setError(data.message || "Failed to fetch requests.");
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to fetch requests.");
+      setError("Failed to fetch requests.");
     } finally {
       setLoading(false);
     }
@@ -47,8 +54,16 @@ const ShortPermissionsManagement: React.FC<{ setError: any }> = ({ setError }) =
 
   const handleAction = async (id: number, status: "APPROVED" | "REJECTED") => {
     try {
-      const response = await api.patch('/hod/short-permissions/', { id, status });
-      if (response.data.success) {
+      const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/short-permissions/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify({ id, status }),
+      });
+      const data = await response.json();
+      if (data.success) {
         setRequests(prev => prev.map(req => req.id === id ? { ...req, status } : req));
         toast({
           title: `Request ${status.charAt(0) + status.slice(1).toLowerCase()}`,
@@ -58,14 +73,14 @@ const ShortPermissionsManagement: React.FC<{ setError: any }> = ({ setError }) =
         toast({
           variant: "destructive",
           title: "Error",
-          description: response.data.message || "Action failed."
+          description: data.message || "Action failed."
         });
       }
     } catch (err: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: err.response?.data?.message || "Action failed."
+        description: "Action failed."
       });
     }
   };

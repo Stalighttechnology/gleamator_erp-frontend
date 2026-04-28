@@ -31,6 +31,7 @@ import ShortPermissionRequest from "../hod/ShortPermissionRequest";
 import ShortPermissionsManagement from "../hod/ShortPermissionsManagement";
 import BatchManagement from "../admin/BatchManagement";
 import ScanSearch from "../common/ScanSearch";
+import EnrollmentManagement from "../hod/EnrollmentManagement";
 import { HODBootstrapProvider } from "../../context/HODBootstrapContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useToast } from "../../hooks/use-toast";
@@ -38,7 +39,7 @@ import { isPageAllowed } from "../../utils/planGating";
 import { getHODDashboardBootstrap } from "../../utils/hod_api";
 import UpgradeRequired from "../common/UpgradeRequired";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock } from "lucide-react";
+import { Lock, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 
 interface HODUser {
@@ -110,6 +111,17 @@ const validateUser = (user: HODUser): boolean => {
 const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  if (!user || !user.role) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm font-medium text-muted-foreground">Initializing Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
   
   const getActivePageFromPath = (pathname: string): string => {
     const pathParts = pathname.split('/');
@@ -118,11 +130,9 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
     // Map URL paths to page names
     const pathMap: { [key: string]: string } = {
       'dashboard': 'dashboard',
-      'promotion-management': 'promotion-management',
-      'low-attendance': 'low-attendance',
-      'student-enrollment': 'student-enrollment',
+      'enrollment-management': 'enrollment-management',
       'semesters': 'semesters',
-      'students': 'students',
+      'students': 'enrollment-management',
       'subjects': 'subjects',
       'faculty-assignments': 'faculty-assignments',
       'timetable': 'timetable',
@@ -136,7 +146,6 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'proctors': 'proctors',
       'chat': 'chat',
       'study-materials': 'study-materials',
-      'scan-student-info': 'scan-student-info',
       'hod-profile': 'hod-profile',
       'short-permission-request': 'short-permission-request',
       'short-permissions': 'short-permissions',
@@ -195,11 +204,9 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
     // Navigate to the corresponding URL path
     const pathMap: { [key: string]: string } = {
       'dashboard': '/hod/dashboard',
-      'promotion-management': '/hod/promotion-management',
-      'low-attendance': '/hod/low-attendance',
       'semesters': '/hod/semesters',
-      'students': '/hod/students',
-      'student-enrollment': '/hod/student-enrollment',
+      'enrollment-management': '/hod/enrollment-management',
+      'students': '/hod/enrollment-management',
       'subjects': '/hod/subjects',
       'faculty-assignments': '/hod/faculty-assignments',
       'timetable': '/hod/timetable',
@@ -213,7 +220,6 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'proctors': '/hod/proctors',
       'chat': '/hod/chat',
       'study-materials': '/hod/study-materials',
-      'scan-student-info': '/hod/scan-student-info',
       'hod-profile': '/hod/hod-profile',
       'short-permission-request': '/hod/short-permission-request',
       'short-permissions': '/hod/short-permissions',
@@ -260,16 +266,12 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
     switch (activePage) {
       case "dashboard":
         return <HODStats setError={setError} setPage={handlePageChange} />;
-      case "promotion-management":
-        return <PromotionManagement />;
-      case "low-attendance":
-        return <LowAttendance setError={setError} user={user} />;
+      case "enrollment-management":
+        return <EnrollmentManagement />;
+      case "students":
+        return <EnrollmentManagement />;
       case "semesters":
         return <SemesterManagement />;
-      case "students":
-        return <StudentManagement />;
-      case "student-enrollment":
-        return <StudentEnrollment />;
       case "subjects":
         return <SubjectManagement />;
       case "faculty-assignments":
@@ -306,8 +308,6 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
         return <ShortPermissionsManagement setError={setError} />;
       case "batches":
         return <BatchManagement setError={setError} toast={toast} />;
-      case "scan-student-info":
-        return <ScanSearch role="hod" setError={setError} />;
       default:
       return <HODStats setError={setError} setPage={handlePageChange} />;
     }
@@ -321,7 +321,7 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
         activePage={activePage}
         onPageChange={handlePageChange}
         onNotificationClick={handleNotificationClick}
-        pageTitle={user.role === "mis" ? "MIS Dashboard" : "Counselor Dashboard"}
+        pageTitle={(user?.role === "hod") ? "HOD Dashboard" : "Counselor Dashboard"}
       >
         {error && (
           <div className={`p-3 rounded-lg mb-4 ${theme === 'dark' ? 'bg-destructive/10 border border-destructive/20 text-destructive-foreground' : 'bg-red-100 border border-red-200 text-red-700'}`}>

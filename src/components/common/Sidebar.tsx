@@ -202,7 +202,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Dashboard", page: "dashboard" },
 
       // Enrollment & Setup
-      { name: "Students Enrollment", page: "students" },
+      { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
       { name: "Courses", page: "subjects" },
       { name: "Semester Setup", page: "semesters" },
@@ -213,18 +213,20 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Timetable", page: "timetable" },
       { name: "Study Material", page: "study-materials" },
 
-      // Academic Monitoring
-      { name: "Low Attendance", page: "low-attendance" },
-      { name: "Promotion Management", page: "promotion-management" },
+      // Monitoring & Records
+      { name: "Attendance", page: "attendance" },
+      { name: "Faculty Attendance", page: "faculty-attendance" },
+      { name: "Internal Marks", page: "marks" },
+      { name: "Proctor Management", page: "proctors" },
+
+      // Communication
+      { name: "Announcements", page: "hod-announcement-management" },
 
       // Self & Requests
       { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leaves", page: "apply-leaves" },
       { name: "Short Permission Request", page: "short-permission-request" },
       { name: "Short Permission Approvals", page: "short-permissions" },
-
-      // Tools
-      { name: "Scan / Search", page: "scan-student-info" },
 
       // Profile
       { name: "Profile", page: "hod-profile" },
@@ -235,7 +237,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Dashboard", page: "dashboard" },
 
       // Enrollment & Setup
-      { name: "Students Enrollment", page: "students" },
+      { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
       { name: "Courses", page: "subjects" },
       { name: "Semester Setup", page: "semesters" },
@@ -246,18 +248,20 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Timetable", page: "timetable" },
       { name: "Study Material", page: "study-materials" },
 
-      // Academic Monitoring
-      { name: "Low Attendance", page: "low-attendance" },
-      { name: "Promotion Management", page: "promotion-management" },
+      // Monitoring & Records
+      { name: "Attendance", page: "attendance" },
+      { name: "Faculty Attendance", page: "faculty-attendance" },
+      { name: "Internal Marks", page: "marks" },
+      { name: "Proctor Management", page: "proctors" },
+
+      // Communication
+      { name: "Announcements", page: "hod-announcement-management" },
 
       // Self & Requests
       { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leaves", page: "apply-leaves" },
       { name: "Short Permission Request", page: "short-permission-request" },
       { name: "Short Permission Approvals", page: "short-permissions" },
-
-      // Tools
-      { name: "Scan / Search", page: "scan-student-info" },
 
       // Profile
       { name: "Profile", page: "hod-profile" },

@@ -115,7 +115,7 @@ const Navbar = ({ role, user, onNotificationClick, setPage, showHamburger = fals
             </span>
           </motion.div>
           <p className={`text-[10px] uppercase tracking-wider font-semibold ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
-            {role === "admin" ? "Center Manager" : role === "hod" ? "Counselor" : role.replace('_', ' ')} Portal
+            {role === "admin" ? "Center Manager" : role === "hod" ? "Counselor" : (role ? role.replace('_', ' ') : "User")} Portal
           </p>
         </div>
       </div>

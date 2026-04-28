@@ -255,6 +255,21 @@ interface ManageBatchesResponse {
   batch?: Batch;
 }
 
+interface EnrollStaffRequest {
+  email: string;
+  role: "teacher" | "mis";
+  first_name: string;
+  last_name?: string;
+  phone?: string;
+  designation?: string;
+}
+
+interface EnrollStaffResponse {
+  success: boolean;
+  message?: string;
+  data?: { user_id: string };
+}
+
 interface Subject {
   id: string;
   name: string;
@@ -1800,6 +1815,19 @@ export const manageFaculties = async (
       method,
       headers: { "Content-Type": "application/json" },
 
+    });
+    return await response.json();
+  } catch (error: unknown) {
+    return handleApiError(error, (error as any).response);
+  }
+};
+
+export const enrollStaff = async (data: EnrollStaffRequest): Promise<EnrollStaffResponse> => {
+  try {
+    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/enroll-staff/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
     return await response.json();
   } catch (error: unknown) {
