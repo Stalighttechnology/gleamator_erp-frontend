@@ -133,6 +133,7 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'enrollment-management': 'enrollment-management',
       'semesters': 'semesters',
       'students': 'enrollment-management',
+      'bulk-upload': 'bulk-upload',
       'subjects': 'subjects',
       'faculty-assignments': 'faculty-assignments',
       'timetable': 'timetable',
@@ -207,6 +208,7 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'semesters': '/hod/semesters',
       'enrollment-management': '/hod/enrollment-management',
       'students': '/hod/enrollment-management',
+      'bulk-upload': '/hod/bulk-upload',
       'subjects': '/hod/subjects',
       'faculty-assignments': '/hod/faculty-assignments',
       'timetable': '/hod/timetable',
@@ -268,8 +270,10 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
         return <HODStats setError={setError} setPage={handlePageChange} />;
       case "enrollment-management":
         return <EnrollmentManagement />;
+      case "bulk-upload":
+        return <StudentManagement />;
       case "students":
-        return <EnrollmentManagement />;
+        return <StudentManagement />;
       case "semesters":
         return <SemesterManagement />;
       case "subjects":
