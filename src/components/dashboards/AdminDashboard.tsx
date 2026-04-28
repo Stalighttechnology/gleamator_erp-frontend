@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import DashboardLayout from "../common/DashboardLayout";
 import AdminStats from "../admin/AdminStats";
+import CampusLocations from "../dean/CampusLocationManager";
 import AdminHODAttendance from "../admin/HODAttendanceView";
 import EnrollUser from "../admin/EnrollUser";
 import BulkUpload from "../admin/BulkUpload";
@@ -98,6 +99,12 @@ const AdminDashboard = ({ user, setPage }: AdminDashboardProps) => {
             <AdminStats setError={setError} onNavigate={handlePageChange} />
           </div>
         );
+        case "campus-locations":
+  return (
+    <div>
+      <CampusLocations />
+    </div>
+  );
       case "enroll-user":
         return (
           <div>

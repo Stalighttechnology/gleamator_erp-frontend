@@ -39,23 +39,37 @@ const getStatusBadge = (status: string, theme: string) => {
     return <span className={`${baseClass} ${theme === 'dark' ? 'bg-red-900 text-red-300' : 'bg-red-500 text-white'}`}>Inactive</span>;
 };
 
+const roleDisplayMap: Record<string, string> = {
+  student: "Student",
+  teacher: "Faculty",
+  hod: "Counselor",
+  mis: "MIS",
+};
+
 const getRoleBadge = (role: string, theme: string) => {
+  const displayRole = roleDisplayMap[role] || role;
+
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-800'}`}>
-      {role}
+    <span
+      className={`px-3 py-1 rounded-full text-xs font-medium ${
+        theme === 'dark'
+          ? 'bg-gray-700 text-gray-200'
+          : 'bg-gray-200 text-gray-800'
+      }`}
+    >
+      {displayRole}
     </span>
   );
 };
 
-const roles = ["All", "Student", "Head of Department", "Teacher", "COE", "Admin"];
+const roles = ["All", "Student", "Faculty", "Counselor", "MIS"];
 const statuses = ["All", "Active", "Inactive"];
 
 const roleMap = {
   "Student": "student",
-  "Head of Department": "hod",
-  "Teacher": "teacher",
-  "COE": "coe",
-  "Admin": "admin",
+  "Faculty": "teacher",
+  "Counselor": "hod",   // renamed
+  "MIS": "mis",         // new role
 };
 
 const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
@@ -135,16 +149,20 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
           // Handle paginated response format where data is nested under results
           const usersData = dataSource.users || [];
           const paginationData = hasResults ? (response as any) : dataSource;
-          
-          // Transform backend user data to frontend format
-          const transformedUsers = Array.isArray(usersData) ? usersData.map((user: any) => ({
-            id: user.id,
-            name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.username || "N/A",
-            email: user.email || "N/A",
-            role: user.role || "N/A",
-            status: user.is_active ? "Active" : "Inactive",
-            username: user.username || "",
-          })) : [];
+const allowedRoles = ["student", "teacher", "hod", "mis"];
+
+const transformedUsers = Array.isArray(usersData)
+  ? usersData
+      .map((user: any) => ({
+        id: user.id,
+        name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.username || "N/A",
+        email: user.email || "N/A",
+        role: user.role || "N/A",
+        status: user.is_active ? "Active" : "Inactive",
+        username: user.username || "",
+      }))
+      .filter((user: any) => allowedRoles.includes(user.role)) // 🔥 ADD THIS
+  : [];
           
           setUsers(transformedUsers);
           setTotalUsers(paginationData.count || 0);

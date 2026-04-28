@@ -174,7 +174,7 @@ const EnrollUser = ({ setError, toast }: EnrollUserProps) => {
                 <Input
                   id="first_name"
                   name="first_name"
-                  placeholder="HOD/Faculty name"
+                  placeholder="Enter First name"
                   className={theme === 'dark' ? 'mt-1 bg-card text-foreground border border-border' : 'mt-1 bg-white text-gray-900 border border-gray-300'}
                   value={formData.first_name}
                   onChange={handleInputChange}
@@ -187,7 +187,7 @@ const EnrollUser = ({ setError, toast }: EnrollUserProps) => {
                 <Input
                   id="last_name"
                   name="last_name"
-                  placeholder="initials"
+                  placeholder="Enter Last name"
                   className={theme === 'dark' ? 'mt-1 bg-card text-foreground border border-border' : 'mt-1 bg-white text-gray-900 border border-gray-300'}
                   value={formData.last_name}
                   onChange={handleInputChange}

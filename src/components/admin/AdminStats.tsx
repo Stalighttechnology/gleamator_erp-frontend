@@ -169,15 +169,15 @@ const AdminStats = ({ setError, onNavigate }: AdminStatsProps) => {
 
   // Pie chart data for role distribution
   const pieData = {
-    labels: ["Students", "Faculty", "HODs", "COE"],
+    labels: ["Students", "Faculty", "Counselor", "MIS"],
     datasets: [
       {
         data: [
-          stats?.role_distribution?.students || 0,
-          stats?.role_distribution?.faculty || 0,
-          stats?.role_distribution?.hods || 0,
-          stats?.role_distribution?.coe || 0,
-        ],
+  stats?.role_distribution?.students || 0,
+  stats?.role_distribution?.faculty || 0,
+  stats?.role_distribution?.hods || 0,   // Counselor
+  stats?.role_distribution?.mis || 0,    // NEW
+],
         backgroundColor: [
           "rgba(59, 130, 246, 0.6)",
           "rgba(168, 85, 247, 0.6)",
@@ -242,9 +242,9 @@ const AdminStats = ({ setError, onNavigate }: AdminStatsProps) => {
           </div>
           <div>
             <DashboardCard
-              title="Total HODs"
+              title="Total Counselors"
               value={stats.total_hods || 0}
-              description="Department heads"
+              description="Academic counselors"
               icon={<FaUserTie className={theme === 'dark' ? "text-orange-400 text-3xl" : "text-orange-500 text-3xl"} />}
             />
           </div>
@@ -457,47 +457,26 @@ const AdminStats = ({ setError, onNavigate }: AdminStatsProps) => {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8"
         >
           <DashboardCard
-            title="Enroll User"
-            description="Add new HOD or faculty"
+            title="Enroll Counselor / MIS"
+            description="Add counselor, MIS or faculty"
             icon={<User size={20} />}
             onClick={() => handleCardClick("enroll-user")}
           />
+          
           <DashboardCard
-            title="Bulk Upload Faculty"
-            description="Upload faculty list"
-            icon={<ClipboardList size={20} />}
-            onClick={() => handleCardClick("bulk-upload")}
-          />
-          <DashboardCard
-            title="Manage Branches"
-            description="View or edit branches"
-            icon={<GitBranch size={20} />}
-            onClick={() => handleCardClick("branches")}
-          />
-          <DashboardCard
-            title="Low Attendance"
-            description="View students with low attendance"
-            icon={<User size={20} />}
-            onClick={() => handleCardClick("low-attendance")}
-          />
-          <DashboardCard
-            title="Manage Batches"
-            description="View or manage batches"
-            icon={<ClipboardList size={20} />}
-            onClick={() => handleCardClick("batches")}
-          />
-          <DashboardCard
-            title="Notifications"
-            description="Send or view notifications"
-            icon={<Bell size={20} />}
-            onClick={() => handleCardClick("notifications")}
-          />
+  title="Batches"
+  description="View and manage batches"
+  icon={<GitBranch size={20} />}
+  onClick={() => handleCardClick("batches")}
+/>
+          
           <DashboardCard
             title="Leave Approvals"
             description="Manage staff leave requests"
             icon={<UserCheck size={20} />}
             onClick={() => handleCardClick("hod-leaves")}
           />
+          
           <DashboardCard
             title="Users Management"
             description="Manage all system users"

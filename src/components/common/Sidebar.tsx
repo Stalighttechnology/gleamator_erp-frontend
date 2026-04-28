@@ -179,7 +179,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Enroll Counselor/MIS", page: "enroll-user" },
 
       // Academic Monitoring
-      { name: "Batches (View)", page: "batches" },
+      { name: "Batches", page: "batches" },
       { name: "Question Paper Approvals", page: "qp-approvals" },
       { name: "Low Attendance", page: "low-attendance" },
 
@@ -190,10 +190,8 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Leave Approvals", page: "hod-leaves" },
       { name: "Short Permission Requests", page: "short-permissions" },
       { name: "Staff Attendance", page: "hod-attendance" },
-
-      // Monitoring
-      { name: "Scan / Search User", page: "scan-search" },
-      { name: "Users Audit", page: "users" },
+      { name: "Users", page: "users" },
+      { name: "Attendance Locations", page: "campus-locations" },
 
       // Self
       { name: "Profile", page: "profile" },
