@@ -226,8 +226,8 @@ const FacultyAttendanceView: React.FC = () => {
     }
   }, [activeTab, dateRange, todayPagination.page, todayPagination.page_size, recordsPagination.page, recordsPagination.page_size]);
 
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
+  const getStatusIcon = (status: string | null | undefined) => {
+    switch (status?.toLowerCase() || "") {
       case 'present':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
       case 'absent':
@@ -237,9 +237,9 @@ const FacultyAttendanceView: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null | undefined) => {
     const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase() || "") {
       case 'present':
         return `${baseClasses} bg-green-100 text-green-800`;
       case 'absent':
@@ -249,7 +249,8 @@ const FacultyAttendanceView: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "-";
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -418,24 +419,24 @@ const FacultyAttendanceView: React.FC = () => {
                     todayAttendance.map((record) => (
                       <tr key={record.faculty_id} className={`hover:${theme === 'dark' ? 'bg-accent' : 'bg-gray-50'}`}>
                         <td className={`px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
-                          <div className="font-medium">{record.faculty_name}</div>
+                          <div className="font-medium">{record.faculty_name || "-"}</div>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <div className="flex items-center gap-1 sm:gap-2">
                             {getStatusIcon(record.status)}
-                            <span className={`${getStatusBadge(record.status)} text-xs sm:text-sm`}>{record.status}</span>
+                            <span className={`${getStatusBadge(record.status)} text-xs sm:text-sm`}>{record.status || "-"}</span>
                           </div>
                         </td>
                         <td className={`px-6 py-4 whitespace-nowrap text-sm ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
                           {record.marked_at ? new Date(record.marked_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not marked'}
                           {record.location ? (
                             <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>
-                              {record.location.inside ? (
-                                <>On campus • {record.location.distance_meters ? `${Math.round(record.location.distance_meters)} m` : 'distance unknown'}</>
+                              {record.location?.inside ? (
+                                <>On campus • {record.location?.distance_meters ? `${Math.round(record.location.distance_meters || 0)} m` : 'distance unknown'}</>
                               ) : (
-                                <>Outside campus • {record.location.distance_meters ? `${Math.round(record.location.distance_meters)} m` : 'distance unknown'}</>
+                                <>Outside campus • {record.location?.distance_meters ? `${Math.round(record.location.distance_meters || 0)} m` : 'distance unknown'}</>
                               )}
-                              {record.location.campus_name ? ` • ${record.location.campus_name}` : ''}
+                              {record.location?.campus_name ? ` • ${record.location.campus_name}` : ''}
                             </div>
                           ) : (
                             <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Location not recorded</div>
@@ -590,22 +591,22 @@ const FacultyAttendanceView: React.FC = () => {
                       <React.Fragment key={summary.id}>
                         <tr className={`hover:${theme === 'dark' ? 'bg-accent' : 'bg-gray-50'} ${selectedFaculty?.id === summary.id ? (theme === 'dark' ? 'bg-accent/50' : 'bg-blue-50') : ''}`}>
                           <td className={`px-6 py-4 whitespace-nowrap font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
-                            {summary.name}
+                            {summary.name || "-"}
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
-                            {summary.total_days}
+                            {summary.total_days || 0}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-green-600 font-medium">
-                            {summary.present_days}
+                            {summary.present_days || 0}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-red-600 font-medium">
-                            {summary.absent_days}
+                            {summary.absent_days || 0}
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap font-medium ${
-                            summary.attendance_percentage >= 75 ? 'text-green-600' :
-                            summary.attendance_percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
+                            (summary.attendance_percentage || 0) >= 75 ? 'text-green-600' :
+                            (summary.attendance_percentage || 0) >= 60 ? 'text-yellow-600' : 'text-red-600'
                           }`}>
-                            {summary.attendance_percentage.toFixed(1)}%
+                            {(summary.attendance_percentage || 0).toFixed(1)}%
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
                             <button
@@ -704,7 +705,7 @@ const FacultyAttendanceView: React.FC = () => {
                                               <div className={`mt-1 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${
                                                 isPresent ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                                               }`}>
-                                                {record.status[0]}
+                                                {record.status?.[0] || "-"}
                                               </div>
                                             ) : (
                                               !isFuture && (

@@ -66,7 +66,10 @@ const AdminStats = ({ setError, onNavigate }: AdminStatsProps) => {
         const response = await getAdminStats();
         console.log("Stats API response:", response);
         if (response.success) {
-          setStats(response.data);
+          setStats({
+            ...response.data,
+            mis_count: response.data.overview?.mis_count || response.data.mis_count || 0
+          });
         } else {
           setError(response.message || "Failed to fetch stats");
           toast({
@@ -250,10 +253,10 @@ const AdminStats = ({ setError, onNavigate }: AdminStatsProps) => {
           </div>
           <div>
             <DashboardCard
-              title="Active Now"
-              value={stats.active_users || 0}
-              description="Users currently online"
-              icon={<FaUserCheck className={theme === 'dark' ? "text-green-400 text-3xl" : "text-green-500 text-3xl"} />}
+              title="Total MIS"
+              value={stats.mis_count || 0}
+              description="System operators"
+              icon={<FaUserCheck className={theme === 'dark' ? "text-purple-400 text-3xl" : "text-purple-500 text-3xl"} />}
             />
           </div>
         </div>

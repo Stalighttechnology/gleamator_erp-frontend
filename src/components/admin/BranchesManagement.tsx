@@ -64,7 +64,7 @@ const BranchesManagement = ({ setError, toast }: { setError: (error: string | nu
       setError(null);
       try {
         const response = await getBranchesWithHODs();
-        console.log("Combined Branch and HOD Response:", response);
+        
         // Check if the response has the expected structure
         const hasResults = response && typeof response === 'object' && 'results' in response;
         const dataSource = hasResults ? (response as any).results : (response as any);
@@ -114,8 +114,8 @@ const BranchesManagement = ({ setError, toast }: { setError: (error: string | nu
 
           toast({ title: "Success", description: "Data loaded successfully" });
         } else {
-          setError(dataSource?.message || "Failed to fetch branches and HODs");
-          toast({ variant: "destructive", title: "Error", description: dataSource?.message || "Failed to fetch branches and HODs" });
+          setError(dataSource?.message || "Failed to fetch branches and Counselor");
+          toast({ variant: "destructive", title: "Error", description: dataSource?.message || "Failed to fetch branches and Counselor" });
         }
       } catch (err) {
         console.error("Fetch error:", err);
@@ -404,13 +404,13 @@ const BranchesManagement = ({ setError, toast }: { setError: (error: string | nu
         setIsAssignDialogOpen(false);
         setNewHodId("");
         setSelectedBranchId(null);
-        toast({ title: "Success", description: "HOD assigned successfully" });
+        toast({ title: "Success", description: "Counselor assigned successfully" });
       } else {
-        setError(response.message || "Failed to assign HOD");
-        toast({ variant: "destructive", title: "Error", description: response.message || "Failed to assign HOD" });
+        setError(response.message || "Failed to assign Counselor");
+        toast({ variant: "destructive", title: "Error", description: response.message || "Failed to assign Counselor" });
       }
     } catch (err) {
-      console.error("Assign HOD Error:", err);
+      console.error("Assign Counselor Error:", err);
       setError("Network error");
       toast({ variant: "destructive", title: "Error", description: "Network error" });
     } finally {
@@ -474,7 +474,7 @@ const BranchesManagement = ({ setError, toast }: { setError: (error: string | nu
               onClick={() => setIsAssignDialogOpen(true)}
               disabled={loading}
             >
-              <UserPlus2Icon className="w-4 h-4" /> Assign HOD
+              <UserPlus2Icon className="w-4 h-4" /> Assign Counselor
             </Button>
 
             <Button
@@ -502,8 +502,8 @@ const BranchesManagement = ({ setError, toast }: { setError: (error: string | nu
               <tr>
                 <th className="py-2 px-2 text-left">Branch</th>
                 <th className="py-2 px-2 hidden sm:table-cell">Branch Code</th>
-                <th className="py-2 px-2">Assigned HOD</th>
-                <th className="py-2 px-2 hidden sm:table-cell">HOD Contact No</th>
+                <th className="py-2 px-2">Assigned Counselor</th>
+                <th className="py-2 px-2 hidden sm:table-cell">Counselor Contact No</th>
                 <th className="py-2 px-2 text-right w-20">Actions</th>
               </tr>
             </thead>
@@ -555,7 +555,7 @@ const BranchesManagement = ({ setError, toast }: { setError: (error: string | nu
                     )}
                   </td>
 
-                  {/* HOD column */}
+                  {/* Counselor column */}
                   <td className="py-3">
                     {editingId === branch.id ? (
                       <Select
@@ -563,10 +563,10 @@ const BranchesManagement = ({ setError, toast }: { setError: (error: string | nu
                         onValueChange={(val) => setEditData(prev => prev ? { ...prev, hod: val } : null)}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select HOD" />
+                          <SelectValue placeholder="Select Counselor" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">-- Select HOD --</SelectItem>
+                          <SelectItem value="none">-- Select Counselor --</SelectItem>
                           {users.map((u) => (
                             <SelectItem key={u.id} value={`${u.first_name} ${u.last_name}`.trim()}>
                               {`${u.first_name} ${u.last_name}`.trim()}
@@ -720,7 +720,7 @@ const BranchesManagement = ({ setError, toast }: { setError: (error: string | nu
             : 'bg-white text-gray-900 w-full max-w-[90%] sm:max-w-md md:max-w-lg mx-4 sm:mx-auto p-4 sm:p-6 rounded-lg'
         }>
           <DialogHeader>
-            <DialogTitle>Assign HOD to Branch</DialogTitle>
+            <DialogTitle>Assign Counselor to Branch</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -750,7 +750,7 @@ const BranchesManagement = ({ setError, toast }: { setError: (error: string | nu
               onValueChange={setNewHodId}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select HOD" />
+                <SelectValue placeholder="Select Counselor" />
               </SelectTrigger>
               <SelectContent>
                 {users.map((user) => (

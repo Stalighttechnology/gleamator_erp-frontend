@@ -85,29 +85,29 @@ const AttendanceView = () => {
   const { theme } = useTheme();
 
   // Helper function to format attendance percentage
-  const formatAttendancePercentage = (percentage: number | string): string => {
+  const formatAttendancePercentage = (percentage: number | string | null | undefined): string => {
     if (percentage === "NA" || percentage === null || percentage === undefined) {
       return "NA";
     }
     if (typeof percentage === "string") {
       return percentage;
     }
-    return `${percentage}%`;
+    return `${percentage || 0}%`;
   };
 
   // Helper function to get progress bar width
-  const getProgressBarWidth = (percentage: number | string): string => {
+  const getProgressBarWidth = (percentage: number | string | null | undefined): string => {
     if (percentage === "NA" || percentage === null || percentage === undefined) {
       return "0%";
     }
     if (typeof percentage === "string") {
       return "0%";
     }
-    return `${Math.min(percentage, 100)}%`;
+    return `${Math.min(percentage || 0, 100)}%`;
   };
 
   // Helper function to get numeric value for sorting
-  const getNumericPercentage = (percentage: number | string): number => {
+  const getNumericPercentage = (percentage: number | string | null | undefined): number => {
     if (percentage === "NA" || percentage === null || percentage === undefined) {
       return -1; // Sort NA values to the end
     }
@@ -163,21 +163,21 @@ const AttendanceView = () => {
         });
         if (response.success && response.data) {
           updateState({
-            branch: response.data.profile.branch,
-            branchId: response.data.profile.branch_id,
-            semesters: response.data.semesters,
-            sections: response.data.sections.map((s) => ({
-              id: s.id,
-              name: s.name,
-              semester_id: s.semester_id.toString(),
+            branch: response.data.profile?.branch || "",
+            branchId: response.data.profile?.branch_id || "",
+            semesters: response.data.semesters || [],
+            sections: (response.data.sections || []).map((s) => ({
+              id: s.id || "",
+              name: s.name || "-",
+              semester_id: s.semester_id?.toString() || "-",
             })),
-            subjects: response.data.subjects.map((s) => ({
-              id: s.id,
-              name: s.name,
-              subject_code: s.subject_code,
-              semester_id: s.semester_id.toString(),
+            subjects: (response.data.subjects || []).map((s) => ({
+              id: s.id || "",
+              name: s.name || "-",
+              subject_code: s.subject_code || "-",
+              semester_id: s.semester_id?.toString() || "-",
             })),
-            students: response.data.attendance.students,
+            students: response.data.attendance?.students || [],
             pagination: {
               page: response.count ? Math.ceil(response.count / state.pagination.page_size) : 1,
               page_size: state.pagination.page_size,

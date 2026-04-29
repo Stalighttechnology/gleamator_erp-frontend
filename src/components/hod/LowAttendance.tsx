@@ -106,7 +106,7 @@ const VirtualizedSectionTable = React.memo(({
     overscan: 5,
   });
 
-  const getAttendanceColorClass = (attendance: number | string): string => {
+  const getAttendanceColorClass = (attendance: number | string | null | undefined): string => {
     if (attendance === "NA" || attendance === null || attendance === undefined) {
       return "text-gray-400";
     }
@@ -122,14 +122,14 @@ const VirtualizedSectionTable = React.memo(({
     return "text-green-500";
   };
 
-  const formatAttendancePercentage = (percentage: number | string): string => {
+  const formatAttendancePercentage = (percentage: number | string | null | undefined): string => {
     if (percentage === "NA" || percentage === null || percentage === undefined) {
       return "NA";
     }
     if (typeof percentage === "string") {
       return percentage;
     }
-    return `${percentage}%`;
+    return `${percentage || 0}%`;
   };
 
   return (
@@ -213,20 +213,20 @@ const VirtualizedSectionTable = React.memo(({
   );
 });
 
-const LowAttendance = ({ setError }: LowAttendanceProps) => {
+const LowAttendance = ({ setError, user }: LowAttendanceProps) => {
   // Helper function to format attendance percentage
-  const formatAttendancePercentage = (percentage: number | string): string => {
+  const formatAttendancePercentage = (percentage: number | string | null | undefined): string => {
     if (percentage === "NA" || percentage === null || percentage === undefined) {
       return "NA";
     }
     if (typeof percentage === "string") {
       return percentage;
     }
-    return `${percentage}%`;
+    return `${percentage || 0}%`;
   };
 
   // Helper function to get numeric value for sorting
-  const getNumericPercentage = (percentage: number | string): number => {
+  const getNumericPercentage = (percentage: number | string | null | undefined): number => {
     if (percentage === "NA" || percentage === null || percentage === undefined) {
       return -1; // Sort NA values to the end
     }
@@ -331,13 +331,13 @@ const LowAttendance = ({ setError }: LowAttendanceProps) => {
             const branches = branchesResponse.branches;
             updateState({ 
               branches: branches,
-              branchId: branches.length > 0 ? branches[0].id.toString() : "",
+              branchId: branches.length > 0 ? branches[0].id?.toString() || "" : "",
               loading: false 
             });
             
             // If we have a branch, fetch its semesters
             if (branches.length > 0) {
-              const semRes = await getHODDashboardBootstrap(["semesters"], branches[0].id.toString());
+              const semRes = await getHODDashboardBootstrap(["semesters"], branches[0].id?.toString() || "");
               if (semRes.success && semRes.data?.semesters) {
                 updateState({ semesters: semRes.data.semesters });
               }
@@ -415,10 +415,10 @@ const LowAttendance = ({ setError }: LowAttendanceProps) => {
         }
 
         const studentsData = studentsResponse.data.students.map((student) => ({
-          student_id: student.student_id,
-          usn: student.usn,
-          name: student.name,
-          subject: student.subject,
+          student_id: student.student_id || "",
+          usn: student.usn || "-",
+          name: student.name || "-",
+          subject: student.subject || "-",
           section: student.section || "Section A",
           semester: student.semester || 0,
           attendance_percentage: student.attendance_percentage,
@@ -579,7 +579,7 @@ const LowAttendance = ({ setError }: LowAttendanceProps) => {
   };
 
   // Helper function to determine attendance color
-  const getAttendanceColorClass = (attendance: number | string): string => {
+  const getAttendanceColorClass = (attendance: number | string | null | undefined): string => {
     if (attendance === "NA" || attendance === null || attendance === undefined) {
       return "text-gray-400";
     }
@@ -598,8 +598,9 @@ const LowAttendance = ({ setError }: LowAttendanceProps) => {
   // Calculate stats
   const totalStudents = state.totalCount;
   const lowAttendanceCount = state.students.length;
-  const avgAttendance = state.students.length > 0
-    ? Math.round(state.students.reduce((sum, s) => sum + (typeof s.attendance_percentage === 'number' ? s.attendance_percentage : 0), 0) / state.students.filter(s => typeof s.attendance_percentage === 'number').length)
+  const numericAttendanceCount = state.students.filter(s => typeof s.attendance_percentage === 'number').length;
+  const avgAttendance = numericAttendanceCount > 0
+    ? Math.round((state.students.reduce((sum, s) => sum + (typeof s.attendance_percentage === 'number' ? s.attendance_percentage : 0), 0) / numericAttendanceCount) || 0)
     : 0;
 
   return (
@@ -692,8 +693,8 @@ const LowAttendance = ({ setError }: LowAttendanceProps) => {
                       </SelectTrigger>
                       <SelectContent className={theme === 'dark' ? 'bg-card border border-border text-foreground' : 'bg-white border border-gray-300 text-gray-900'}>
                         {state.branches.map((branch) => (
-                          <SelectItem key={branch.id} value={branch.id.toString()}>
-                            {branch.name}
+                          <SelectItem key={branch.id || branch.name} value={branch.id?.toString() || ""}>
+                            {branch.name || "-"}
                           </SelectItem>
                         ))}
                       </SelectContent>
