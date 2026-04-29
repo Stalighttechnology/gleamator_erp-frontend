@@ -207,7 +207,8 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Courses", page: "subjects" },
       { name: "Semester Setup", page: "semesters" },
 
-      // Operations (Batch Hub)
+      // Branch & Operations
+      { name: "Branch Management", page: "branches" },
       { name: "Batch Assignment", page: "batches" },
       { name: "Faculty Assignments", page: "faculty-assignments" },
       { name: "Timetable", page: "timetable" },
@@ -242,7 +243,8 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Courses", page: "subjects" },
       { name: "Semester Setup", page: "semesters" },
 
-      // Operations (Batch Hub)
+      // Branch & Operations
+      { name: "Branch Management", page: "branches" },
       { name: "Batch Assignment", page: "batches" },
       { name: "Faculty Assignments", page: "faculty-assignments" },
       { name: "Timetable", page: "timetable" },
@@ -293,6 +295,12 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Proctor Students", page: "proctor-students" },
       { name: "Scan for Student Info", page: "scan-student-info" },
       { name: "Study Material", page: "study-materials" },
+      { name: "Create Questions", page: "create-questions" },
+      { name: "Create Assessment", page: "create-assessment" },
+      { name: "Assign Assessment", page: "assign-assessment" },
+      { name: "Student Test", page: "student-test" },
+      { name: "Results", page: "results" },
+      { name: "Admin Approval", page: "admin-approval" },
       { name: "Announcements for Students", page: "faculty-announcement-management" },
 
       // Profile

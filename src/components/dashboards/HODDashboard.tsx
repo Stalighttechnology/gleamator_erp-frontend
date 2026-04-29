@@ -30,6 +30,7 @@ import HODAnnouncementManagement from "../hod/HODAnnouncementManagement";
 import ShortPermissionRequest from "../hod/ShortPermissionRequest";
 import ShortPermissionsManagement from "../hod/ShortPermissionsManagement";
 import BatchManagement from "../admin/BatchManagement";
+import BranchesManagement from "../admin/BranchesManagement";
 import ScanSearch from "../common/ScanSearch";
 import EnrollmentManagement from "../hod/EnrollmentManagement";
 import { HODBootstrapProvider } from "../../context/HODBootstrapContext";
@@ -150,7 +151,8 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'hod-profile': 'hod-profile',
       'short-permission-request': 'short-permission-request',
       'short-permissions': 'short-permissions',
-      'batches': 'batches'
+      'batches': 'batches',
+      'branches': 'branches'
     };
     
     return pathMap[lastPart] || 'dashboard';
@@ -225,7 +227,8 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'hod-profile': '/hod/hod-profile',
       'short-permission-request': '/hod/short-permission-request',
       'short-permissions': '/hod/short-permissions',
-      'batches': '/hod/batches'
+      'batches': '/hod/batches',
+      'branches': '/hod/branches'
     };
     
     const path = pathMap[page] || '/hod/dashboard';
@@ -312,6 +315,8 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
         return <ShortPermissionsManagement setError={setError} />;
       case "batches":
         return <BatchManagement setError={setError} toast={toast} />;
+      case "branches":
+        return <BranchesManagement setError={setError} toast={toast} />;
       default:
       return <HODStats setError={setError} setPage={handlePageChange} />;
     }

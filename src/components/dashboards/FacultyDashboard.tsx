@@ -28,6 +28,12 @@ import { useTheme } from "../../context/ThemeContext";
 import { useProctorStudentsQuery } from "../../hooks/useApiQueries";
 import { isPageAllowed } from "../../utils/planGating";
 import UpgradeRequired from "../common/UpgradeRequired";
+import CreateQuestion from "@/components/assessment/CreateQuestion";
+import CreateAssessment from "@/components/assessment/CreateAssesment";
+import AssignAssessment from "@/components/assessment/Assignassesment";
+import AdminApproval from "@/components/assessment/Adminapproval";
+import StudentTest from "@/components/assessment/StudentTest";
+import ResultsPage from "@/components/assessment/ResultsPage";
 
 interface FacultyDashboardProps {
   user: {
@@ -71,7 +77,13 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       'statistics': 'statistics',
       'scan-student-info': 'scan-student-info',
       'study-materials': 'study-materials',
-      'short-permission-request': 'short-permission-request'
+      'short-permission-request': 'short-permission-request',
+      'create-questions': 'create-questions',
+      'create-assessment': 'create-assessment',
+      'assign-assessment': 'assign-assessment',
+      'student-test': 'student-test',
+      'results': 'results',
+      'admin-approval': 'admin-approval'
     };
 
     // Add direct mappings for additional top-level routes
@@ -137,7 +149,13 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       'scan-student-info': '/faculty/scan-student-info',
       'study-materials': '/faculty/study-materials',
       'faculty-announcement-management': '/faculty/announcements',
-      'short-permission-request': '/faculty/short-permission-request'
+      'short-permission-request': '/faculty/short-permission-request',
+      'create-questions': '/faculty/create-questions',
+      'create-assessment': '/faculty/create-assessment',
+      'assign-assessment': '/faculty/assign-assessment',
+      'student-test': '/faculty/student-test',
+      'results': '/faculty/results',
+      'admin-approval': '/faculty/admin-approval'
     };
 
     const path = pathMap[page] || '/faculty/dashboard';
@@ -217,6 +235,18 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
         return <StudyMaterial />;
       case "short-permission-request":
         return <ShortPermissionRequest />;
+      case "create-questions":
+        return <CreateQuestion />;
+      case "create-assessment":
+        return <CreateAssessment />;
+      case "assign-assessment":
+        return <AssignAssessment />;
+      case "student-test":
+        return <StudentTest />;
+      case "results":
+        return <ResultsPage />;
+      case "admin-approval":
+        return <AdminApproval />;
       default:
         return <FacultyStats setActivePage={handlePageChange} />;
     }
