@@ -131,7 +131,6 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
     const pathMap: { [key: string]: string } = {
       'dashboard': 'dashboard',
       'enrollment-management': 'enrollment-management',
-      'semesters': 'semesters',
       'students': 'enrollment-management',
       'bulk-upload': 'bulk-upload',
       'subjects': 'subjects',
@@ -139,17 +138,12 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'timetable': 'timetable',
       'leaves': 'leaves',
       'apply-leaves': 'apply-leaves',
-      'attendance': 'attendance',
-      'faculty-attendance': 'faculty-attendance',
       'my-attendance': 'my-attendance',
-      'marks': 'marks',
       'notifications': 'notifications',
-      'proctors': 'proctors',
       'chat': 'chat',
       'study-materials': 'study-materials',
       'hod-profile': 'hod-profile',
       'short-permission-request': 'short-permission-request',
-      'short-permissions': 'short-permissions',
       'batches': 'batches'
     };
     
@@ -205,7 +199,6 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
     // Navigate to the corresponding URL path
     const pathMap: { [key: string]: string } = {
       'dashboard': '/hod/dashboard',
-      'semesters': '/hod/semesters',
       'enrollment-management': '/hod/enrollment-management',
       'students': '/hod/enrollment-management',
       'bulk-upload': '/hod/bulk-upload',
@@ -214,17 +207,12 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'timetable': '/hod/timetable',
       'leaves': '/hod/leaves',
       'apply-leaves': '/hod/apply-leaves',
-      'attendance': '/hod/attendance',
-      'faculty-attendance': '/hod/faculty-attendance',
       'my-attendance': '/hod/my-attendance',
-      'marks': '/hod/marks',
       'notifications': '/hod/notifications',
-      'proctors': '/hod/proctors',
       'chat': '/hod/chat',
       'study-materials': '/hod/study-materials',
       'hod-profile': '/hod/hod-profile',
       'short-permission-request': '/hod/short-permission-request',
-      'short-permissions': '/hod/short-permissions',
       'batches': '/hod/batches'
     };
     

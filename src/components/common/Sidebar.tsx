@@ -206,7 +206,6 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
       { name: "Courses", page: "subjects" },
-      { name: "Semester Setup", page: "semesters" },
 
       // Operations (Batch Hub)
       { name: "Batch Assignment", page: "batches" },
@@ -215,10 +214,6 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Study Material", page: "study-materials" },
 
       // Monitoring & Records
-      { name: "Attendance", page: "attendance" },
-      { name: "Faculty Attendance", page: "faculty-attendance" },
-      { name: "Internal Marks", page: "marks" },
-      { name: "Proctor Management", page: "proctors" },
 
       // Communication
       { name: "Announcements", page: "hod-announcement-management" },
@@ -227,7 +222,6 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leaves", page: "apply-leaves" },
       { name: "Short Permission Request", page: "short-permission-request" },
-      { name: "Short Permission Approvals", page: "short-permissions" },
 
       // Profile
       { name: "Profile", page: "hod-profile" },
@@ -241,7 +235,6 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
       { name: "Courses", page: "subjects" },
-      { name: "Semester Setup", page: "semesters" },
 
       // Operations (Batch Hub)
       { name: "Batch Assignment", page: "batches" },
@@ -250,10 +243,6 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Study Material", page: "study-materials" },
 
       // Monitoring & Records
-      { name: "Attendance", page: "attendance" },
-      { name: "Faculty Attendance", page: "faculty-attendance" },
-      { name: "Internal Marks", page: "marks" },
-      { name: "Proctor Management", page: "proctors" },
 
       // Communication
       { name: "Announcements", page: "hod-announcement-management" },
@@ -262,7 +251,6 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leaves", page: "apply-leaves" },
       { name: "Short Permission Request", page: "short-permission-request" },
-      { name: "Short Permission Approvals", page: "short-permissions" },
 
       // Profile
       { name: "Profile", page: "hod-profile" },
