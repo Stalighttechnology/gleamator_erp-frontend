@@ -23,8 +23,8 @@ const EnrollmentManagement = () => {
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [branchId, setBranchId] = useState<string>("");
   const [semesters, setSemesters] = useState<any[]>([]);
-  const [sectionsBySemester, setSectionsBySemester] = useState<Record<string, any[]>>({});
-  const [semesterId, setSemesterId] = useState<string>("");
+    const [batchId, setBatchId] = useState<string>("");
+  const [sections, setSections] = useState<any[]>([]);
   const [sectionId, setSectionId] = useState<string>("");
   const [subjectType, setSubjectType] = useState<string>("");
   const [electiveSubjects, setElectiveSubjects] = useState<any[]>([]);
@@ -79,13 +79,7 @@ const EnrollmentManagement = () => {
             setSemesters(boot.data.semesters.map((s: any) => ({ id: String(s.id), number: s.number })));
           }
           if (Array.isArray(boot.data.sections)) {
-            const map: Record<string, any[]> = {};
-            boot.data.sections.forEach((sec: any) => {
-              const semIdKey = String(sec.semester_id || "");
-              if (!map[semIdKey]) map[semIdKey] = [];
-              map[semIdKey].push({ ...sec, id: String(sec.id) });
-            });
-            setSectionsBySemester(map);
+            setSections(boot.data.sections.map((sec: any) => ({ ...sec, id: String(sec.id) })));
           }
           if (Array.isArray(boot.data.batches)) {
             setBatches(boot.data.batches.map((b: any) => ({ id: String(b.id), name: b.name })));
@@ -100,12 +94,12 @@ const EnrollmentManagement = () => {
 
   useEffect(() => {
     const loadSubjects = async () => {
-      if (!semesterId || !subjectType || !sectionId || selectedRole !== "student") return;
+      if (!batchId || !subjectType || !sectionId || selectedRole !== "student") return;
       setElectiveLoading(true);
       try {
         const params = new URLSearchParams({
           subject_type: subjectType,
-          semester_id: semesterId,
+          batch_id: batchId,
           section_id: sectionId,
           page: electivePage.toString(),
           page_size: '20'
@@ -132,7 +126,7 @@ const EnrollmentManagement = () => {
       setElectiveLoading(false);
     };
     loadSubjects();
-  }, [semesterId, subjectType, sectionId, electivePage, selectedRole]);
+  }, [batchId, subjectType, sectionId, electivePage, selectedRole]);
 
   const loadStudents = async (page = 1, search?: string) => {
     if (!branchId || !selectedSubjectId || selectedRole !== "student") return;
@@ -140,8 +134,8 @@ const EnrollmentManagement = () => {
     const selSub = subjects.find((s: any) => String(s.id) === String(selectedSubjectId));
     const selType = selSub ? (selSub.subject_type || selSub.subjectType || '') : '';
 
-    if (selType !== 'open_elective' && (!semesterId || !sectionId)) return;
-    if (selType === 'open_elective' && !semesterId) return;
+    if (selType !== 'open_elective' && (!batchId || !sectionId)) return;
+    if (selType === 'open_elective' && !batchId) return;
 
     setIsLoading(true);
     try {
@@ -153,7 +147,7 @@ const EnrollmentManagement = () => {
         page_size: '50'
       });
       if (search && String(search).trim().length > 0) params.set('search', String(search).trim());
-      if (semesterId) params.set('semester_id', semesterId);
+      if (batchId) params.set('batch_id', batchId);
       if (sectionId) params.set('section_id', sectionId);
 
       const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/students/?${params}`, {
@@ -186,7 +180,7 @@ const EnrollmentManagement = () => {
     if (branchId && selectedSubjectId && selectedRole === "student") {
       loadStudents(1);
     }
-  }, [branchId, selectedSubjectId, semesterId, sectionId, selectedRole]);
+  }, [branchId, selectedSubjectId, batchId, sectionId, selectedRole]);
 
   const toggleStudent = (id: string) => {
     setStudents((prev) => prev.map((p) => (p.id === id ? { ...p, checked: !p.checked } : p)));
@@ -308,7 +302,7 @@ const EnrollmentManagement = () => {
   }, [electiveSubjects]);
 
   const resetFilters = () => {
-    setSemesterId("");
+    setBatchId("");
     setSectionId("");
     setSubjectType("");
     setSelectedSubjectId("");
@@ -347,43 +341,38 @@ const EnrollmentManagement = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Semester</Label>
+                        <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Batch</Label>
               <Select 
-                value={semesterId} 
-                onValueChange={(v) => { setSemesterId(v); setSectionId(""); }}
+                value={batchId} 
+                onValueChange={(v) => { setBatchId(v); setSectionId(""); }}
                 disabled={!selectedRole || selectedRole !== 'student'}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select semester" />
+                  <SelectValue placeholder="Select batch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {semesters.map((sem: any) => (
-                    <SelectItem key={sem.id} value={sem.id}>{`${sem.number}th Semester`}</SelectItem>
+                  {batches.map((batch: any) => (
+                    <SelectItem key={batch.id} value={batch.id}>{batch.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
+                        <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Section</Label>
               <Select 
                 value={sectionId} 
                 onValueChange={setSectionId}
-                disabled={!selectedRole || selectedRole !== 'student' || !semesterId}
+                disabled={!selectedRole || selectedRole !== 'student' || !batchId}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select section" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(() => {
-                    const semObj = semesters.find((s: any) => String(s.id) === String(semesterId));
-                    const semNumberKey = semObj ? String(semObj.number) : "";
-                    const list = sectionsBySemester[String(semesterId)] || sectionsBySemester[semNumberKey] || [];
-                    return list.map((sec: any) => (
-                      <SelectItem key={String(sec.id)} value={String(sec.id)}>{sec.name}</SelectItem>
-                    ));
-                  })()}
+                  {sections.map((sec: any) => (
+                    <SelectItem key={sec.id} value={sec.id}>{sec.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

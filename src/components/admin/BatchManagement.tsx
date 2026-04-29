@@ -20,8 +20,6 @@ import { Badge } from "../ui/badge";
 interface Batch {
   id: number;
   name: string;
-  start_year: number;
-  end_year: number;
   student_count: number;
   created_at: string;
   courses?: Array<{ id: string; name: string }>;
@@ -37,14 +35,13 @@ interface BatchManagementProps {
 const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, viewOnly = false }) => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(false);
-  const [newBatch, setNewBatch] = useState({ name: "", start_year: "", end_year: "" });
+  const [newBatch, setNewBatch] = useState({ name: "" });
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [editForm, setEditForm] = useState<{
-    start_year: string;
-    end_year: string;
+    name: string;
     courses: string[];
     faculty: string[];
-  }>({ start_year: "", end_year: "", courses: [], faculty: [] });
+  }>({ name: "", courses: [], faculty: [] });
   
   const [availableCourses, setAvailableCourses] = useState<Array<{ id: string; name: string }>>([]);
   const [availableFaculty, setAvailableFaculty] = useState<Array<{ id: string; name: string }>>([]);
@@ -101,8 +98,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
     try {
       const res = await manageBatches(
         {
-          start_year: Number(newBatch.start_year),
-          end_year: Number(newBatch.end_year),
+          name: newBatch.name,
         },
         undefined,
         "POST"
@@ -110,7 +106,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
       const dataSource = (res as any).results || res;
       if (dataSource.success) {
         fetchBatches();
-        setNewBatch({ name: "", start_year: "", end_year: "" });
+        setNewBatch({ name: "" });
         if (toast) toast({ title: "Success", description: "Batch added successfully" });
       }
     } catch (err) {
@@ -122,8 +118,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
   const handleEditBatch = (batch: Batch) => {
     setEditingBatch(batch);
     setEditForm({
-      start_year: batch.start_year.toString(),
-      end_year: batch.end_year.toString(),
+      name: batch.name || "",
       courses: batch.courses?.map(c => c.id.toString()) || [],
       faculty: batch.faculty?.map(f => f.id.toString()) || [],
     });
@@ -135,8 +130,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
     try {
       const res = await manageBatches(
         {
-          start_year: Number(editForm.start_year),
-          end_year: Number(editForm.end_year),
+          name: editForm.name,
           courses: editForm.courses,
           faculty: editForm.faculty,
         } as any,
@@ -169,18 +163,11 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-2">
               <Input
-                name="start_year"
-                type="number"
-                placeholder="Start Year"
-                value={newBatch.start_year}
-                onChange={(e) => setNewBatch({ ...newBatch, start_year: e.target.value })}
-              />
-              <Input
-                name="end_year"
-                type="number"
-                placeholder="End Year"
-                value={newBatch.end_year}
-                onChange={(e) => setNewBatch({ ...newBatch, end_year: e.target.value })}
+                name="name"
+                type="text"
+                placeholder="Batch Name (e.g. Computer Science Batch)"
+                value={newBatch.name}
+                onChange={(e) => setNewBatch({ ...newBatch, name: e.target.value })}
               />
               <Button onClick={handleAddBatch} disabled={loading}>Add Batch</Button>
             </div>
@@ -253,21 +240,14 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
             <DialogTitle>Edit Batch: {editingBatch?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">Start Year</label>
+                <label className="text-sm font-medium mb-1 block">Batch Name</label>
                 <Input
-                  type="number"
-                  value={editForm.start_year}
-                  onChange={(e) => setEditForm({ ...editForm, start_year: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">End Year</label>
-                <Input
-                  type="number"
-                  value={editForm.end_year}
-                  onChange={(e) => setEditForm({ ...editForm, end_year: e.target.value })}
+                  type="text"
+                  placeholder="Batch Name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                 />
               </div>
             </div>

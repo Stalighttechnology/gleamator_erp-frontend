@@ -78,8 +78,6 @@ interface ManageBranchesResponse {
 interface Batch {
   id: number;
   name: string;
-  start_year: number;
-  end_year: number;
   student_count: number;
   created_at: string;
 }
@@ -96,8 +94,7 @@ interface ManageBatchesResponse {
 }
 
 interface ManageBatchesRequest {
-  start_year?: number;
-  end_year?: number;
+  name?: string;
   page?: number;
   page_size?: number;
 }
@@ -377,8 +374,7 @@ export const manageBatches = async (
       const params = new URLSearchParams();
       if (data.page) params.append('page', data.page.toString());
       if (data.page_size) params.append('page_size', data.page_size.toString());
-      if (data.start_year) params.append('start_year', data.start_year.toString());
-      if (data.end_year) params.append('end_year', data.end_year.toString());
+      if (data.name) params.append('name', data.name);
       if (params.toString()) url += `?${params.toString()}`;
     }
     

@@ -43,8 +43,6 @@ interface Semester {
 interface Batch {
   id: string;
   name: string;
-  start_year: number;
-  end_year: number;
 }
 
 interface Section {

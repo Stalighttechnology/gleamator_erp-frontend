@@ -114,8 +114,6 @@ interface GetAttendanceBootstrapResponse {
 interface Batch {
   id: string;
   name: string;
-  start_year: number;
-  end_year: number;
   student_count: number;
   created_at: string;
 }
@@ -244,8 +242,7 @@ interface ManageStudentsResponse {
 }
 
 interface ManageBatchesRequest {
-  start_year?: number;
-  end_year?: number;
+  name?: string;
 }
 
 interface ManageBatchesResponse {
@@ -1500,7 +1497,7 @@ export const getHODStudentBootstrap = async (
     profile?: { branch_id: string };
     semesters?: Array<{ id: string; number: number }>;
     sections?: Array<{ id: string; name: string; semester_id: string | null }>;
-    batches?: Array<{ id: number; name: string; start_year: number; end_year: number }>;
+    batches?: Array<{ id: number; name: string }>;
     performance?: Array<{ subject: string; attendance: number; marks: number; semester: string }>;
   };
 }> => {
@@ -1761,8 +1758,8 @@ export const manageBatches = async (
       ? `${API_ENDPOINT}/hod/batches/${batch_id}/`
       : `${API_ENDPOINT}/hod/batches/`;
     if (method === "POST" || method === "PUT") {
-      if (!data?.start_year || !data?.end_year) {
-        throw new Error("Start year and end year are required for POST/PUT requests");
+      if (!data?.name) {
+        throw new Error("Batch name is required for POST/PUT requests");
       }
     }
     if (method === "DELETE" && !batch_id) {
