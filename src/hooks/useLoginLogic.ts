@@ -48,13 +48,21 @@ export const useLoginLogic = ({ setRole, setPage, setUser }: UseLoginProps) => {
           localStorage.setItem("temp_user_id", response.user_id || "");
           setPage("otp");
         } else {
-          // Authentication successful - navigate directly
+          localStorage.setItem("access_token", response.access || "");
+          localStorage.setItem("role", response.role || "");
+          localStorage.setItem("user", JSON.stringify(response.profile || {}));
+          window.dispatchEvent(new Event("storage"));
+
           const userRole = response.role;
+          setRole(userRole || "");
+          setUser(response.profile || {});
+
           switch (userRole) {
             case "admin":
               navigate("/admin", { replace: true });
               break;
             case "hod":
+            case "mis":
               navigate("/hod", { replace: true });
               break;
             case "fees_manager":

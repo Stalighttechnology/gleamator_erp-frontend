@@ -83,8 +83,8 @@ const App = () => {
     checkAuth();
 
     // Listen for storage changes (login/logout from other tabs)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "access_token" || e.key === "role" || e.key === "user") {
+    const handleStorageChange = (e: StorageEvent | Event) => {
+      if (!(e instanceof StorageEvent) || e.key === "access_token" || e.key === "role" || e.key === "user") {
         checkAuth();
       }
     };
