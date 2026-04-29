@@ -183,13 +183,15 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Batches", page: "batches" },
       { name: "Question Paper Approvals", page: "qp-approvals" },
       { name: "Low Attendance", page: "low-attendance" },
+      { name: "Student Attendance", page: "attendance" },
+      { name: "Faculty Attendance", page: "faculty-attendance" },
 
       // Communication
       { name: "Announcement Management", page: "announcement-management" },
 
       // Approvals
       { name: "Leave Approvals", page: "hod-leaves" },
-      { name: "Short Permission Requests", page: "short-permissions" },
+      { name: "Short Permission Approvals", page: "short-permissions" },
       { name: "Staff Attendance", page: "hod-attendance" },
       { name: "Users", page: "users" },
       { name: "Attendance Locations", page: "campus-locations" },

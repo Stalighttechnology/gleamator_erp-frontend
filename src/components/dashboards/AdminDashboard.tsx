@@ -5,6 +5,8 @@ import DashboardLayout from "../common/DashboardLayout";
 import AdminStats from "../admin/AdminStats";
 import CampusLocations from "../dean/CampusLocationManager";
 import AdminHODAttendance from "../admin/HODAttendanceView";
+import Attendance from "../hod/AttendanceView";
+import FacultyAttendance from "../hod/FacultyAttendanceView";
 import EnrollUser from "../admin/EnrollUser";
 import BulkUpload from "../admin/BulkUpload";
 import BranchesManagement from "../admin/BranchesManagement";
@@ -151,6 +153,18 @@ const AdminDashboard = ({ user, setPage }: AdminDashboardProps) => {
         return (
           <div>
             <AdminHODAttendance setError={setError} />
+          </div>
+        );
+      case "attendance":
+        return (
+          <div>
+            <Attendance />
+          </div>
+        );
+      case "faculty-attendance":
+        return (
+          <div>
+            <FacultyAttendance />
           </div>
         );
 

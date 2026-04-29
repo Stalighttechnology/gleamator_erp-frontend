@@ -12,6 +12,8 @@ const ResultsView = lazy(() => import("./components/common/ResultsView"));
 const StudentDashboard = lazy(() => import("./components/dashboards/StudentDashboard"));
 const AdminDashboard = lazy(() => import("./components/dashboards/AdminDashboard"));
 const HODDashboard = lazy(() => import("./components/dashboards/HODDashboard"));
+const Attendance = lazy(() => import("./components/hod/AttendanceView"));
+const FacultyAttendance = lazy(() => import("./components/hod/FacultyAttendanceView"));
 const FacultyDashboard = lazy(() => import("./components/dashboards/FacultyDashboard"));
 const COEDashboard = lazy(() => import("./components/dashboards/COEDashboard"));
 const FeesManagerDashboard = lazy(() => import("./components/FeesManager/FeesManagerDashboard"));
@@ -195,9 +197,18 @@ const App = () => {
           } />
 
           <Route path="/attendance" element={
-            <ProtectedRoute allowedRoles={["student"]}>
+            <ProtectedRoute allowedRoles={["admin"]}>
               <>
-                <StudentDashboard user={userData} setPage={() => { }} />
+                <Attendance />
+                {shouldShowFloatingAssistant() && <FloatingAssistant />}
+              </>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/faculty-attendance" element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <>
+                <FacultyAttendance />
                 {shouldShowFloatingAssistant() && <FloatingAssistant />}
               </>
             </ProtectedRoute>
