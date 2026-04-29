@@ -67,6 +67,7 @@ const StudentManagement = () => {
     students: [] as Student[],
     search: "",
     sectionFilter: "All",
+    batchFilter: "All",
     semesterFilter: "All",
     selectedStudent: null as Student | null,
     confirmDelete: false,
@@ -100,6 +101,7 @@ const StudentManagement = () => {
 
   const bootstrap = useHODBootstrap();
   const [sectionsCache, setSectionsCache] = useState<Record<string, Section[]>>({});
+  const [sectionsByBatchCache, setSectionsByBatchCache] = useState<Record<string, Section[]>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -109,7 +111,7 @@ const StudentManagement = () => {
   };
 
   // Fetch students
-  const fetchStudents = async (branchId: string, page: number = 1, pageSize: number = 50, search: string = '', sectionId: string = '', forceRefresh: boolean = false) => {
+  const fetchStudents = async (branchId: string, page: number = 1, pageSize: number = 50, search: string = '', sectionId: string = '', batchId: string = '', forceRefresh: boolean = false) => {
     try {
       const params: any = {
         branch_id: branchId,
@@ -118,6 +120,7 @@ const StudentManagement = () => {
       };
       if (search) params.search = search;
       if (sectionId) params.section_id = sectionId;
+      if (batchId) params.batch_id = batchId;
       if (forceRefresh) params.force_refresh = true;
       const studentRes = await manageStudents(params, "GET");
       // Normalize different possible response shapes from backend
@@ -222,19 +225,30 @@ const StudentManagement = () => {
 
         // Sections - populate cache with all sections from bootstrap
         if (Array.isArray(boot.data.sections) && boot.data.sections.length > 0) {
+          const sectionsByBatch: Record<string, Section[]> = {};
           const sectionsBySemester: Record<string, Section[]> = {};
           boot.data.sections.forEach((sec: any) => {
+            const batchId = String(sec.batch_id || "ALL");
             const semesterId = String(sec.semester_id || "ALL");
-            if (!sectionsBySemester[semesterId]) {
-              sectionsBySemester[semesterId] = [];
-            }
+            
+            if (!sectionsByBatch[batchId]) sectionsByBatch[batchId] = [];
+            sectionsByBatch[batchId].push({
+              id: String(sec.id),
+              name: sec.name,
+              batch_id: batchId,
+              semester_id: semesterId,
+            });
+
+            if (!sectionsBySemester[semesterId]) sectionsBySemester[semesterId] = [];
             sectionsBySemester[semesterId].push({
               id: String(sec.id),
               name: sec.name,
-              semester_id: String(sec.semester_id || ""),
+              batch_id: batchId,
+              semester_id: semesterId,
             });
           });
           setSectionsCache(sectionsBySemester);
+          setSectionsByBatchCache(sectionsByBatch);
         }
 
         // Students are now fetched separately via fetchStudents call above
@@ -254,25 +268,27 @@ const StudentManagement = () => {
   const handleSearch = () => {
     if (state.branchId) {
       const sectionId = state.sectionFilter === "All" ? "" : state.sectionFilter;
-      fetchStudents(state.branchId, 1, state.pageSize, state.search, sectionId);
+      const batchId = state.batchFilter === "All" ? "" : state.batchFilter;
+      fetchStudents(state.branchId, 1, state.pageSize, state.search, sectionId, batchId);
     }
   };
 
-  // Fetch students when section filter changes
+  // Fetch students when filters change
   useEffect(() => {
     if (state.branchId) {
       const sectionId = state.sectionFilter === "All" ? "" : state.sectionFilter;
-      fetchStudents(state.branchId, 1, state.pageSize, state.search, sectionId);
+      const batchId = state.batchFilter === "All" ? "" : state.batchFilter;
+      fetchStudents(state.branchId, 1, state.pageSize, state.search, sectionId, batchId);
     }
-  }, [state.sectionFilter]);
+  }, [state.sectionFilter, state.batchFilter]);
 
-  // Fetch sections when semester changes in Add Student Manually
+
+
+  // Fetch sections when batch changes in Bulk Upload Modal
   useEffect(() => {
-    if (state.branchId && state.manualForm.semester) {
-      const semesterId = getSemesterId(state.manualForm.semester);
-      // Use cached sections instead of making API call
-      const cacheKey = semesterId || "ALL";
-      const cached = sectionsCache[cacheKey];
+    if (state.branchId && state.manualForm.batch) {
+      const batchId = getBatchId(state.manualForm.batch);
+      const cached = sectionsByBatchCache[batchId];
       if (cached) {
         updateState({
           manualSections: cached,
@@ -284,30 +300,28 @@ const StudentManagement = () => {
           manualForm: { ...state.manualForm, section: "" },
         });
       }
-    } else if (state.branchId) {
-      updateState({ manualSections: [], manualForm: { ...state.manualForm, section: "" } });
     }
-  }, [state.branchId, state.manualForm.semester, sectionsCache]);
+  }, [state.branchId, state.manualForm.batch, sectionsByBatchCache]);
 
-  // Fetch sections when semester changes in Student List filter
+  // Fetch sections when batch changes in Student List filter
   useEffect(() => {
-    if (state.branchId && state.semesterFilter !== "All") {
+    if (state.branchId && state.batchFilter !== "All") {
       // Use cached sections instead of making API call
-      const cached = sectionsCache[state.semesterFilter];
+      const cached = sectionsByBatchCache[state.batchFilter];
       if (cached) {
         updateState({ listSections: cached });
       } else {
         updateState({ listSections: [] });
       }
     } else if (state.branchId) {
-      // For "All" semesters, show all sections
-      const allSections = Object.values(sectionsCache).flat();
+      // For "All" batches, show all sections
+      const allSections = Object.values(sectionsByBatchCache).flat();
       const uniqueSections = allSections.filter((section, index, self) =>
         index === self.findIndex(s => s.id === section.id)
       );
       updateState({ listSections: uniqueSections });
     }
-  }, [state.branchId, state.semesterFilter, sectionsCache]);
+  }, [state.branchId, state.batchFilter, sectionsByBatchCache]);
 
   // Fetch sections when semester changes in Edit Dialog
   useEffect(() => {
@@ -433,31 +447,25 @@ const StudentManagement = () => {
             const usn = String(entry.usn || entry.USN || "").trim();
             const name = String(entry.name || entry.Name || "").trim();
             const email = String(entry.email || entry.Email || "").trim();
-            const parent_name = String(entry.parent_name || entry.ParentName || "").trim() || "";
-            const parent_contact = String(entry.parent_contact || entry.ParentContact || "").trim() || "";
-            const emergency_contact = String(entry.emergency_contact || entry.EmergencyContact || "").trim() || "";
             const phone = String(entry.phone || entry.Phone || entry.contact || entry.Contact || entry.contact_number || entry.ContactNumber || "").trim() || "";
-            const blood_group = String(entry.blood_group || entry.BloodGroup || "").trim() || "";
-            const date_of_admission = entry.date_of_admission || entry.DateOfAdmission || new Date().toISOString().split("T")[0];
             const row = index + 2;
 
-            if (!usn || !name) {
-              // Skip rows with missing required fields instead of erroring
+            if (!usn || !name || !email || !phone) {
+              // Skip rows with missing mandatory fields (USN, Name, Email, Phone)
               return null;
             }
+            
             // Email validation (optional)
             if (email && !emailRegex.test(email)) {
               errors.push(`Row ${row}: Invalid email "${email}"`);
               return null;
             }
 
-            const cycle = String(entry.cycle || entry.Cycle || "").trim().toUpperCase();
-
-
             return {
               usn,
               name,
               email,
+              phone, // Included phone number
               section_id: selectedSectionId,
               batch_id: selectedBatchId,
               branch_id: state.branchId
@@ -466,7 +474,7 @@ const StudentManagement = () => {
           .filter(Boolean);
 
         if (bulkData.length === 0) {
-          updateState({ uploadErrors: ["No valid students found in the file. Please ensure USN and Name columns are filled for at least one row."], uploadedCount: 0, updatedCount: 0, isLoading: false });
+          updateState({ uploadErrors: ["No valid students found. Please ensure USN, Name, Email, and Phone columns are filled for at least one row."], uploadedCount: 0, updatedCount: 0, isLoading: false });
           return;
         }
 
@@ -521,101 +529,8 @@ const StudentManagement = () => {
     }
   };
 
-  // Handle manual student entry
-  const handleManualEntry = async () => {
-    const { usn, name, email, section, semester, batch, phone } = state.manualForm;
 
-    const newErrors: any = {};
-
-    // USN validation removed
-    if (!usn) newErrors.usn = "USN is required";
-    // Removed USN format validation
-
-    // Name validation
-    const nameRegex = /^[A-Za-z\s]+$/;
-    if (!name) newErrors.name = "Name is required";
-    else if (!nameRegex.test(name)) newErrors.name = "Name should contain only letters and spaces";
-
-    // Email validation (optional)
-    const emailRegex =
-      /^[a-zA-Z0-9]+([._%+-]?[a-zA-Z0-9]+)*@([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[A-Za-z]{2,10}$/;
-    const consecutiveDotRegex = /\.{2,}/;
-    if (email && (!emailRegex.test(email) || consecutiveDotRegex.test(email)))
-      newErrors.email = "Invalid email format (e.g., user@example.com)";
-
-    // Section, semester, batch
-    if (!section) newErrors.section = "Section is required";
-
-    // Phone validation (optional)
-    const phoneRegex = /^\d{10}$/;
-    if (phone && !phoneRegex.test(phone)) newErrors.phone = "Phone must be 10 digits";
-
-    // If any validation errors, update state and stop
-    if (Object.keys(newErrors).length > 0) {
-      updateState({ manualErrors: newErrors, uploadErrors: ["Fix errors before submitting"] });
-      return;
-    }
-
-    // If all valid, call API
-    try {
-      const res = await manageStudents(
-        {
-          action: "create",
-          branch_id: state.branchId,
-          usn,
-          name,
-          email,
-          phone,
-          section_id: getSectionId(section, state.manualSections),
-          batch_id: getBatchId(batch),
-        },
-        "POST"
-      );
-
-      if (res.success) {
-        // Optimistically add new student locally so UI updates without a full refresh
-        const newStudent = {
-          usn: usn,
-          name: name,
-          email: email,
-          section: section,
-          semester: semester,
-          cycle: state.manualForm.cycle,
-          phone: phone,
-        };
-        updateState({
-          students: [newStudent, ...state.students],
-          manualForm: {
-            usn: "",
-            name: "",
-            email: "",
-            section: state.manualSections[0]?.name || "",
-            semester: state.semesters[0]?.number
-              ? `${state.semesters[0].number}th Semester`
-              : "",
-            batch: "",
-            cycle: "",
-            phone: "",
-          },
-          manualErrors: {},
-          uploadErrors: [],
-          uploadedCount: 1, // Show success message
-          currentPage: 1, // Reset to first page to show the new student
-        });
-        updateState({ successMessage: "Student added successfully." });
-        setTimeout(() => updateState({ successMessage: "" }), 3000);
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-          updateState({ uploadedCount: 0, updatedCount: 0 });
-        }, 3000);
-      } else {
-        updateState({ uploadErrors: [res.message || "Error adding student"] });
-      }
-    } catch (err) {
-      console.error("Manual entry error:", err);
-      updateState({ uploadErrors: ["Failed to add student"] });
-    }
-  };
+  // handleManualEntry removed as requested
 
 
   // Handle edit save
@@ -790,219 +705,8 @@ const StudentManagement = () => {
         </ul>
       )}
 
-      {/* Add Student Manually Form */}
-      <Card className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-200'}>
-        <CardHeader>
-          <CardTitle className={`text-2xl font-semibold leading-none tracking-tight text-gray-900 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Add Student Manually</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-3">
-            {/* USN */}
-            <div className="flex flex-col">
-              <Input
-                placeholder="USN"
-                value={state.manualForm.usn}
-                maxLength={10}
-                onChange={(e) => {
-                  const value = e.target.value.toUpperCase();
-                  let error = "";
+      {/* Add Student Manually Form Removed as requested */}
 
-                  updateState({
-                    manualForm: { ...state.manualForm, usn: value },
-                    manualErrors: { ...state.manualErrors, usn: error },
-                  });
-                }}
-                onBlur={(e) => {
-                  const value = e.target.value.toUpperCase();
-                  let error = "";
-
-                  updateState({
-                    manualErrors: { ...state.manualErrors, usn: error },
-                  });
-                }}
-                className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border placeholder:text-muted-foreground' : 'bg-white text-gray-900 border-gray-300 placeholder:text-gray-500'} focus:ring-0 ${state.manualErrors?.usn
-                    ? "border-red-500"
-                    : theme === 'dark' ? 'border-border focus:border-primary' : 'border-gray-300 focus:border-blue-500'
-                  }`}
-              />
-              <span className="text-red-500 text-xs mt-1">
-                {state.manualErrors?.usn}
-              </span>
-            </div>
-
-            {/* Name Field */}
-            <div className="flex flex-col">
-              <Input
-                placeholder="Name"
-                value={state.manualForm.name}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^A-Za-z\s]/g, "");
-                  let error = "";
-
-                  // Live validation: only letters and spaces allowed
-                  if (value && !/^[A-Za-z\s]*$/.test(value)) {
-                    error = "Name should contain only letters and spaces";
-                  }
-
-                  updateState({
-                    manualForm: { ...state.manualForm, name: value },
-                    manualErrors: { ...state.manualErrors, name: error },
-                  });
-                }}
-                onBlur={(e) => {
-                  const value = e.target.value.trim();
-                  const nameRegex = /^[A-Za-z\s]+$/;
-                  let error = "";
-                  if (!value) error = "Name is required";
-                  else if (!nameRegex.test(value)) error = "Name should contain only letters and spaces";
-
-                  updateState({
-                    manualErrors: { ...state.manualErrors, name: error },
-                  });
-                }}
-                className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border placeholder:text-muted-foreground' : 'bg-white text-gray-900 border-gray-300 placeholder:text-gray-500'} focus:ring-0 ${state.manualErrors?.name
-                    ? "border-red-500"
-                    : theme === 'dark' ? 'border-border focus:border-primary' : 'border-gray-300 focus:border-blue-500'
-                  }`}
-              />
-              <span className="text-red-500 text-xs mt-1">
-                {state.manualErrors?.name}
-              </span>
-            </div>
-
-
-            {/* Email */}
-            <div className="flex flex-col">
-              <Input
-                placeholder="Email"
-                type="text"
-                value={state.manualForm.email}
-                onChange={(e) => {
-                  let value = e.target.value;
-
-                  // Remove spaces and invalid characters commonly not allowed in email
-                  value = value.replace(/[!#$%^&*()_+<>?:"{}]/g, "");
-
-                  // Professional-grade email regex
-                  const emailRegex = /^[a-zA-Z0-9]+([._%+-]?[a-zA-Z0-9]+)*@([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[A-Za-z]{2,10}$/;
-                  const consecutiveDotRegex = /\.{2,}/;
-
-                  const error =
-                    value && (!emailRegex.test(value) || consecutiveDotRegex.test(value))
-                      ? "Invalid email format (e.g., user@example.com)"
-                      : "";
-
-                  updateState({
-                    manualForm: { ...state.manualForm, email: value },
-                    manualErrors: { ...state.manualErrors, email: error },
-                  });
-                }}
-                className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border placeholder:text-muted-foreground' : 'bg-white text-gray-900 border-gray-300 placeholder:text-gray-500'} focus:ring-0 ${state.manualErrors?.email
-                    ? "border-red-500"
-                    : theme === 'dark' ? 'border-border focus:border-primary' : 'border-gray-300 focus:border-blue-500'
-                  }`}
-              />
-              <span className="text-red-500 text-xs mt-1">
-                {state.manualErrors?.email}
-              </span>
-            </div>
-
-            {/* Phone */}
-            <div className="flex flex-col">
-              <Input
-                placeholder="Phone"
-                type="tel"
-                value={state.manualForm.phone}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, "");
-                  let error = "";
-                  if (value && !/^\d{0,10}$/.test(value)) error = "Phone must be up to 10 digits";
-                  updateState({ manualForm: { ...state.manualForm, phone: value }, manualErrors: { ...state.manualErrors, phone: error } });
-                }}
-                onBlur={(e) => {
-                  const value = e.target.value.trim();
-                  let error = "";
-                  if (value && !/^\d{10}$/.test(value)) error = "Phone must be 10 digits";
-                  updateState({ manualErrors: { ...state.manualErrors, phone: error } });
-                }}
-                className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border placeholder:text-muted-foreground' : 'bg-white text-gray-900 border-gray-300 placeholder:text-gray-500'} focus:ring-0 ${state.manualErrors?.phone
-                    ? "border-red-500"
-                    : theme === 'dark' ? 'border-border focus:border-primary' : 'border-gray-300 focus:border-blue-500'
-                  }`}
-              />
-              <span className="text-red-500 text-xs mt-1">{state.manualErrors?.phone}</span>
-            </div>
-
-            <Select
-              value={state.manualForm.section}
-              onValueChange={(value) => updateState({ manualForm: { ...state.manualForm, section: value } })}
-              disabled={state.isLoading || state.batches.length === 0}
-            >
-              <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'} placeholder:text-muted-foreground focus:ring-0`}>
-                <SelectValue
-                  placeholder={
-                    state.manualSections.length === 0
-                      ? "Select Batch first"
-                      : "Select Section"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                {state.manualSections
-                  .map((section) => (
-                    <SelectItem key={section.id} value={section.name} className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
-                      Section {section.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={state.manualForm.batch}
-              onValueChange={(value) => updateState({ manualForm: { ...state.manualForm, batch: value } })}
-              disabled={state.isLoading || state.batches.length === 0}
-            >
-              <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'} placeholder:text-muted-foreground focus:ring-0`}>
-                <SelectValue
-                  placeholder={state.batches.length === 0 ? "No batches available" : "Select Batch"}
-                />
-              </SelectTrigger>
-              <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                {state.batches.map((batch) => (
-                  <SelectItem key={batch.id} value={batch.name} className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
-                    {batch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex justify-end mt-4">
-            <Button
-              onClick={handleManualEntry}
-              disabled={
-                state.isLoading ||
-                !state.branchId ||
-                !state.manualForm.section ||
-                !state.manualForm.batch
-              }
-              className="flex items-center justify-center gap-1 text-sm font-medium px-4 py-1.5 rounded-md transition disabled:opacity-50 bg-primary text-white border-primary hover:bg-primary/90 hover:border-primary/90 hover:text-white"
-            >
-              + Add Student
-            </Button>
-          </div>
-          {state.uploadedCount === 1 && (
-            <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-              Student added successfully.
-            </p>
-          )}
-          {state.uploadErrors.length > 0 && (
-            <ul className="text-sm text-red-400 mt-2 list-disc list-inside">
-              {state.uploadErrors.map((err, idx) => (
-                <li key={idx}>{err}</li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
 
       <Card className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-200'}>
         <CardHeader>
@@ -1041,31 +745,30 @@ const StudentManagement = () => {
             {/* Right side: Dropdowns */}
             <div className="flex gap-2 md:gap-4">
               <Select
-                value={state.semesterFilter}
+                value={state.batchFilter}
                 onValueChange={(value) =>
                   updateState({
-                    semesterFilter: value,
+                    batchFilter: value,
                     sectionFilter: "All",
                     currentPage: 1,
-                    listSections: [],
                   })
                 }
-                disabled={state.isLoading || state.semesters.length === 0}
+                disabled={state.isLoading || state.batches.length === 0}
               >
                 <SelectTrigger className={`flex-1 md:w-40 md:max-w-40 ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
                   <SelectValue
                     placeholder={
-                      state.semesters.length === 0
-                        ? "No semesters available"
-                        : "Select Semester"
+                      state.batches.length === 0
+                        ? "No batches available"
+                        : "Select Batch"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                  <SelectItem value="All" className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>All Semesters</SelectItem>
-                  {state.semesters.map((s) => (
-                    <SelectItem key={s.id} value={s.id} className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
-                      Semester {s.number}
+                  <SelectItem value="All" className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>All Batches</SelectItem>
+                  {state.batches.map((batch) => (
+                    <SelectItem key={batch.id} value={batch.id} className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
+                      Batch {batch.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1078,16 +781,14 @@ const StudentManagement = () => {
                 }
                 disabled={
                   state.isLoading ||
-                  state.semesterFilter === "All" ||
-                  state.listSections.length === 0
+                  (state.batchFilter === "All" && state.listSections.length === 0)
                 }
               >
                 <SelectTrigger className={`flex-1 md:w-40 md:max-w-40 ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
                   <SelectValue
                     placeholder={
-                      state.listSections.length === 0 ||
-                        state.semesterFilter === "All"
-                        ? "Select semester first"
+                      state.listSections.length === 0
+                        ? (state.batchFilter === "All" ? "Select Section" : "No sections in batch")
                         : "Select Section"
                     }
                   />
@@ -1095,7 +796,6 @@ const StudentManagement = () => {
                 <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
                   <SelectItem value="All" className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>All Sections</SelectItem>
                   {state.listSections
-                    .filter((section) => section.semester_id === state.semesterFilter)
                     .map((section) => (
                       <SelectItem key={section.id} value={section.id} className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
                         Section {section.name}
@@ -1201,82 +901,93 @@ const StudentManagement = () => {
             <DialogTitle className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>Upload Student Data</DialogTitle>
           </DialogHeader>
 
-          {/* Semester & Section Select */}
-          <div className="mb-4">
-              Select Batch and Section
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Batch & Section Select */}
+          <div className="mb-6 space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-2 h-2 rounded-full bg-primary animate-pulse`} />
+              <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
+                1. Select Target Batch & Section
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Batch Dropdown */}
-              <Select
-                value={state.manualForm.batch}
-                onValueChange={(value) =>
-                  updateState({
-                    manualForm: {
-                      ...state.manualForm,
-                      batch: value,
-                      section: "",
-                    },
-                    manualSections: [], // Clear sections when batch changes
-                  })
-                }
-                disabled={state.isLoading || state.batches.length === 0}
-              >
-                <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
-                  <SelectValue
-                    placeholder={
-                      state.batches.length === 0
-                        ? "No batches available"
-                        : "Select Batch"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                  {state.batches.map((batch) => (
-                    <SelectItem
-                      key={batch.id}
-                      value={batch.name}
-                      className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}
-                    >
-                      Batch {batch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Semester Dropdown */}
-              <Select
-                value={state.manualForm.section}
-                onValueChange={(value) =>
-                  updateState({ manualForm: { ...state.manualForm, section: value } })
-                }
-                disabled={
-                  state.isLoading ||
-                  !state.manualForm.batch ||
-                  state.manualSections.length === 0
-                }
-              >
-                <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
-                  <SelectValue
-                    placeholder={
-                      state.manualSections.length === 0
-                        ? "Select batch first"
-                        : "Select Section"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                  {state.manualSections
-                    .map((section) => (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground ml-1">Batch</label>
+                <Select
+                  value={state.manualForm.batch}
+                  onValueChange={(value) =>
+                    updateState({
+                      manualForm: {
+                        ...state.manualForm,
+                        batch: value,
+                        section: "",
+                      },
+                      manualSections: [], 
+                    })
+                  }
+                  disabled={state.isLoading || state.batches.length === 0}
+                >
+                  <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
+                    <SelectValue
+                      placeholder={
+                        state.batches.length === 0
+                          ? "No batches available"
+                          : "Select Batch"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
+                    {state.batches.map((batch) => (
                       <SelectItem
-                        key={section.id}
-                        value={section.name}
+                        key={batch.id}
+                        value={batch.name}
                         className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}
                       >
-                        Section {section.name}
+                        Batch {batch.name}
                       </SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              </div>
 
+              {/* Section Dropdown */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground ml-1">Section</label>
+                <Select
+                  value={state.manualForm.section}
+                  onValueChange={(value) =>
+                    updateState({ manualForm: { ...state.manualForm, section: value } })
+                  }
+                  disabled={
+                    state.isLoading ||
+                    !state.manualForm.batch ||
+                    state.manualSections.length === 0
+                  }
+                >
+                  <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
+                    <SelectValue
+                      placeholder={
+                        state.manualSections.length === 0
+                          ? (state.manualForm.batch ? "No sections found" : "Select batch first")
+                          : "Select Section"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
+                    {state.manualSections
+                      .map((section) => (
+                        <SelectItem
+                          key={section.id}
+                          value={section.name}
+                          className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}
+                        >
+                          Section {section.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -1335,10 +1046,7 @@ const StudentManagement = () => {
             <ul className="list-disc pl-6 space-y-1">
               <li>Use the provided template for proper data formatting</li>
               <li>
-                Required columns: <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>usn</strong> and <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>name</strong>
-              </li>
-              <li>
-                Optional columns: <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>email</strong> and <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>phone</strong>
+                Required columns: <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>usn</strong>, <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>name</strong>, <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>email</strong>, and <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>phone</strong>
               </li>
               <li>Section is selected above, not in the file</li>
               <li>Maximum 500 records per file</li>

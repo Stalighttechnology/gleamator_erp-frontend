@@ -646,7 +646,7 @@ const EnrollmentManagement = () => {
                           <><UserPlus className="mr-2 h-5 w-5" />Enroll {selectedRole === 'teacher' ? 'Faculty' : 'MIS Staff'}</>
                         )}
                       </Button>
-                      <p className="text-center text-xs text-muted-foreground mt-3">An email will be sent to the user with their temporary password (default@123) and login link.</p>
+                      <p className="text-center text-xs text-muted-foreground mt-3">An email will be sent to the user with their temporary password (default123) and login link.</p>
                     </div>
                   </form>
                 </CardContent>
