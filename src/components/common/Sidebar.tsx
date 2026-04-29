@@ -177,6 +177,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
 
       // User Management
       { name: "Enroll Counselor/MIS", page: "enroll-user" },
+      { name: "Branch Management", page: "branches" },
 
       // Academic Monitoring
       { name: "Batches", page: "batches" },

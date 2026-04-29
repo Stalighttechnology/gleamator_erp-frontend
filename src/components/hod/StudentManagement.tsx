@@ -378,15 +378,8 @@ const StudentManagement = () => {
       return;
     }
 
-    if (!state.manualForm.semester || !state.manualForm.section || !state.manualForm.batch) {
-      updateState({ uploadErrors: ["Please select batch, semester and section before enrolling"] });
-      return;
-    }
-
-    // Check cycle validation for semesters 1 and 2
-    const semesterNumber = getSemesterNumber(state.manualForm.semester);
-    if (semesterNumber <= 2 && !state.manualForm.cycle) {
-      updateState({ uploadErrors: ["Please select cycle for semesters 1 and 2"] });
+    if (!state.manualForm.section || !state.manualForm.batch) {
+      updateState({ uploadErrors: ["Please select batch and section before enrolling"] });
       return;
     }
 
@@ -460,34 +453,11 @@ const StudentManagement = () => {
 
             const cycle = String(entry.cycle || entry.Cycle || "").trim().toUpperCase();
 
-            // Validate cycle for semesters 1 and 2 - use UI selected cycle if available
-            const semesterNumber = getSemesterNumber(state.manualForm.semester);
-            const selectedCycle = state.manualForm.cycle;
-
-            if (semesterNumber <= 2) {
-              // Use cycle from UI selection, or from CSV if provided
-              const finalCycle = selectedCycle || cycle;
-              if (!finalCycle || !['P', 'C'].includes(finalCycle)) {
-                errors.push(`Row ${row}: Cycle (P or C) is required for semester ${semesterNumber}. Please select cycle above or include in CSV.`);
-                return null;
-              }
-            } else if (cycle) {
-              errors.push(`Row ${row}: Cycle can only be set for semesters 1 and 2`);
-              return null;
-            }
 
             return {
               usn,
               name,
               email,
-              cycle: semesterNumber <= 2 ? (selectedCycle || cycle) : undefined,
-              phone: phone || undefined,
-              parent_name,
-              parent_contact,
-              emergency_contact,
-              blood_group,
-              date_of_admission,
-              semester_id: selectedSemesterId,
               section_id: selectedSectionId,
               batch_id: selectedBatchId,
               branch_id: state.branchId
@@ -510,7 +480,6 @@ const StudentManagement = () => {
           {
             action: "bulk_update",
             branch_id: state.branchId,
-            semester_id: selectedSemesterId,
             section_id: selectedSectionId,
             batch_id: selectedBatchId,
             bulk_data: bulkData,
@@ -576,16 +545,6 @@ const StudentManagement = () => {
 
     // Section, semester, batch
     if (!section) newErrors.section = "Section is required";
-    if (!semester) newErrors.semester = "Semester is required";
-    if (!batch) newErrors.batch = "Batch is required";
-
-    // Cycle validation for semesters 1 and 2
-    const semesterNumber = getSemesterNumber(semester);
-    if (semesterNumber <= 2 && !state.manualForm.cycle) {
-      newErrors.cycle = "Cycle is required for semesters 1 and 2";
-    } else if (semesterNumber > 2 && state.manualForm.cycle) {
-      newErrors.cycle = "Cycle can only be set for semesters 1 and 2";
-    }
 
     // Phone validation (optional)
     const phoneRegex = /^\d{10}$/;
@@ -607,10 +566,8 @@ const StudentManagement = () => {
           name,
           email,
           phone,
-          semester_id: getSemesterId(semester),
           section_id: getSectionId(section, state.manualSections),
           batch_id: getBatchId(batch),
-          cycle: state.manualForm.cycle || undefined,
         },
         "POST"
       );
@@ -663,12 +620,6 @@ const StudentManagement = () => {
 
   // Handle edit save
   const handleEditSave = async () => {
-    // Validate cycle for semesters 1 and 2
-    const semesterNumber = getSemesterNumber(state.editForm.semester);
-    if (semesterNumber <= 2 && !state.editForm.cycle) {
-      updateState({ uploadErrors: ["Cycle is required for semesters 1 and 2"] });
-      return;
-    }
 
     try {
       const res = await manageStudents({
@@ -678,9 +629,7 @@ const StudentManagement = () => {
         name: state.editForm.name,
         email: state.editForm.email,
         phone: state.editForm.phone || undefined,
-        semester_id: getSemesterId(state.editForm.semester),
         section_id: getSectionId(state.editForm.section, state.editSections),
-        cycle: state.editForm.cycle || undefined,
       }, "POST");
 
       if (res.success) {
@@ -985,45 +934,21 @@ const StudentManagement = () => {
             </div>
 
             <Select
-              value={state.manualForm.semester}
-              onValueChange={(value) =>
-                updateState({
-                  manualForm: { ...state.manualForm, semester: value, section: "" },
-                  manualSections: [],
-                })
-              }
-              disabled={state.isLoading || state.semesters.length === 0}
-            >
-              <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'} placeholder:text-muted-foreground focus:ring-0`}>
-                <SelectValue
-                  placeholder={state.semesters.length === 0 ? "No semesters available" : "Select Semester"}
-                />
-              </SelectTrigger>
-              <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                {state.semesters.map((s) => (
-                  <SelectItem key={s.id} value={`${s.number}th Semester`} className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
-                    Semester {s.number}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
               value={state.manualForm.section}
               onValueChange={(value) => updateState({ manualForm: { ...state.manualForm, section: value } })}
-              disabled={state.isLoading || !state.manualForm.semester || state.manualSections.length === 0}
+              disabled={state.isLoading || state.batches.length === 0}
             >
               <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'} placeholder:text-muted-foreground focus:ring-0`}>
                 <SelectValue
                   placeholder={
-                    state.manualSections.length === 0 || !state.manualForm.semester
-                      ? "Select semester first"
+                    state.manualSections.length === 0
+                      ? "Select Batch first"
                       : "Select Section"
                   }
                 />
               </SelectTrigger>
               <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
                 {state.manualSections
-                  .filter((section) => section.semester_id === getSemesterId(state.manualForm.semester))
                   .map((section) => (
                     <SelectItem key={section.id} value={section.name} className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
                       Section {section.name}
@@ -1049,25 +974,6 @@ const StudentManagement = () => {
                 ))}
               </SelectContent>
             </Select>
-            {state.manualForm.semester && getSemesterNumber(state.manualForm.semester) <= 2 && (
-              <Select
-                value={state.manualForm.cycle}
-                onValueChange={(value) => updateState({ manualForm: { ...state.manualForm, cycle: value } })}
-                disabled={state.isLoading}
-              >
-                <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'} placeholder:text-muted-foreground focus:ring-0`}>
-                  <SelectValue placeholder="Select Cycle" />
-                </SelectTrigger>
-                <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                  <SelectItem value="P" className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
-                    P Cycle (Physics)
-                  </SelectItem>
-                  <SelectItem value="C" className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
-                    C Cycle (Chemistry)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            )}
           </div>
           <div className="flex justify-end mt-4">
             <Button
@@ -1075,10 +981,8 @@ const StudentManagement = () => {
               disabled={
                 state.isLoading ||
                 !state.branchId ||
-                !state.manualForm.semester ||
                 !state.manualForm.section ||
-                !state.manualForm.batch ||
-                (getSemesterNumber(state.manualForm.semester) <= 2 && !state.manualForm.cycle)
+                !state.manualForm.batch
               }
               className="flex items-center justify-center gap-1 text-sm font-medium px-4 py-1.5 rounded-md transition disabled:opacity-50 bg-primary text-white border-primary hover:bg-primary/90 hover:border-primary/90 hover:text-white"
             >
@@ -1299,9 +1203,7 @@ const StudentManagement = () => {
 
           {/* Semester & Section Select */}
           <div className="mb-4">
-            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
-              Select Batch, Semester, and Section
-            </label>
+              Select Batch and Section
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {/* Batch Dropdown */}
               <Select
@@ -1311,10 +1213,8 @@ const StudentManagement = () => {
                     manualForm: {
                       ...state.manualForm,
                       batch: value,
-                      semester: "",
                       section: "",
                     },
-                    manualSemesters: [], // Clear semesters when batch changes (optional)
                     manualSections: [], // Clear sections when batch changes
                   })
                 }
@@ -1344,69 +1244,27 @@ const StudentManagement = () => {
 
               {/* Semester Dropdown */}
               <Select
-                value={state.manualForm.semester}
-                onValueChange={(value) =>
-                  updateState({
-                    manualForm: { ...state.manualForm, semester: value, section: "" },
-                    manualSections: [],
-                  })
-                }
-                disabled={
-                  state.isLoading ||
-                  !state.manualForm.batch || // Disable if no batch selected
-                  state.semesters.length === 0
-                }
-              >
-                <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
-                  <SelectValue
-                    placeholder={
-                      state.semesters.length === 0
-                        ? "No semesters available"
-                        : "Select Semester"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                  {state.semesters.map((s) => (
-                    <SelectItem
-                      key={s.id}
-                      value={`${s.number}th Semester`}
-                      className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}
-                    >
-                      Semester {s.number}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Section Dropdown */}
-              <Select
                 value={state.manualForm.section}
                 onValueChange={(value) =>
                   updateState({ manualForm: { ...state.manualForm, section: value } })
                 }
                 disabled={
                   state.isLoading ||
-                  !state.manualForm.semester ||
+                  !state.manualForm.batch ||
                   state.manualSections.length === 0
                 }
               >
                 <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
                   <SelectValue
                     placeholder={
-                      state.manualSections.length === 0 || !state.manualForm.semester
-                        ? "Select semester first"
+                      state.manualSections.length === 0
+                        ? "Select batch first"
                         : "Select Section"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
                   {state.manualSections
-                    .filter(
-                      (section) =>
-                        section.semester_id ===
-                        getSemesterId(state.manualForm.semester)
-                    )
                     .map((section) => (
                       <SelectItem
                         key={section.id}
@@ -1419,26 +1277,6 @@ const StudentManagement = () => {
                 </SelectContent>
               </Select>
 
-              {/* Cycle Dropdown - only for semesters 1 and 2 */}
-              {state.manualForm.semester && getSemesterNumber(state.manualForm.semester) <= 2 && (
-                <Select
-                  value={state.manualForm.cycle}
-                  onValueChange={(value) => updateState({ manualForm: { ...state.manualForm, cycle: value } })}
-                  disabled={state.isLoading}
-                >
-                  <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
-                    <SelectValue placeholder="Select Cycle" />
-                  </SelectTrigger>
-                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    <SelectItem value="P" className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
-                      P Cycle (Physics)
-                    </SelectItem>
-                    <SelectItem value="C" className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
-                      C Cycle (Chemistry)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
             </div>
           </div>
 
@@ -1502,7 +1340,7 @@ const StudentManagement = () => {
               <li>
                 Optional columns: <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>email</strong> and <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>phone</strong>
               </li>
-              <li>Semester, Section, and Cycle (for semesters 1-2) are selected above, not in the file</li>
+              <li>Section is selected above, not in the file</li>
               <li>Maximum 500 records per file</li>
               <li>
                 <a
@@ -1588,40 +1426,17 @@ const StudentManagement = () => {
               }}
             />
             <Select
-              value={state.editForm.semester}
-              onValueChange={(value) =>
-                updateState({
-                  editForm: { ...state.editForm, semester: value, section: "" },
-                  editSections: [],
-                })
-              }
-              disabled={state.isLoading || state.semesters.length === 0}
-            >
-              <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                <SelectValue
-                  placeholder={state.semesters.length === 0 ? "No semesters available" : "Select Semester"}
-                />
-              </SelectTrigger>
-              <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                {state.semesters.map((s) => (
-                  <SelectItem key={s.id} value={`${s.number}th Semester`} className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
-                    Semester {s.number}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
               value={state.editForm.section}
               onValueChange={(value) => updateState({ editForm: { ...state.editForm, section: value } })}
               disabled={
-                state.isLoading || state.isEditSectionsLoading || !state.editForm.semester || state.editSections.length === 0
+                state.isLoading || state.isEditSectionsLoading || state.editSections.length === 0
               }
             >
               <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
                 <SelectValue
                   placeholder={
-                    state.editSections.length === 0 || !state.editForm.semester
-                      ? "Select semester first"
+                    state.editSections.length === 0
+                      ? "No sections available"
                       : state.isEditSectionsLoading
                         ? <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         : "Select Section"
@@ -1630,7 +1445,6 @@ const StudentManagement = () => {
               </SelectTrigger>
               <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
                 {state.editSections
-                  .filter((section) => section.semester_id === getSemesterId(state.editForm.semester))
                   .map((section) => (
                     <SelectItem key={section.id} value={section.name} className={theme === 'dark' ? 'text-foreground hover:bg-accent' : 'text-gray-900 hover:bg-gray-100'}>
                       Section {section.name}

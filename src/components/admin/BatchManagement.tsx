@@ -22,6 +22,7 @@ interface Batch {
   name: string;
   student_count: number;
   created_at: string;
+  sections?: Array<{ id: number; name: string }>;
   courses?: Array<{ id: string; name: string }>;
   faculty?: Array<{ id: string; name: string }>;
 }
@@ -35,13 +36,14 @@ interface BatchManagementProps {
 const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, viewOnly = false }) => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(false);
-  const [newBatch, setNewBatch] = useState({ name: "" });
+  const [newBatch, setNewBatch] = useState<{ name: string; sections: string[] }>({ name: "", sections: [] });
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [editForm, setEditForm] = useState<{
     name: string;
+    sections: string[];
     courses: string[];
     faculty: string[];
-  }>({ name: "", courses: [], faculty: [] });
+  }>({ name: "", sections: [], courses: [], faculty: [] });
   
   const [availableCourses, setAvailableCourses] = useState<Array<{ id: string; name: string }>>([]);
   const [availableFaculty, setAvailableFaculty] = useState<Array<{ id: string; name: string }>>([]);
@@ -80,7 +82,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
       if (facultyRes.success && facultyRes.data?.faculties) {
         setAvailableFaculty(facultyRes.data.faculties.map(f => ({ 
           id: f.id, 
-          name: `${f.first_name} ${f.last_name || ''}`.strip() 
+          name: `${f.first_name} ${f.last_name || ''}`.trim() 
         })));
       }
     } catch (err) {
@@ -99,6 +101,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
       const res = await manageBatches(
         {
           name: newBatch.name,
+          sections: newBatch.sections,
         },
         undefined,
         "POST"
@@ -106,7 +109,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
       const dataSource = (res as any).results || res;
       if (dataSource.success) {
         fetchBatches();
-        setNewBatch({ name: "" });
+        setNewBatch({ name: "", sections: [] });
         if (toast) toast({ title: "Success", description: "Batch added successfully" });
       }
     } catch (err) {
@@ -119,6 +122,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
     setEditingBatch(batch);
     setEditForm({
       name: batch.name || "",
+      sections: batch.sections?.map(s => s.name) || [],
       courses: batch.courses?.map(c => c.id.toString()) || [],
       faculty: batch.faculty?.map(f => f.id.toString()) || [],
     });
@@ -131,6 +135,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
       const res = await manageBatches(
         {
           name: editForm.name,
+          sections: editForm.sections,
           courses: editForm.courses,
           faculty: editForm.faculty,
         } as any,
@@ -142,6 +147,8 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
         fetchBatches();
         setEditingBatch(null);
         if (toast) toast({ title: "Success", description: "Batch updated successfully" });
+      } else {
+        if (toast) toast({ variant: "destructive", title: "Update Failed", description: dataSource.message || "Could not update batch" });
       }
     } catch (err) {
       if (toast) toast({ variant: "destructive", title: "Error", description: "Network error" });
@@ -169,6 +176,19 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
                 value={newBatch.name}
                 onChange={(e) => setNewBatch({ ...newBatch, name: e.target.value })}
               />
+              <div className="flex flex-wrap gap-1.5 items-center p-2 border rounded-md bg-white dark:bg-gray-800 flex-1">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground mr-1">Sections:</span>
+                {["A", "B", "C", "D", "E", "F", "G", "H"].map(sec => (
+                  <Badge 
+                    key={sec} 
+                    variant={newBatch.sections.includes(sec) ? "default" : "outline"}
+                    className={`cursor-pointer h-7 w-7 flex items-center justify-center p-0 text-xs transition-all ${newBatch.sections.includes(sec) ? 'bg-primary shadow-sm' : 'hover:bg-primary/5'}`}
+                    onClick={() => setNewBatch({ ...newBatch, sections: toggleItem(newBatch.sections, sec) })}
+                  >
+                    {sec}
+                  </Badge>
+                ))}
+              </div>
               <Button onClick={handleAddBatch} disabled={loading}>Add Batch</Button>
             </div>
           </CardContent>
@@ -185,7 +205,8 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
               <table className="w-full text-sm text-left border-collapse">
                 <thead>
                   <tr className="border-b">
-                    <th className="py-3 px-4">Name</th>
+                    <th className="py-3 px-4">Batch Name</th>
+                    <th className="py-3 px-4">Sections</th>
                     <th className="py-3 px-4">Assignments</th>
                     <th className="py-3 px-4 text-center">Students</th>
                     <th className="py-3 px-4 text-right">Actions</th>
@@ -195,6 +216,17 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
                   {batches.map((batch) => (
                     <tr key={batch.id} className="border-b hover:bg-muted/50">
                       <td className="py-3 px-4 font-medium">{batch.name}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {batch.sections && batch.sections.length > 0 ? (
+                            batch.sections.map(s => (
+                              <Badge key={s.id} variant="outline" className="bg-primary/5 text-primary border-primary/20">{s.name}</Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">None</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1">
                           {batch.courses && batch.courses.length > 0 && (
@@ -249,6 +281,21 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Assign Sections</label>
+                <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/20">
+                  {["A", "B", "C", "D", "E", "F", "G", "H"].map(sec => (
+                    <Badge 
+                      key={sec} 
+                      variant={editForm.sections.includes(sec) ? "default" : "outline"}
+                      className={`cursor-pointer px-4 py-1.5 text-sm transition-all ${editForm.sections.includes(sec) ? 'bg-primary text-white shadow-md' : 'hover:bg-primary/10'}`}
+                      onClick={() => setEditForm({ ...editForm, sections: toggleItem(editForm.sections, sec) })}
+                    >
+                      {sec}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             </div>
 

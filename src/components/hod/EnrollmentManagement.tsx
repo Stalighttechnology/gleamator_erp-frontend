@@ -12,7 +12,7 @@ import { useHODBootstrap } from "../../context/HODBootstrapContext";
 import { useTheme } from "../../context/ThemeContext";
 import { API_ENDPOINT } from "../../utils/config";
 import { fetchWithTokenRefresh } from "../../utils/authService";
-import { Loader2, UserPlus, GraduationCap, Users } from "lucide-react";
+import { Loader2, UserPlus, GraduationCap, Users, BookOpen } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 
 const EnrollmentManagement = () => {
@@ -53,8 +53,7 @@ const EnrollmentManagement = () => {
     phone: "",
     semester_id: "",
     section_id: "",
-    batch_id: "",
-    cycle: ""
+    batch_id: ""
   });
   const [isCreatingStudent, setIsCreatingStudent] = useState(false);
   const [batches, setBatches] = useState<any[]>([]);
@@ -94,13 +93,11 @@ const EnrollmentManagement = () => {
 
   useEffect(() => {
     const loadSubjects = async () => {
-      if (!batchId || !subjectType || !sectionId || selectedRole !== "student") return;
+      if (!subjectType || selectedRole !== 'student') return;
       setElectiveLoading(true);
       try {
         const params = new URLSearchParams({
           subject_type: subjectType,
-          batch_id: batchId,
-          section_id: sectionId,
           page: electivePage.toString(),
           page_size: '20'
         });
@@ -126,7 +123,7 @@ const EnrollmentManagement = () => {
       setElectiveLoading(false);
     };
     loadSubjects();
-  }, [batchId, subjectType, sectionId, electivePage, selectedRole]);
+  }, [subjectType, electivePage, selectedRole]);
 
   const loadStudents = async (page = 1, search?: string) => {
     if (!branchId || !selectedSubjectId || selectedRole !== "student") return;
@@ -266,24 +263,25 @@ const EnrollmentManagement = () => {
 
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!studentForm.usn || !studentForm.name || !studentForm.semester_id || !studentForm.section_id || !studentForm.batch_id) {
+    if (!studentForm.usn || !studentForm.name || !studentForm.section_id || !studentForm.batch_id) {
       toast({ title: "Validation Error", description: "Please fill all required fields.", variant: "destructive" });
       return;
     }
 
     setIsCreatingStudent(true);
     try {
-      const res = await manageStudents({
-        action: "create",
+      const payload = {
+        ...studentForm,
         branch_id: branchId,
-        ...studentForm
-      }, "POST");
+        action: "create"
+      };
+      const res = await manageStudents(payload as any, "POST");
 
       if (res.success) {
         toast({ title: "Success", description: "Student created successfully." });
         setStudentForm({
           usn: "", name: "", email: "", phone: "",
-          semester_id: "", section_id: "", batch_id: "", cycle: ""
+          section_id: "", batch_id: ""
         });
         setShowCreationForm(false);
         if (selectedSubjectId) loadStudents(1);
@@ -326,7 +324,7 @@ const EnrollmentManagement = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 rounded-xl bg-white/50 dark:bg-black/20 border border-gray-100 dark:border-gray-700 shadow-sm">
+          <div className={`grid grid-cols-1 ${selectedRole === 'student' ? 'md:grid-cols-1 max-w-xs' : 'md:grid-cols-3'} gap-4 p-4 rounded-xl bg-white/50 dark:bg-black/20 border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-300`}>
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Select Role</Label>
               <Select value={selectedRole} onValueChange={(v) => { setSelectedRole(v); resetFilters(); }}>
@@ -341,76 +339,12 @@ const EnrollmentManagement = () => {
               </Select>
             </div>
 
-                        <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Batch</Label>
-              <Select 
-                value={batchId} 
-                onValueChange={(v) => { setBatchId(v); setSectionId(""); }}
-                disabled={!selectedRole || selectedRole !== 'student'}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select batch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {batches.map((batch: any) => (
-                    <SelectItem key={batch.id} value={batch.id}>{batch.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-                        <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Section</Label>
-              <Select 
-                value={sectionId} 
-                onValueChange={setSectionId}
-                disabled={!selectedRole || selectedRole !== 'student' || !batchId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select section" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sections.map((sec: any) => (
-                    <SelectItem key={sec.id} value={sec.id}>{sec.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Subject Type</Label>
-              <Select 
-                value={subjectType} 
-                onValueChange={setSubjectType}
-                disabled={!selectedRole || selectedRole !== 'student' || !sectionId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Subject type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="elective">Elective</SelectItem>
-                  <SelectItem value="open_elective">Open Elective</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Subject</Label>
-              <Select 
-                value={selectedSubjectId} 
-                onValueChange={setSelectedSubjectId}
-                disabled={!selectedRole || selectedRole !== 'student' || !subjectType}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select subject" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subjects.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {selectedRole !== 'student' && selectedRole !== '' && (
+              <>
+                {/* These are placeholders for when Faculty/MIS are selected, if needed. 
+                    Currently they don't use these filters in the global header for those roles. */}
+              </>
+            )}
           </div>
 
           {!selectedRole ? (
@@ -425,118 +359,184 @@ const EnrollmentManagement = () => {
             </div>
           ) : selectedRole === 'student' ? (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Student Management</h3>
-                <Button 
-                  variant={showCreationForm ? "outline" : "default"}
-                  onClick={() => setShowCreationForm(!showCreationForm)}
-                  className="flex items-center gap-2"
-                >
-                  {showCreationForm ? "Hide Creation Form" : <><UserPlus className="w-4 h-4" /> Create New Student</>}
-                </Button>
-              </div>
-
-              {showCreationForm && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 border-b pb-2">
+                  <UserPlus className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">New Student Enrollment</h3>
+                </div>
+                
                 <Card className="border-primary/20 bg-primary/5 shadow-inner">
                   <CardContent className="pt-6">
-                    <form onSubmit={handleCreateStudent} className="space-y-4">
+                    <form onSubmit={handleCreateStudent} className="space-y-6">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                          <Label>USN *</Label>
-                          <Input placeholder="1AM22CI001" required value={studentForm.usn} onChange={e => setStudentForm({...studentForm, usn: e.target.value})} />
+                          <Label className="text-sm font-medium">USN *</Label>
+                          <Input 
+                            placeholder="1AM22CI001" 
+                            required 
+                            value={studentForm.usn} 
+                            onChange={e => setStudentForm({...studentForm, usn: e.target.value})} 
+                            className="bg-white dark:bg-gray-800"
+                          />
                         </div>
                         <div className="space-y-2">
-                          <Label>Full Name *</Label>
-                          <Input placeholder="John Doe" required value={studentForm.name} onChange={e => setStudentForm({...studentForm, name: e.target.value})} />
+                          <Label className="text-sm font-medium">Student Name *</Label>
+                          <Input 
+                            placeholder="Full Name" 
+                            required 
+                            value={studentForm.name} 
+                            onChange={e => setStudentForm({...studentForm, name: e.target.value})} 
+                            className="bg-white dark:bg-gray-800"
+                          />
                         </div>
                         <div className="space-y-2">
-                          <Label>Email</Label>
-                          <Input type="email" placeholder="john@example.com" value={studentForm.email} onChange={e => setStudentForm({...studentForm, email: e.target.value})} />
+                          <Label className="text-sm font-medium">Email</Label>
+                          <Input 
+                            type="email" 
+                            placeholder="email@example.com" 
+                            value={studentForm.email} 
+                            onChange={e => setStudentForm({...studentForm, email: e.target.value})} 
+                            className="bg-white dark:bg-gray-800"
+                          />
                         </div>
                         <div className="space-y-2">
-                          <Label>Phone</Label>
-                          <Input placeholder="9876543210" value={studentForm.phone} onChange={e => setStudentForm({...studentForm, phone: e.target.value})} />
+                          <Label className="text-sm font-medium">Phone No</Label>
+                          <Input 
+                            placeholder="9876543210" 
+                            value={studentForm.phone} 
+                            onChange={e => setStudentForm({...studentForm, phone: e.target.value})} 
+                            className="bg-white dark:bg-gray-800"
+                          />
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label>Batch *</Label>
-                          <Select value={studentForm.batch_id} onValueChange={v => setStudentForm({...studentForm, batch_id: v})}>
-                            <SelectTrigger><SelectValue placeholder="Select batch" /></SelectTrigger>
+                          <Label className="text-sm font-medium">Batch *</Label>
+                          <Select value={studentForm.batch_id} onValueChange={v => setStudentForm({...studentForm, batch_id: v, section_id: ""})}>
+                            <SelectTrigger className="bg-white dark:bg-gray-800">
+                              <SelectValue placeholder="Select batch" />
+                            </SelectTrigger>
                             <SelectContent>
                               {batches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Semester *</Label>
-                          <Select value={studentForm.semester_id} onValueChange={v => setStudentForm({...studentForm, semester_id: v})}>
-                            <SelectTrigger><SelectValue placeholder="Select semester" /></SelectTrigger>
+                          <Label className="text-sm font-medium">Section *</Label>
+                          <Select value={studentForm.section_id} onValueChange={v => setStudentForm({...studentForm, section_id: v})}>
+                            <SelectTrigger className="bg-white dark:bg-gray-800">
+                              <SelectValue placeholder="Select section" />
+                            </SelectTrigger>
                             <SelectContent>
-                              {semesters.map(s => <SelectItem key={s.id} value={s.id}>{s.number}th Semester</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Section *</Label>
-                          <Select value={studentForm.section_id} onValueChange={v => setStudentForm({...studentForm, section_id: v})} disabled={!studentForm.semester_id}>
-                            <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
-                            <SelectContent>
-                              {(sectionsBySemester[studentForm.semester_id] || []).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Cycle (Sem 1/2 only)</Label>
-                          <Select value={studentForm.cycle} onValueChange={v => setStudentForm({...studentForm, cycle: v})}>
-                            <SelectTrigger><SelectValue placeholder="Select cycle" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="P">P Cycle</SelectItem>
-                              <SelectItem value="C">C Cycle</SelectItem>
+                              {sections
+                                .filter(s => !studentForm.batch_id || String(s.batch_id) === String(studentForm.batch_id))
+                                .map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)
+                              }
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
                       <div className="flex justify-end">
-                        <Button type="submit" disabled={isCreatingStudent} className="bg-primary text-white">
+                        <Button type="submit" disabled={isCreatingStudent} className="bg-primary text-white px-10 shadow-lg hover:shadow-primary/20 transition-all">
                           {isCreatingStudent ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                          Create Student
+                          Register & Enroll
                         </Button>
                       </div>
                     </form>
                   </CardContent>
                 </Card>
-              )}
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Subject Enrollment</h3>
+                </div>
 
               <hr className="border-gray-100 dark:border-gray-800" />
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <GraduationCap className="w-5 h-5 text-primary" />
-                  <h4 className="font-bold">Subject Enrollment (Electives)</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Filter Batch</Label>
+                    <Select value={batchId} onValueChange={(v) => { setBatchId(v); setSectionId(""); }}>
+                      <SelectTrigger className="w-full bg-white dark:bg-gray-800">
+                        <SelectValue placeholder="Select batch" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {batches.map((batch: any) => (
+                          <SelectItem key={batch.id} value={batch.id}>{batch.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Filter Section</Label>
+                    <Select value={sectionId} onValueChange={setSectionId} disabled={!batchId}>
+                      <SelectTrigger className="w-full bg-white dark:bg-gray-800">
+                        <SelectValue placeholder="Select section" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sections
+                          .filter((sec: any) => !batchId || String(sec.batch_id) === String(batchId))
+                          .map((sec: any) => (
+                            <SelectItem key={sec.id} value={sec.id}>{sec.name}</SelectItem>
+                          ))
+                        }
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Subject Type</Label>
+                    <Select value={subjectType} onValueChange={setSubjectType} disabled={!sectionId}>
+                      <SelectTrigger className="w-full bg-white dark:bg-gray-800">
+                        <SelectValue placeholder="Subject type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="elective">Elective</SelectItem>
+                        <SelectItem value="open_elective">Open Elective</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Select Subject</Label>
+                    <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId} disabled={!subjectType}>
+                      <SelectTrigger className="w-full bg-white dark:bg-gray-800">
+                        <SelectValue placeholder="Select subject" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 rounded-lg border ${theme === 'dark' ? 'bg-muted/50 border-border' : 'bg-gray-50 border-gray-100'}`}>
+
+                <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 rounded-xl border ${theme === 'dark' ? 'bg-muted/50 border-border' : 'bg-gray-50 border-gray-100 shadow-sm'}`}>
                   <div className="flex-1">
-                    <Input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by USN or name" className="w-full" />
+                    <Input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by USN or name" className="w-full bg-white dark:bg-gray-800" />
                   </div>
                   <div className="flex flex-col sm:flex-row items-center gap-3">
                     <Button onClick={() => loadStudents(1, searchTerm)} disabled={!selectedSubjectId || isLoading} className="w-full sm:w-auto px-6 bg-primary hover:bg-primary/90 text-white">
-                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search Students"}
                     </Button>
-                    <Button onClick={saveStudentEnrollment} disabled={saving || students.length === 0} className="w-full sm:w-auto px-6 bg-green-600 hover:bg-green-700 text-white shadow-md">
+                    <Button onClick={saveStudentEnrollment} disabled={saving || students.length === 0} className="w-full sm:w-auto px-6 bg-green-600 hover:bg-green-700 text-white shadow-md transition-all">
                       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Enrollment"}
                     </Button>
                   </div>
-                  <div className="flex items-center gap-4 ml-auto">
+                  <div className="flex items-center gap-4 ml-auto border-l pl-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">Enrolled:</span>
+                      <span className="text-sm font-medium">Selected:</span>
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                         {students.filter(s => s.checked).length}
                       </span>
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={showEnrolledOnly} onCheckedChange={(v:any) => setShowEnrolledOnly(!!v)} />
-                      <span className="text-sm">Show enrolled only</span>
+                      <span className="text-sm font-medium">Show enrolled only</span>
                     </label>
                   </div>
                 </div>
@@ -602,8 +602,8 @@ const EnrollmentManagement = () => {
                   </div>
                 )}
               </div>
-            </div>
-          ) : (
+          </div>
+        ) : (
             <div className="max-w-2xl mx-auto">
               <Card className="border-primary/10 shadow-md bg-white dark:bg-gray-900/50">
                 <CardHeader>

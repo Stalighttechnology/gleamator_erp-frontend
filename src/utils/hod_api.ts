@@ -1634,18 +1634,18 @@ export const manageStudents = async (
     if (method === "POST") {
       const req = data as ManageStudentsRequest;
       if (!req.action) throw new Error("Action is required for POST requests");
-      if (req.action === "create" && (!req.usn || !req.name || !req.email || !req.semester_id || !req.section_id || !req.batch_id)) {
-        throw new Error("USN, Name, Email, Semester ID, Section ID, and Batch ID are required for create action");
+      if (req.action === "create" && (!req.usn || !req.name || !req.email || !req.section_id || !req.batch_id)) {
+        throw new Error("USN, Name, Email, Section ID, and Batch ID are required for create action");
       }
-      if (req.action === "update" && (!req.student_id || !req.name || !req.email || !req.semester_id || !req.section_id)) {
-        throw new Error("Student ID, Name, Email, Semester ID, and Section ID are required for update action");
+      if (req.action === "update" && (!req.student_id || !req.name || !req.email || !req.section_id)) {
+        throw new Error("Student ID, Name, Email, and Section ID are required for update action");
       }
       if (req.action === "delete" && !req.student_id) {
         throw new Error("Student ID is required for delete action");
       }
       if (req.action === "bulk_update") {
-        if (!req.semester_id || !req.section_id) {
-          throw new Error("Semester ID and Section ID are required for bulk_update action");
+        if (!req.section_id) {
+          throw new Error("Section ID is required for bulk_update action");
         }
         if (!req.bulk_data || !Array.isArray(req.bulk_data) || req.bulk_data.length === 0) {
           throw new Error("Bulk data must be a non-empty array for bulk_update action");
