@@ -450,8 +450,8 @@ const StudentManagement = () => {
             const phone = String(entry.phone || entry.Phone || entry.contact || entry.Contact || entry.contact_number || entry.ContactNumber || "").trim() || "";
             const row = index + 2;
 
-            if (!usn || !name || !email || !phone) {
-              // Skip rows with missing mandatory fields (USN, Name, Email, Phone)
+            if (!usn || !name) {
+              // Skip rows with missing mandatory fields (USN and Name)
               return null;
             }
             
@@ -474,7 +474,7 @@ const StudentManagement = () => {
           .filter(Boolean);
 
         if (bulkData.length === 0) {
-          updateState({ uploadErrors: ["No valid students found. Please ensure USN, Name, Email, and Phone columns are filled for at least one row."], uploadedCount: 0, updatedCount: 0, isLoading: false });
+          updateState({ uploadErrors: ["No valid students found. Please ensure USN and Name columns are filled for at least one row."], uploadedCount: 0, updatedCount: 0, isLoading: false });
           return;
         }
 
@@ -1046,7 +1046,10 @@ const StudentManagement = () => {
             <ul className="list-disc pl-6 space-y-1">
               <li>Use the provided template for proper data formatting</li>
               <li>
-                Required columns: <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>usn</strong>, <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>name</strong>, <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>email</strong>, and <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>phone</strong>
+                Required columns: <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>usn</strong>, <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>name</strong>
+              </li>
+              <li>
+                Optional columns: <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>email</strong>, <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>phone</strong>
               </li>
               <li>Section is selected above, not in the file</li>
               <li>Maximum 500 records per file</li>

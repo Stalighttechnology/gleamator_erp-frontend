@@ -24,6 +24,7 @@ const COEDashboard = lazy(() => import("./components/dashboards/COEDashboard"));
 const FeesManagerDashboard = lazy(() => import("./components/FeesManager/FeesManagerDashboard"));
 const DeanDashboard = lazy(() => import("./components/dashboards/DeanDashboard"));
 const HMSDashboard = lazy(() => import("./components/dashboards/HMSDashboard"));
+const PrincipalDashboard = lazy(() => import("./components/dashboards/PrincipalDashboard"));
 const Onboarding = lazy(() => import("./components/common/Onboarding"));
 const Pricing = lazy(() => import("./components/common/Pricing"));
 const FloatingAssistant = lazy(() => import("./components/common/FloatingAssistant"));
@@ -485,6 +486,16 @@ const App = () => {
             <ProtectedRoute allowedRoles={["dean"]}>
               <>
                 <DeanDashboard user={userData} setPage={() => { }} />
+                {shouldShowFloatingAssistant() && <FloatingAssistant />}
+              </>
+            </ProtectedRoute>
+          } />
+
+          {/* Principal (Center Manager) routes */}
+          <Route path="/principal/*" element={
+            <ProtectedRoute allowedRoles={["principal"]}>
+              <>
+                <PrincipalDashboard user={userData} setPage={() => { }} />
                 {shouldShowFloatingAssistant() && <FloatingAssistant />}
               </>
             </ProtectedRoute>

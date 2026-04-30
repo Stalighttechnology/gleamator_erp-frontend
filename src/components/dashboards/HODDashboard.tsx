@@ -28,7 +28,6 @@ import StudentEnrollment from "../hod/StudentEnrollment";
 import QPApprovals from "../hod/QPApprovals";
 import HODAnnouncementManagement from "../hod/HODAnnouncementManagement";
 import ShortPermissionRequest from "../hod/ShortPermissionRequest";
-import ShortPermissionsManagement from "../hod/ShortPermissionsManagement";
 import BatchManagement from "../admin/BatchManagement";
 import ScanSearch from "../common/ScanSearch";
 import EnrollmentManagement from "../hod/EnrollmentManagement";
@@ -296,8 +295,6 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
         return <HodProfile user={user} setError={setError} />;
       case "short-permission-request":
         return <ShortPermissionRequest />;
-      case "short-permissions":
-        return <ShortPermissionsManagement setError={setError} />;
       case "batches":
         return <BatchManagement setError={setError} toast={toast} />;
       default:

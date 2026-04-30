@@ -17,7 +17,7 @@ interface User {
 }
 
 interface NavbarProps {
-  role: "admin" | "hod" | "faculty" | "student" | "fees_manager" | "coe" | "mis";
+  role: "admin" | "hod" | "faculty" | "student" | "fees_manager" | "coe" | "mis" | "principal" | "dean";
   user?: User;
   onNotificationClick?: () => void;
   setPage: (page: string) => void;
@@ -115,7 +115,7 @@ const Navbar = ({ role, user, onNotificationClick, setPage, showHamburger = fals
             </span>
           </motion.div>
           <p className={`text-[10px] uppercase tracking-wider font-semibold ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
-            {role === "admin" ? "Center Manager" : role === "hod" ? "Counselor" : (role ? role.replace('_', ' ') : "User")} Portal
+            {role === "principal" ? "Center Manager" : role === "hod" ? "Counselor" : (role ? role.replace('_', ' ') : "User")} Portal
           </p>
         </div>
       </div>

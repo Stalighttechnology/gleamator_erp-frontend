@@ -184,7 +184,6 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Announcement Management", page: "announcement-management" },
 
       { name: "Leave Approvals", page: "hod-leaves" },
-      { name: "Short Permission Approvals", page: "short-permissions" },
       { name: "Staff Attendance", page: "hod-attendance" },
       { name: "Users", page: "users" },
       { name: "Attendance Locations", page: "campus-locations" },
@@ -293,6 +292,11 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Staff", page: "staff" },
       { name: "Menu Management", page: "menu-management" },
       { name: "Issue Tracking", page: "issues" },
+    ],
+    principal: [
+      { name: "Dashboard", page: "dashboard" },
+      { name: "Short Permission Approvals", page: "short-permissions" },
+      { name: "Profile", page: "profile" },
     ],
   };
 
