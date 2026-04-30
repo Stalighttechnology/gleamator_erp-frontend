@@ -41,7 +41,6 @@ import {
   updateAnnouncement,
   deleteAnnouncement,
   toggleAnnouncementActive,
-  markAnnouncementRead,
   Announcement,
   CreateAnnouncementRequest,
 } from "@/utils/announcements_api";
@@ -49,7 +48,6 @@ import AnnouncementSections from "@/components/common/AnnouncementSections";
 
 const AdminAnnouncementManagement = () => {
   const [myAnnouncements, setMyAnnouncements] = useState<Announcement[]>([]);
-  const [receivedAnnouncements, setReceivedAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -76,12 +74,10 @@ const AdminAnnouncementManagement = () => {
 
     if (response.success && response.data) {
       setMyAnnouncements(response.data.my_announcements.results || []);
-      setReceivedAnnouncements(response.data.received_announcements.results || []);
       setError(null);
     } else {
       setError(response.message || "Failed to load announcements");
       setMyAnnouncements([]);
-      setReceivedAnnouncements([]);
     }
     setLoading(false);
   };
@@ -150,7 +146,6 @@ const AdminAnnouncementManagement = () => {
       const response = await deleteAnnouncement(deletingId);
       if (response.success) {
         setMyAnnouncements((prev) => prev.filter((a) => a.id !== deletingId));
-        setReceivedAnnouncements((prev) => prev.filter((a) => a.id !== deletingId));
         alert("Announcement deleted successfully");
       } else {
         alert(response.message || "Failed to delete announcement");
@@ -168,27 +163,11 @@ const AdminAnnouncementManagement = () => {
         setMyAnnouncements((prev) =>
           prev.map((a) => (a.id === announcementId ? response.data : a))
         );
-        setReceivedAnnouncements((prev) =>
-          prev.map((a) => (a.id === announcementId ? response.data : a))
-        );
       } else {
         alert(response.message || "Failed to toggle announcement");
       }
     } catch (error: any) {
       alert(error.message || "An error occurred");
-    }
-  };
-
-  const handleMarkRead = async (announcementId: number) => {
-    try {
-      const response = await markAnnouncementRead(announcementId);
-      if (response.success) {
-        setReceivedAnnouncements((prev) =>
-          prev.map((a) => (a.id === announcementId ? { ...a, is_read: true } : a))
-        );
-      }
-    } catch (error: any) {
-      console.error("Failed to mark as read:", error);
     }
   };
 
@@ -436,11 +415,9 @@ const AdminAnnouncementManagement = () => {
               ) : (
                 <AnnouncementSections
                   myAnnouncements={myAnnouncements}
-                  receivedAnnouncements={receivedAnnouncements}
                   onEdit={handleEdit}
                   onDelete={(id) => setDeletingId(id)}
                   onToggleActive={handleToggleActive}
-                  onMarkRead={handleMarkRead}
                   loading={loading}
                   showActions={true}
                 />

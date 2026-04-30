@@ -24,14 +24,14 @@ import {
 } from "@/components/ui/dialog";
 
 interface AnnouncementSectionsProps {
-  myAnnouncements: Announcement[];
-  receivedAnnouncements: Announcement[];
-  onEdit: (announcement: Announcement) => void;
-  onDelete: (announcementId: number) => void;
-  onToggleActive: (announcementId: number) => void;
-  onMarkRead: (announcementId: number) => void;
+  myAnnouncements?: Announcement[];
+  receivedAnnouncements?: Announcement[];
+  onEdit?: (announcement: Announcement) => void;
+  onDelete?: (announcementId: number) => void;
+  onToggleActive?: (announcementId: number) => void;
+  onMarkRead?: (announcementId: number) => void;
   loading?: boolean;
-  showActions?: boolean; // Whether to show edit/delete buttons
+  showActions?: boolean;
 }
 
 const getPriorityColor = (priority: string) => {
@@ -99,26 +99,27 @@ export const AnnouncementSections = ({
   showActions = true,
 }: AnnouncementSectionsProps) => {
   const { theme } = useTheme();
-  const [activeTab, setActiveTab] = useState("my");
+  const [activeTab, setActiveTab] = useState(myAnnouncements !== undefined ? "my" : "received");
   const [showExpired, setShowExpired] = useState(false);
   const [viewingAnnouncement, setViewingAnnouncement] = useState<Announcement | null>(null);
 
   const filteredMyAnnouncements = showExpired
-    ? myAnnouncements
-    : myAnnouncements.filter(a => !isExpired(a.expires_at) && a.is_active);
+    ? (myAnnouncements || [])
+    : (myAnnouncements || []).filter(a => !isExpired(a.expires_at) && a.is_active);
 
   const filteredReceivedAnnouncements = showExpired
-    ? receivedAnnouncements
-    : receivedAnnouncements.filter(a => !isExpired(a.expires_at));
+    ? (receivedAnnouncements || [])
+    : (receivedAnnouncements || []).filter(a => !isExpired(a.expires_at));
 
-  const totalUnread = receivedAnnouncements.filter(
+  const totalUnread = (receivedAnnouncements || []).filter(
     (a) => !a.is_read && !isExpired(a.expires_at)
   ).length;
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <TabsList className="grid w-full sm:w-auto grid-cols-2 max-w-md bg-muted/50 p-1 rounded-xl">
+        <TabsList className={`grid w-full sm:w-auto ${receivedAnnouncements !== undefined && myAnnouncements !== undefined ? "grid-cols-2" : "grid-cols-1"} max-w-md bg-muted/50 p-1 rounded-xl`}>
+          {myAnnouncements !== undefined && (
           <TabsTrigger value="my" className="gap-2 px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">
             <span className="text-sm font-semibold">My Announcements</span>
             {filteredMyAnnouncements.length > 0 && (
@@ -127,6 +128,8 @@ export const AnnouncementSections = ({
               </Badge>
             )}
           </TabsTrigger>
+          )}
+          {receivedAnnouncements !== undefined && (
           <TabsTrigger value="received" className="gap-2 px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">
             <span className="text-sm font-semibold">Received</span>
             {totalUnread > 0 && (
@@ -140,6 +143,7 @@ export const AnnouncementSections = ({
               </Badge>
             )}
           </TabsTrigger>
+          )}
         </TabsList>
 
         <Button
@@ -156,6 +160,7 @@ export const AnnouncementSections = ({
         </Button>
       </div>
 
+      {myAnnouncements !== undefined && (
       <TabsContent value="my" className="space-y-4 mt-6">
         {loading ? (
           <div className="text-center py-8">
@@ -295,7 +300,9 @@ export const AnnouncementSections = ({
           </div>
         )}
       </TabsContent>
+      )}
 
+      {receivedAnnouncements !== undefined && (
       <TabsContent value="received" className="space-y-4 mt-6">
         {loading ? (
           <div className="text-center py-8">
@@ -392,6 +399,7 @@ export const AnnouncementSections = ({
           </div>
         )}
       </TabsContent>
+      )}
       {/* View Announcement Dialog */}
       <Dialog open={!!viewingAnnouncement} onOpenChange={(open) => !open && setViewingAnnouncement(null)}>
         <DialogContent className="w-[92vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-3xl p-0 border-none shadow-2xl">
