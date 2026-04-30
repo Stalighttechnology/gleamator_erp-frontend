@@ -47,7 +47,7 @@ import {
 import { motion } from "framer-motion";
 import DashboardCard from "../common/DashboardCard";
 import { FaUserGraduate, FaChalkboardTeacher, FaUserCheck } from "react-icons/fa";
-import { getFacultyDashboardBootstrap } from "@/utils/faculty_api";
+import { getFacultyDashboardBootstrap, getFacultyAssignments, getStudentsForRegular } from "@/utils/faculty_api";
 import { useTheme } from "@/context/ThemeContext";
 import { SkeletonStatsGrid, SkeletonChart, SkeletonCard } from "../ui/skeleton";
 
@@ -83,7 +83,7 @@ interface FacultyStatsProps {
 
 const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
   const [stats, setStats] = useState<Stat[]>([]);
-  const [proctorStudentsCount, setProctorStudentsCount] = useState<number>(0);
+  const [batchStudentsCount, setBatchStudentsCount] = useState<number>(0);
   const [performanceTrends, setPerformanceTrends] = useState<{avg_attendance_percent_30d?: number; avg_ia_mark?: number}>({});
   const [subjectPerformanceTrends, setSubjectPerformanceTrends] = useState<SubjectPerformanceTrend[]>([]);
   const [todayClasses, setTodayClasses] = useState<TodayClass[]>([]);
@@ -176,21 +176,59 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
       setLoading(true);
       console.log('Starting to fetch faculty dashboard data...');
       try {
-        // Fetch bootstrap data (proctor students, performance trends)
+        // Fetch batch students count
+        console.log('Fetching faculty assignments...');
+        const assignmentsRes = await getFacultyAssignments();
+        let totalBatchStudents = 0;
+        
+        if (assignmentsRes && assignmentsRes.success && assignmentsRes.data) {
+          const assignments = assignmentsRes.data;
+          const batchSectionMap = new Map<string, { batch_id: string; section_id: string }>();
+          
+          // Get unique batch/section combinations
+          for (const assignment of assignments) {
+            const key = `${assignment.batch_id}-${assignment.section}`;
+            if (!batchSectionMap.has(key)) {
+              batchSectionMap.set(key, {
+                batch_id: assignment.batch_id.toString(),
+                section_id: assignment.section
+              });
+            }
+          }
+          
+          // Fetch students for each batch/section and count unique students
+          const studentIds = new Set<number>();
+          for (const [, batchSection] of batchSectionMap) {
+            const studentsRes = await getStudentsForRegular({
+              batch_id: batchSection.batch_id,
+              section_id: batchSection.section_id
+            });
+            
+            if (studentsRes && studentsRes.success && studentsRes.data?.students) {
+              for (const student of studentsRes.data.students) {
+                studentIds.add(student.id);
+              }
+            }
+          }
+          
+          totalBatchStudents = studentIds.size;
+          setBatchStudentsCount(totalBatchStudents);
+        }
+
+        // Fetch bootstrap data (performance trends)
         console.log('Fetching bootstrap data...');
         const bootstrapRes = await getFacultyDashboardBootstrap();
         console.log('Bootstrap response:', bootstrapRes);
         if (bootstrapRes.success && bootstrapRes.data) {
-          const { proctor_students_count, performance_trends, subject_performance_trends } = bootstrapRes.data;
-          setProctorStudentsCount(proctor_students_count || 0);
+          const { performance_trends, subject_performance_trends } = bootstrapRes.data;
           setPerformanceTrends(performance_trends || {});
           setSubjectPerformanceTrends(subject_performance_trends || []);
 
           // Set stats after data is loaded (use local response values safely)
           setStats([
             {
-              label: "Total Proctor Students",
-              value: proctor_students_count || 0,
+              label: "Students in Batch",
+              value: totalBatchStudents,
               icon: <Users className="text-green-600 w-5 h-5" />,
               color: "green",
             },
@@ -254,9 +292,9 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
       <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
         <motion.div className="h-full" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <DashboardCard
-            title="Total Proctor Students"
-            value={proctorStudentsCount || 0}
-            description="Students under your proctoring"
+            title="Students in Batch"
+            value={batchStudentsCount || 0}
+            description="Total students in your assigned batches"
             icon={<FaUserGraduate className={theme === 'dark' ? "text-blue-400 text-3xl" : "text-blue-500 text-3xl"} />}
             className="h-full"
           />
@@ -462,10 +500,10 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
         />
 
         <DashboardCard
-          title="Mentoring"
-          description="Open mentoring / proctor students"
+          title="View Students"
+          description="Browse and manage students in your batches"
           icon={<GraduationCap size={20} />}
-          onClick={() => setActivePage("proctor-students")}
+          onClick={() => setActivePage("students")}
         />
 
         <DashboardCard

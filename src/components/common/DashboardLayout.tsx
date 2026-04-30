@@ -187,7 +187,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {isNoAnimation ? (
             <div className="h-full w-full">{children}</div>
           ) : (
-            <AnimatePresence mode="popLayout">{children}</AnimatePresence>
+            <AnimatePresence mode="popLayout">
+              <motion.div key={activePage} className="h-full w-full">
+                {children}
+              </motion.div>
+            </AnimatePresence>
           )}
         </motion.main>
       </div>

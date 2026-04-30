@@ -22,27 +22,19 @@ export const getAssignedSubjectsGrouped = async (): Promise<{ success: boolean; 
 
 export interface UploadStudyMaterialRequest {
   title: string;
-  subject_id?: string;
-  subject_name?: string;
-  subject_code?: string;
-  semester_id: string;
-  branch_id: string;
+  batch_id: string;
   section_id?: string;
   file: File;
 }
 
 export const uploadStudyMaterial = async (data: UploadStudyMaterialRequest) => {
   try {
-    if (!data.branch_id || !data.semester_id || !data.title || !data.file) {
-      throw new Error("Branch ID, Semester ID, Title, and File are required");
+    if (!data.batch_id || !data.title || !data.file) {
+      throw new Error("Batch ID, Title, and File are required");
     }
     const formData = new FormData();
     formData.append('title', data.title);
-    if (data.subject_id) formData.append('subject_id', data.subject_id);
-    formData.append('subject_name', data.subject_name || '');
-    formData.append('subject_code', data.subject_code || '');
-    formData.append('semester_id', data.semester_id);
-    formData.append('branch_id', data.branch_id);
+    formData.append('batch_id', data.batch_id);
     if (data.section_id) formData.append('section_id', data.section_id);
     formData.append('file', data.file);
 
@@ -56,11 +48,10 @@ export const uploadStudyMaterial = async (data: UploadStudyMaterialRequest) => {
   }
 };
 
-export const getStudyMaterials = async (branch_id?: string, semester_id?: string, section_id?: string, search?: string) => {
+export const getStudyMaterials = async (batch_id?: string, section_id?: string, search?: string) => {
   try {
     const params = new URLSearchParams();
-    if (branch_id) params.append('branch_id', branch_id);
-    if (semester_id) params.append('semester_id', semester_id);
+    if (batch_id) params.append('batch_id', batch_id);
     if (section_id) params.append('section_id', section_id);
     if (search) params.append('search', search);
     const qs = params.toString() ? `?${params.toString()}` : '';
@@ -74,33 +65,9 @@ export const getStudyMaterials = async (branch_id?: string, semester_id?: string
   }
 };
 
-export const getBranches = async (): Promise<{ success: boolean; data?: { id: string; name: string }[]; message?: string }> => {
+export const getSections = async (batch_id: string): Promise<{ success: boolean; data?: { id: string; name: string }[]; message?: string }> => {
   try {
-    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/branches/`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    return await response.json();
-  } catch (error: unknown) {
-    return { success: false, message: (error as any).toString() };
-  }
-};
-
-export const getSemesters = async (branch_id: string): Promise<{ success: boolean; data?: { id: string; number: number }[]; message?: string }> => {
-  try {
-    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/semesters/?branch_id=${branch_id}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    return await response.json();
-  } catch (error: unknown) {
-    return { success: false, message: (error as any).toString() };
-  }
-};
-
-export const getSections = async (branch_id: string, semester_id: string): Promise<{ success: boolean; data?: { id: string; name: string }[]; message?: string }> => {
-  try {
-    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/sections/?branch_id=${branch_id}&semester_id=${semester_id}`, {
+    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/sections/?batch_id=${batch_id}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -131,10 +98,8 @@ interface DashboardOverviewResponse {
 }
 
 export interface TakeAttendanceRequest {
-  branch_id: string;
-  subject_id: string;
+  batch_id: string;
   section_id: string;
-  semester_id: string;
   method: "manual" | "ai";
   class_images?: File[];
   attendance?: Array<{ student_id: string; status: boolean }>;
@@ -146,10 +111,8 @@ interface TakeAttendanceResponse {
 }
 
 export interface UploadMarksRequest {
-  branch_id: string;
-  semester_id: string;
+  batch_id: string;
   section_id: string;
-  subject_id: string;
   test_number: number;
   marks?: Array<{ student_id: string; mark: number }>;
   file?: File;
@@ -162,7 +125,6 @@ interface UploadMarksResponse {
 
 export interface ApplyLeaveRequest {
   title: string;
-  branch_ids: number[];
   start_date: string;
   end_date: string;
   reason: string;
@@ -171,7 +133,6 @@ export interface ApplyLeaveRequest {
 interface ApplyLeaveResponse {
   success: boolean;
   message?: string;
-  data?: Array<{ id: string; branch: string }>;
 }
 
 interface ViewAttendanceRecordsResponse {
@@ -187,8 +148,7 @@ interface ViewAttendanceRecordsResponse {
 }
 
 export interface CreateAnnouncementRequest {
-  branch_id: string;
-  semester_id: string;
+  batch_id: string;
   section_id: string;
   title: string;
   content: string;
@@ -289,13 +249,10 @@ export interface FacultyAssignment {
   subject_name: string;
   subject_code: string;
   subject_id: number;
-  subject_type?: string;
   section: string;
   section_id: number;
-  semester: number;
-  semester_id: number;
-  branch: string;
-  branch_id: number;
+  batch: string;
+  batch_id: number;
   has_timetable: boolean;
 }
 
@@ -523,10 +480,8 @@ export const takeAttendance = async (
 ): Promise<TakeAttendanceResponse> => {
   try {
     const formData = new FormData();
-    formData.append("branch_id", data.branch_id);
-    formData.append("subject_id", data.subject_id);
+    formData.append("batch_id", data.batch_id);
     formData.append("section_id", data.section_id);
-    formData.append("semester_id", data.semester_id);
     formData.append("method", data.method);
     if (data.method === "ai" && data.class_images) {
       data.class_images.forEach((file, index) => {
@@ -551,10 +506,8 @@ export const takeAttendance = async (
 };
 
 export interface AIAttendanceRequest {
-  branch_id: string;
-  subject_id: string;
+  batch_id: string;
   section_id: string;
-  semester_id: string;
   photo: File;
 }
 
@@ -584,10 +537,8 @@ export const aiAttendance = async (
 ): Promise<AIAttendanceResponse> => {
   try {
     const formData = new FormData();
-    formData.append("branch_id", data.branch_id);
-    formData.append("subject_id", data.subject_id);
+    formData.append("batch_id", data.batch_id);
     formData.append("section_id", data.section_id);
-    formData.append("semester_id", data.semester_id);
     formData.append("photo", data.photo);
 
     const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/ai-attendance/`, {
@@ -609,10 +560,8 @@ export const uploadInternalMarks = async (
 ): Promise<UploadMarksResponse> => {
   try {
     const formData = new FormData();
-    if (data.branch_id) formData.append("branch_id", String(data.branch_id));
-    if (data.semester_id) formData.append("semester_id", String(data.semester_id));
+    if (data.batch_id) formData.append("batch_id", String(data.batch_id));
     if (data.section_id) formData.append("section_id", String(data.section_id));
-    if (data.subject_id) formData.append("subject_id", String(data.subject_id));
     formData.append("test_number", data.test_number.toString());
     if (data.marks) {
       formData.append("marks", JSON.stringify(data.marks));
@@ -654,7 +603,7 @@ export const applyLeave = async (
 };
 
 export const viewAttendanceRecords = async (
-  params: { branch_id: string; semester_id: string; section_id: string; subject_id: string }
+  params: { batch_id: string; section_id: string }
 ): Promise<ViewAttendanceRecordsResponse> => {
   try {
     const query = new URLSearchParams(params).toString();
@@ -1218,10 +1167,8 @@ export interface GetUploadMarksBootstrapResponse {
 }
 
 export const getTakeAttendanceBootstrap = async (params: {
-  branch_id?: string;
-  semester_id?: string;
-  section_id?: string;
-  subject_id: string;
+  batch_id: string;
+  section_id: string;
   page?: number;
   page_size?: number;
 }): Promise<GetTakeAttendanceBootstrapResponse> => {
@@ -1263,11 +1210,10 @@ export const getAssignedSubjects = async (): Promise<{ success: boolean; message
   }
 };
 
-export const getStudentsForRegular = async (params: { branch_id: string; semester_id: string; section_id: string; subject_id: string; page?: number; page_size?: number; }) => {
+export const getStudentsForRegular = async (params: { batch_id: string; section_id: string; page?: number; page_size?: number; }) => {
   try {
-    // Client-side guard: ensure required params are present to avoid backend 400s
-    if (!params.subject_id || !params.branch_id || !params.semester_id || !params.section_id) {
-      return { success: false, message: 'subject_id, branch_id, semester_id and section_id required', data: { students: [] } };
+    if (!params.batch_id || !params.section_id) {
+      return { success: false, message: 'batch_id and section_id required', data: { students: [] } };
     }
     const query = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
@@ -1361,10 +1307,8 @@ export const getSubjectDetail = async (subject_id: string): Promise<{ success: b
 };
 
 export const getUploadMarksBootstrap = async (params: {
-  branch_id?: string;
-  semester_id?: string;
-  section_id?: string;
-  subject_id: string;
+  batch_id: string;
+  section_id: string;
   test_number: number;
   page?: number;
   page_size?: number;
@@ -1372,10 +1316,8 @@ export const getUploadMarksBootstrap = async (params: {
   try {
     const query = new URLSearchParams();
     const entries: Record<string, any> = {
-      branch_id: params.branch_id,
-      semester_id: params.semester_id,
+      batch_id: params.batch_id,
       section_id: params.section_id,
-      subject_id: params.subject_id,
       test_number: params.test_number,
       page: params.page,
       page_size: params.page_size,

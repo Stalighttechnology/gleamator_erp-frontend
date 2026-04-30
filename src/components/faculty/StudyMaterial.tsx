@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Download, FileText, UploadCloud, X } from "lucide-react";
-import { getStudyMaterials, uploadStudyMaterial, getAssignedSubjectsGrouped, getBranches, getSemesters, getSections, AssignedSubject } from "../../utils/faculty_api";
+import { getStudyMaterials, uploadStudyMaterial, getFacultyAssignments, getSections, FacultyAssignment } from "../../utils/faculty_api";
 import { useTheme } from "../../context/ThemeContext";
 import {
   Select,
@@ -26,18 +26,13 @@ interface Subject {
   id: number;
   name: string;
   code: string;
-  branch: string;
-  semester: string;
+  batch: string;
   section: string;
 }
 
 interface AssignedSection {
   section: string;
   section_id: string;
-  semester: number;
-  semester_id: string;
-  branch: string;
-  branch_id: string;
 }
 
 const StudyMaterialRow = ({ material, theme }: { material: StudyMaterial; theme: string }) => (
@@ -80,77 +75,37 @@ const StudyMaterialRow = ({ material, theme }: { material: StudyMaterial; theme:
 const StudyMaterialsFaculty = () => {
   const { theme } = useTheme();
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [grouped, setGrouped] = useState<AssignedSubject[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
-  const [selectedBranch, setSelectedBranch] = useState<string>("All Branches");
-  const [selectedSemester, setSelectedSemester] = useState<string>("All Semesters");
+  const [assignments, setAssignments] = useState<FacultyAssignment[]>([]);
+  const [selectedBatch, setSelectedBatch] = useState<string>("All Batches");
   const [selectedSection, setSelectedSection] = useState<string>("All Sections");
   const [materials, setMaterials] = useState<StudyMaterial[]>([]);
   const [uploading, setUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadSubject, setUploadSubject] = useState<string>("");
-  const [uploadBranch, setUploadBranch] = useState<string>("");
-  const [uploadSemester, setUploadSemester] = useState<string>("");
+  const [uploadBatch, setUploadBatch] = useState<string>("");
   const [uploadSection, setUploadSection] = useState<string>("");
   const [uploadTitle, setUploadTitle] = useState<string>("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
-  const [semesters, setSemesters] = useState<{ id: string; number: number }[]>([]);
   const [sections, setSections] = useState<{ id: string; name: string }[]>([]);
   const [hasSearched, setHasSearched] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
 
+  // Load faculty's assigned batches
   useEffect(() => {
-    const loadBranches = async () => {
-      const resp = await getBranches();
-      if (resp && resp.success) {
-        setBranches(resp.data || []);
+    const loadAssignments = async () => {
+      const resp = await getFacultyAssignments();
+      if (resp && resp.success && resp.data) {
+        setAssignments(resp.data);
       }
     };
-    loadBranches();
+    loadAssignments();
   }, []);
 
-  // Load assigned subjects only when upload modal opens
+  // Load sections when batch changes
   useEffect(() => {
-    if (showUploadModal) {
-      const loadAssignments = async () => {
-        const resp = await getAssignedSubjectsGrouped();
-        if (resp && resp.success) {
-          setSubjects(resp.data || []);
-          setGrouped(resp.grouped || []);
-        }
-      };
-      loadAssignments();
-    }
-  }, [showUploadModal]);
-
-  useEffect(() => {
-    if (selectedBranch !== "All Branches") {
-      const loadSemesters = async () => {
-        const resp = await getSemesters(selectedBranch);
-        if (resp && resp.success) {
-          setSemesters(resp.data || []);
-        } else {
-          setSemesters([]);
-        }
-        setSelectedSemester("All Semesters");
-        setSections([]);
-        setSelectedSection("All Sections");
-      };
-      loadSemesters();
-    } else {
-      setSemesters([]);
-      setSelectedSemester("All Semesters");
-      setSections([]);
-      setSelectedSection("All Sections");
-    }
-  }, [selectedBranch]);
-
-  useEffect(() => {
-    if (selectedBranch !== "All Branches" && selectedSemester !== "All Semesters") {
+    if (selectedBatch !== "All Batches") {
       const loadSections = async () => {
-        const resp = await getSections(selectedBranch, selectedSemester);
+        const resp = await getSections(selectedBatch);
         if (resp && resp.success) {
           setSections(resp.data || []);
         } else {
@@ -163,11 +118,13 @@ const StudyMaterialsFaculty = () => {
       setSections([]);
       setSelectedSection("All Sections");
     }
-  }, [selectedBranch, selectedSemester]);
+  }, [selectedBatch]);
 
   const loadMaterials = async () => {
     setLoading(true);
-    const resp = await getStudyMaterials(selectedBranch === 'All Branches' ? undefined : selectedBranch, selectedSemester === 'All Semesters' ? undefined : selectedSemester, selectedSection === 'All Sections' ? undefined : selectedSection, searchQuery || undefined);
+    const batch_id = selectedBatch === 'All Batches' ? undefined : selectedBatch;
+    const section_id = selectedSection === 'All Sections' ? undefined : selectedSection;
+    const resp = await getStudyMaterials(batch_id, section_id, searchQuery || undefined);
     if (resp && resp.success && Array.isArray(resp.data?.results || resp.data)) {
       setMaterials(resp.data.results || resp.data || []);
     } else if (resp && resp.success && Array.isArray(resp.data)) {
@@ -179,12 +136,12 @@ const StudyMaterialsFaculty = () => {
     setLoading(false);
   };
 
-  // Auto-load materials when all filters are selected
+  // Auto-load materials when batch is selected
   useEffect(() => {
-    if (selectedBranch !== "All Branches" && selectedSemester !== "All Semesters" && selectedSection !== "All Sections") {
+    if (selectedBatch !== "All Batches") {
       loadMaterials();
     }
-  }, [selectedBranch, selectedSemester, selectedSection, searchQuery]);
+  }, [selectedBatch, selectedSection, searchQuery]);
 
   return (
     <div className={`w-full ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
@@ -205,31 +162,15 @@ const StudyMaterialsFaculty = () => {
         <CardContent className="p-3 sm:p-4 lg:p-6 space-y-6">
           {/* Filters & Search */}
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-              <Select value={selectedBranch} onValueChange={(value) => setSelectedBranch(value)}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <Select value={selectedBatch} onValueChange={(value) => setSelectedBatch(value)}>
                 <SelectTrigger className={theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}>
-                  <SelectValue placeholder="All Branches" />
+                  <SelectValue placeholder="Select Batch" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All Branches">All Branches</SelectItem>
-                  {branches.map((b) => (
-                    <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={selectedSemester}
-                onValueChange={(value) => setSelectedSemester(value)}
-                disabled={semesters.length === 0}
-              >
-                <SelectTrigger className={`${semesters.length === 0 ? 'opacity-50 cursor-not-allowed' : ''} ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}>
-                  <SelectValue placeholder="All Semesters" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All Semesters">All Semesters</SelectItem>
-                  {semesters.map((s) => (
-                    <SelectItem key={s.id} value={s.id.toString()}>Semester {s.number}</SelectItem>
+                  <SelectItem value="All Batches">All Batches</SelectItem>
+                  {assignments.map((a) => (
+                    <SelectItem key={a.batch_id} value={a.batch_id.toString()}>{a.batch}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -249,15 +190,15 @@ const StudyMaterialsFaculty = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
 
-            <input
-              type="text"
-              placeholder="Search by title, course name, course code, semester, or uploaded by..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}
-            />
+              <input
+                type="text"
+                placeholder="Search materials..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`w-full px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}
+              />
+            </div>
           </div>
 
           {/* Materials Table Section */}
@@ -276,7 +217,7 @@ const StudyMaterialsFaculty = () => {
                   <SkeletonList items={5} />
                 </div>
               ) : !hasSearched ? (
-                <div className="text-center py-10 text-xs sm:text-sm text-gray-500 italic">Select branch, semester, and section to view study materials.</div>
+                <div className="text-center py-10 text-xs sm:text-sm text-gray-500 italic">Select a batch to view study materials.</div>
               ) : materials.length === 0 ? (
                 <div className="text-center py-10 text-xs sm:text-sm text-gray-500">No study materials found for the selected criteria.</div>
               ) : (
@@ -297,37 +238,29 @@ const StudyMaterialsFaculty = () => {
               </button>
             </div>
             <div className="space-y-3 sm:space-y-4">
-              <Select
-                value={uploadSubject}
-                onValueChange={(subjId) => {
-                  setUploadSubject(subjId);
-                  const subj = grouped.find(g => String(g.subject_id) === subjId);
-                  if (subj && subj.sections.length > 0) {
-                    const s = subj.sections[0];
-                    setUploadBranch(String(s.branch_id));
-                    setUploadSemester(String(s.semester_id));
-                    setUploadSection(String(s.section_id));
-                  }
-                }}
-              >
+              <Select value={uploadBatch} onValueChange={setUploadBatch}>
                 <SelectTrigger className={theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}>
-                  <SelectValue placeholder="Select Subject" />
+                  <SelectValue placeholder="Select Batch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {grouped.map(g => (
-                    <SelectItem key={g.subject_id} value={String(g.subject_id)}>{g.subject_name} ({g.subject_code})</SelectItem>
+                  {assignments.map(a => (
+                    <SelectItem key={a.batch_id} value={a.batch_id.toString()}>{a.batch}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <div className={`px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}>
-                Branch: {uploadBranch ? grouped.find(g => String(g.subject_id) === uploadSubject)?.sections.find(s => String(s.branch_id) === uploadBranch)?.branch : 'N/A'}
-              </div>
-              <div className={`px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}>
-                Semester: {uploadSemester ? `Semester ${grouped.find(g => String(g.subject_id) === uploadSubject)?.sections.find(s => String(s.semester_id) === uploadSemester)?.semester}` : 'N/A'}
-              </div>
-              <div className={`px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}>
-                Section: {uploadSection ? grouped.find(g => String(g.subject_id) === uploadSubject)?.sections.find(s => String(s.section_id) === uploadSection)?.section : 'N/A'}
-              </div>
+
+              <Select value={uploadSection} onValueChange={setUploadSection}>
+                <SelectTrigger className={theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}>
+                  <SelectValue placeholder="Select Section (Optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Sections</SelectItem>
+                  {sections.map(s => (
+                    <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <input
                 type="text"
                 placeholder="Title"
@@ -343,33 +276,27 @@ const StudyMaterialsFaculty = () => {
               />
               <button
                 onClick={async () => {
-                  if (!uploadFile || !uploadTitle || !uploadSubject) {
-                    alert("Please fill all fields");
+                  if (!uploadFile || !uploadTitle || !uploadBatch) {
+                    alert("Please fill all required fields");
                     return;
                   }
                   setUploading(true);
                   try {
-                    const subj = grouped.find(g => String(g.subject_id) === uploadSubject);
                     const resp = await uploadStudyMaterial({
                       title: uploadTitle,
-                      subject_id: uploadSubject,
-                      subject_name: subj ? subj.subject_name : '',
-                      subject_code: subj ? subj.subject_code : '',
-                      semester_id: uploadSemester,
-                      branch_id: uploadBranch,
-                      section_id: uploadSection,
+                      batch_id: uploadBatch,
+                      section_id: uploadSection || undefined,
                       file: uploadFile,
                     });
                     if (resp && resp.success) {
                       alert('Uploaded successfully');
                       setShowUploadModal(false);
-                      setUploadSubject('');
-                      setUploadBranch('');
-                      setUploadSemester('');
+                      setUploadBatch('');
                       setUploadSection('');
                       setUploadTitle('');
                       setUploadFile(null);
-                      // Materials will automatically reload since filters are already selected
+                      // Reload materials
+                      loadMaterials();
                     } else {
                       alert(resp?.message || 'Upload failed');
                     }

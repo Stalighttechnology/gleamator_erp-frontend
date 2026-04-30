@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithTokenRefresh } from "@/utils/authService";
 import { Calendar, Clock, Users } from "lucide-react";
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
@@ -13,7 +14,8 @@ import withReactContent from 'sweetalert2-react-content';
 interface Assessment {
   id: number;
   title: string;
-  total_questions: number;
+  total_questions?: number;
+  question_count?: number;
   duration_minutes: number;
   passing_percentage: number;
   status: string;
@@ -28,11 +30,14 @@ interface Batch {
 
 interface Assignment {
   id: number;
-  assessment: Assessment;
-  batch: Batch;
+  assessment?: Assessment;
+  assessment_title?: string;
+  question_count?: number;
+  batch?: Batch;
+  batch_name?: string;
   start_time: string;
   end_time: string;
-  status: string;
+  status?: string;
 }
 
 const AssignAssessment = () => {
@@ -52,6 +57,8 @@ const AssignAssessment = () => {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const selectedAssessment = assessments.find((assessment) => String(assessment.id) === formData.assessment_id);
+  const canAssignSelectedAssessment = selectedAssessment?.status === 'approved';
 
   useEffect(() => {
     fetchData();
@@ -61,25 +68,28 @@ const AssignAssessment = () => {
     try {
       setLoading(true);
 
-      // Fetch approved assessments
-      const assessmentsRes = await fetch('/api/assessment/assessments/?status=approved');
+      // Fetch all assessments so faculty can see pending/rejected tests, but assign only after approval.
+      const assessmentsRes = await fetchWithTokenRefresh('/api/assessment/assessments/?status=all');
       if (assessmentsRes.ok) {
         const assessmentsData = await assessmentsRes.json();
-        setAssessments(assessmentsData.results || assessmentsData);
+        const assessmentList = assessmentsData.results?.assessments || assessmentsData.assessments || assessmentsData.results || assessmentsData;
+        setAssessments(Array.isArray(assessmentList) ? assessmentList : []);
       }
 
       // Fetch batches
-      const batchesRes = await fetch('/api/assessment/batches/');
+      const batchesRes = await fetchWithTokenRefresh('/api/assessment/batches/');
       if (batchesRes.ok) {
         const batchesData = await batchesRes.json();
-        setBatches(batchesData.results || batchesData);
+        const batchList = batchesData.results?.batches || batchesData.batches || batchesData.results || batchesData;
+        setBatches(Array.isArray(batchList) ? batchList : []);
       }
 
       // Fetch existing assignments
-      const assignmentsRes = await fetch('/api/assessment/assignments/');
+      const assignmentsRes = await fetchWithTokenRefresh('/api/assessment/assignments/');
       if (assignmentsRes.ok) {
         const assignmentsData = await assignmentsRes.json();
-        setAssignments(assignmentsData.results || assignmentsData);
+        const assignmentList = assignmentsData.results?.assignments || assignmentsData.assignments || assignmentsData.results || assignmentsData;
+        setAssignments(Array.isArray(assignmentList) ? assignmentList : []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -100,6 +110,10 @@ const AssignAssessment = () => {
   const validateForm = (): boolean => {
     if (!formData.assessment_id) {
       MySwal.fire('Validation Error', 'Please select an assessment', 'warning');
+      return false;
+    }
+    if (!canAssignSelectedAssessment) {
+      MySwal.fire('Approval Required', 'This assessment must be approved by admin before assignment', 'warning');
       return false;
     }
     if (!formData.batch_id) {
@@ -152,7 +166,7 @@ const AssignAssessment = () => {
         end_time: formData.end_time,
       };
 
-      const response = await fetch('/api/assessment/assignments/', {
+      const response = await fetchWithTokenRefresh('/api/assessment/assignments/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -190,6 +204,10 @@ const AssignAssessment = () => {
       active: { variant: 'default', label: 'Active' },
       upcoming: { variant: 'secondary', label: 'Upcoming' },
       completed: { variant: 'outline', label: 'Completed' },
+      draft: { variant: 'outline', label: 'Draft' },
+      pending: { variant: 'secondary', label: 'Pending Approval' },
+      approved: { variant: 'default', label: 'Approved' },
+      rejected: { variant: 'destructive', label: 'Rejected' },
     };
 
     const config = statusConfig[status] || { variant: 'outline', label: status };
@@ -198,21 +216,33 @@ const AssignAssessment = () => {
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Assign Assessment to Batch</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-12">
-            <div className="text-muted-foreground">Loading...</div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Assign Assessment</h1>
+          <p className="text-sm text-muted-foreground">Assign approved assessments to batches with a schedule.</p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Assign Assessment to Batch</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center py-12">
+              <div className="text-muted-foreground">Loading...</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Assign Assessment</h1>
+        <p className="text-sm text-muted-foreground">Assign approved assessments to batches with a schedule.</p>
+      </div>
+
       {/* Assignment Form */}
       <Card>
         <CardHeader>
@@ -229,11 +259,16 @@ const AssignAssessment = () => {
                 <SelectContent>
                   {assessments.map((assessment) => (
                     <SelectItem key={assessment.id} value={String(assessment.id)}>
-                      {assessment.title} ({assessment.total_questions} questions)
+                      {assessment.title} ({assessment.question_count ?? assessment.total_questions ?? 0} questions) - {assessment.status === 'approved' ? 'Approved' : 'Waiting for approval'}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {selectedAssessment && !canAssignSelectedAssessment && (
+                <p className="text-xs text-muted-foreground">
+                  Admin approval is required before this assessment can be assigned.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -274,8 +309,8 @@ const AssignAssessment = () => {
           </div>
 
           <div className="mt-6">
-            <Button onClick={handleAssign} disabled={submitting} className="w-full md:w-auto">
-              {submitting ? 'Assigning...' : 'Assign Assessment'}
+            <Button onClick={handleAssign} disabled={submitting || !canAssignSelectedAssessment} className="w-full md:w-auto">
+              {submitting ? 'Assigning...' : !selectedAssessment ? 'Select Assessment' : canAssignSelectedAssessment ? 'Assign Assessment' : 'Waiting for Admin Approval'}
             </Button>
           </div>
         </CardContent>
@@ -301,12 +336,12 @@ const AssignAssessment = () => {
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 space-y-2">
-                        <div className="font-semibold">{assignment.assessment.title}</div>
+                        <div className="font-semibold">{assignment.assessment?.title || assignment.assessment_title || '-'}</div>
                         
                         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Users size={14} />
-                            {assignment.batch.name}
+                            {assignment.batch?.name || assignment.batch_name || '-'}
                           </div>
                           <div className="flex items-center gap-1">
                             <Calendar size={14} />
@@ -319,14 +354,14 @@ const AssignAssessment = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-2 text-xs">
-                          <Badge variant="outline">{assignment.assessment.total_questions} Questions</Badge>
-                          <Badge variant="outline">{assignment.assessment.duration_minutes} min</Badge>
-                          <Badge variant="outline">Pass: {assignment.assessment.passing_percentage}%</Badge>
+                          <Badge variant="outline">{assignment.assessment?.total_questions ?? assignment.assessment?.question_count ?? assignment.question_count ?? 0} Questions</Badge>
+                          <Badge variant="outline">{assignment.assessment?.duration_minutes ?? '-'} min</Badge>
+                          <Badge variant="outline">Pass: {assignment.assessment?.passing_percentage ?? '-'}%</Badge>
                         </div>
                       </div>
 
                       <div>
-                        {getStatusBadge(assignment.status)}
+                        {getStatusBadge(assignment.status || 'active')}
                       </div>
                     </div>
                   </CardContent>

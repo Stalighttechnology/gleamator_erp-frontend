@@ -174,21 +174,15 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
     admin: [
       // Main
       { name: "Dashboard", page: "dashboard" },
-
-      // User Management
-      { name: "Enroll Counselor/MIS", page: "enroll-user" },
       { name: "Branch Management", page: "branches" },
-
-      // Academic Monitoring
+      { name: "Enroll Counselor/MIS", page: "enroll-user" },
       { name: "Batches", page: "batches" },
       { name: "Question Paper Approvals", page: "qp-approvals" },
+      { name: "Assessment Approvals", page: "assessment-approvals" },
       { name: "Low Attendance", page: "low-attendance" },
       { name: "Student Attendance", page: "attendance" },
-
-      // Communication
       { name: "Announcement Management", page: "announcement-management" },
 
-      // Approvals
       { name: "Leave Approvals", page: "hod-leaves" },
       { name: "Short Permission Approvals", page: "short-permissions" },
       { name: "Staff Attendance", page: "hod-attendance" },
@@ -202,118 +196,60 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
     hod: [
       // Main
       { name: "Dashboard", page: "dashboard" },
-
-      // Enrollment & Setup
+      { name: "Batch Assignment", page: "batches" },
+      { name: "Courses", page: "subjects" },      // Enrollment & Setup
       { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
-      { name: "Courses", page: "subjects" },
-
-      // Operations (Batch Hub)
-      { name: "Batch Assignment", page: "batches" },
-      { name: "Faculty Assignments", page: "faculty-assignments" },
-      { name: "Timetable", page: "timetable" },
       { name: "Study Material", page: "study-materials" },
-
-      // Monitoring & Records
-
-      // Communication
       { name: "Announcements", page: "hod-announcement-management" },
-
-      // Self & Requests
       { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leaves", page: "apply-leaves" },
       { name: "Short Permission Request", page: "short-permission-request" },
-
-      // Profile
       { name: "Profile", page: "hod-profile" },
     ],
 
     mis: [
       // Main
       { name: "Dashboard", page: "dashboard" },
-
-      // Enrollment & Setup
+      { name: "Batch Assignment", page: "batches" },
+      { name: "Courses", page: "subjects" },
       { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
-      { name: "Courses", page: "subjects" },
-
-      // Operations (Batch Hub)
-      { name: "Batch Assignment", page: "batches" },
-      { name: "Faculty Assignments", page: "faculty-assignments" },
-      { name: "Timetable", page: "timetable" },
       { name: "Study Material", page: "study-materials" },
-
-      // Monitoring & Records
-
-      // Communication
       { name: "Announcements", page: "hod-announcement-management" },
-
-      // Self & Requests
       { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leaves", page: "apply-leaves" },
       { name: "Short Permission Request", page: "short-permission-request" },
-
-      // Profile
       { name: "Profile", page: "hod-profile" },
     ],
 
     faculty: [
       // Main
       { name: "Dashboard", page: "dashboard" },
-
-      // Attendance & Marks
       { name: "Take Attendance", page: "take-attendance" },
       { name: "Attendance Records", page: "attendance-records" },
       { name: "My Attendance", page: "faculty-attendance" },
-      { name: "Upload Marks", page: "upload-marks" },
-      { name: "Upload QP", page: "upload-qp" },
-      { name: "CO Attainment", page: "co-attainment" },
+      { name: "Create Assessment", page: "assessment/create" },
+      { name: "Assign Assessment", page: "assessment/assign" },
       { name: "Generate Statistics", page: "statistics" },
-
-      // Leave Management
       { name: "Apply Leave", page: "apply-leave" },
       { name: "Short Permission Request", page: "short-permission-request" },
       { name: "Manage Student Leave", page: "student-leave" },
-
-      // Academic
-      { name: "Timetable", page: "timetable" },
-      { name: "Exam Applications", page: "exam-applications" },
-      { name: "Revaluation", page: "revaluation" },
-      { name: "Makeup Exam", page: "makeupexam" },
-      { name: "Proctor Students", page: "proctor-students" },
-      { name: "Scan for Student Info", page: "scan-student-info" },
       { name: "Study Material", page: "study-materials" },
       { name: "Announcements for Students", page: "faculty-announcement-management" },
-
-      // Profile
       { name: "Profile", page: "faculty-profile" },
     ],
 
     student: [
       // Main
       { name: "Dashboard", page: "dashboard" },
-      // Academic
       { name: "Timetable", page: "timetable" },
       { name: "Attendance", page: "attendance" },
-      { name: "Internal Marks", page: "marks" },
       { name: "Study Materials", page: "student-study-material" },
-      { name: "Assignments", page: "student-assignment" },
-      { name: "Revaluation", page: "revaluation" },
-      { name: "Makeup Exam", page: "makeupexam" },
-      { name: "Fees", page: "fees" },
-      // Hostel Details
-      { name: "Hostel Details", page: "student-hostel-details" },
-
-      // Interview
-      { name: "AI Interview", page: "ai-interview" },
-
-      // Communication
+      { name: "Take Test", page: "assessment/test" },
+      { name: "Results", page: "assessment/results" },
       { name: "Announcements", page: "announcements" },
-
-      // Leave Management
       { name: "Leaves", page: "leave" },
-
-      // Profile
       { name: "Profile", page: "profile" },
     ],
 

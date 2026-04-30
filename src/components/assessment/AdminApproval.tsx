@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithTokenRefresh } from "@/utils/authService";
 import { Eye, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
@@ -24,7 +25,8 @@ interface Assessment {
   title: string;
   duration_minutes: number;
   passing_percentage: number;
-  total_questions: number;
+  total_questions?: number;
+  question_count?: number;
   status: string;
   created_by: string;
   created_at: string;
@@ -48,11 +50,12 @@ const AdminApproval = () => {
   const fetchPendingAssessments = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/assessment/assessments/?status=pending_approval');
+      const response = await fetchWithTokenRefresh('/api/assessment/assessments/?status=pending');
       if (!response.ok) throw new Error('Failed to fetch assessments');
       
       const data = await response.json();
-      setAssessments(data.results || data);
+      const pendingAssessments = data.results?.assessments || data.assessments || data.results || data;
+      setAssessments(Array.isArray(pendingAssessments) ? pendingAssessments : []);
     } catch (error) {
       console.error('Error fetching assessments:', error);
       toast({
@@ -93,15 +96,10 @@ const AdminApproval = () => {
     try {
       setProcessingId(assessmentId);
 
-      const payload = {
-        status: action === 'approve' ? 'approved' : 'rejected',
-        comment: actionComment || '',
-      };
-
-      const response = await fetch(`/api/assessment/assessments/${assessmentId}/approve/`, {
-        method: 'PATCH',
+      const response = await fetchWithTokenRefresh(`/api/assessment/assessments/${assessmentId}/${action}/`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ notes: actionComment || '' }),
       });
 
       if (!response.ok) throw new Error(`Failed to ${action} assessment`);
@@ -186,7 +184,7 @@ const AdminApproval = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
                       <div>
                         <div className="text-xs text-muted-foreground">Questions</div>
-                        <div className="font-semibold">{assessment.total_questions}</div>
+                        <div className="font-semibold">{assessment.question_count ?? assessment.total_questions ?? 0}</div>
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Duration</div>

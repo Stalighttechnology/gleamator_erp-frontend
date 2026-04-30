@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import QuestionBuilder from "./QuestionBuilder";
+import { fetchWithTokenRefresh } from "@/utils/authService";
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
@@ -89,12 +90,11 @@ const CreateAssessment = () => {
     return true;
   };
 
-  const buildPayload = (status: 'draft' | 'pending_approval') => ({
+  const buildPayload = () => ({
     title: formData.title,
     duration_minutes: formData.duration_minutes,
     passing_percentage: formData.passing_percentage,
     total_questions: formData.total_questions,
-    status,
     questions: questions.map((q, idx) => ({
       question_number: idx + 1,
       question_text: q.question_text,
@@ -111,10 +111,10 @@ const CreateAssessment = () => {
 
     try {
       setSaving(true);
-      const payload = buildPayload(status);
+      const payload = buildPayload();
 
       // API call simulation
-      const response = await fetch('/api/assessment/assessments/', {
+      const response = await fetchWithTokenRefresh('/api/assessment/assessments/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -123,6 +123,14 @@ const CreateAssessment = () => {
       if (!response.ok) throw new Error('Failed to save assessment');
 
       const result = await response.json();
+      if (status === 'pending_approval') {
+        const approvalResponse = await fetchWithTokenRefresh(`/api/assessment/assessments/${result.assessment_id}/submit-approval/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!approvalResponse.ok) throw new Error('Failed to submit assessment for approval');
+      }
 
       MySwal.fire({
         title: 'Success!',
@@ -145,6 +153,11 @@ const CreateAssessment = () => {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Create Assessment</h1>
+        <p className="text-sm text-muted-foreground">Build an assessment and add questions for students.</p>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Create New Assessment</CardTitle>

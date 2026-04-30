@@ -9,6 +9,7 @@ import COAttainment from "../faculty/COAttainment";
 import ApplyLeave from "../faculty/ApplyLeave";
 import AttendanceRecords from "../faculty/AttendanceRecords";
 import ProctorStudents from "../faculty/ProctorStudents";
+import BatchStudents from "../faculty/BatchStudents";
 import ExamApplication from "../faculty/ExamApplication";
 import Revaluation from "../common/Revaluation";
 import MakeupExam from "../common/MakeupExam";
@@ -62,7 +63,7 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       'attendance-records': 'attendance-records',
       'faculty-attendance': 'faculty-attendance',
       'announcements': 'faculty-announcement-management',
-      'proctor-students': 'proctor-students',
+      'students': 'students',
       'exam-applications': 'exam-applications',
       'student-leave': 'student-leave',
       'timetable': 'timetable',
@@ -90,15 +91,14 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
 
   // Only fetch proctor students when a page requires them (lazy load)
   const pagesNeedingProctor = [
-    'proctor-students',
     'student-leave'
   ];
   const needsProctorData = pagesNeedingProctor.includes(activePage);
   // Determine which fields to include based on active page to minimize payload
-  // Request a lightweight payload with only required fields for the Proctor Students page
+  // Request a lightweight payload for student-leave page with leave request data
   const includeForProctor = activePage === 'student-leave'
     ? 'leave_requests'
-    : (needsProctorData ? (activePage === 'proctor-students' ? 'id,name,usn,semester,section,contact,minimal' : 'students') : undefined);
+    : undefined;
   const onlyWithLeaves = activePage === 'student-leave';
   const { data: proctorStudentsData, isLoading: proctorStudentsLoading, pagination: proctorPagination } = useProctorStudentsQuery(needsProctorData, includeForProctor, undefined, onlyWithLeaves);
   const proctorStudents = proctorStudentsData?.data || [];
@@ -125,7 +125,7 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       'attendance-records': '/faculty/attendance-records',
       'faculty-attendance': '/faculty/faculty-attendance',
       'announcements': '/faculty/announcements',
-      'proctor-students': '/faculty/proctor-students',
+      'students': '/faculty/students',
       'exam-applications': '/faculty/exam-applications',
       'revaluation': '/faculty/revaluation',
       'makeupexam': '/faculty/makeupexam',
@@ -137,6 +137,8 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       'scan-student-info': '/faculty/scan-student-info',
       'study-materials': '/faculty/study-materials',
       'faculty-announcement-management': '/faculty/announcements',
+      'assessment/create': '/assessment/create',
+      'assessment/assign': '/assessment/assign',
       'short-permission-request': '/faculty/short-permission-request'
     };
 
@@ -193,8 +195,8 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       case "announcements":
       case "faculty-announcement-management":
         return <FacultyAnnouncementManagement />;
-      case "proctor-students":
-        return <ProctorStudents proctorStudents={proctorStudents} proctorStudentsLoading={proctorStudentsLoading} pagination={proctorPagination} />;
+      case "students":
+        return <BatchStudents />;
       case "exam-applications":
         return <ExamApplication proctorStudents={proctorStudents} proctorStudentsLoading={proctorStudentsLoading} />;
       case "revaluation":

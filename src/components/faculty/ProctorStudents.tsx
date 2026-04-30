@@ -66,7 +66,7 @@ const ProctorStudents = ({ proctorStudents, proctorStudentsLoading, pagination }
               <tr>
                 <th className={`px-9 py-2 text-left text-sm font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>USN</th>
                 <th className={`px-8 py-2 text-left text-sm font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Name</th>
-                <th className={`px-4 py-2 text-center text-sm font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Semester</th>
+                <th className={`px-4 py-2 text-center text-sm font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Batch</th>
                 <th className={`px-4 py-2 text-center text-sm font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Section</th>
                 <th className={`px-4 py-2 text-center text-sm font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Contact No</th>
               </tr>
@@ -76,7 +76,7 @@ const ProctorStudents = ({ proctorStudents, proctorStudentsLoading, pagination }
                 <tr key={index} className={theme === 'dark' ? 'hover:bg-muted' : 'hover:bg-gray-100'}>
                   <td className={`px-4 py-2 text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>{student.usn}</td>
                   <td className={`px-4 py-2 text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>{student.name}</td>
-                  <td className={`px-4 py-2 text-center text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>{student.semester}</td>
+                  <td className={`px-4 py-2 text-center text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>{student.batch}</td>
                   <td className={`px-4 py-2 text-center text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>{student.section}</td>
                   <td className={`px-4 py-2 text-center text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>{student.contact || '-'}</td>
                 </tr>

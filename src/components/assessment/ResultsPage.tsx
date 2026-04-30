@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithTokenRefresh } from "@/utils/authService";
 import { Download, Search, TrendingUp, TrendingDown, Award, Filter } from "lucide-react";
 import {
   Table,
@@ -81,7 +82,7 @@ const ResultsPage = () => {
       setLoading(true);
 
       // Fetch results
-      const resultsRes = await fetch('/api/assessment/results/');
+      const resultsRes = await fetchWithTokenRefresh('/api/assessment/results/');
       if (resultsRes.ok) {
         const resultsData = await resultsRes.json();
         setResults(resultsData.results || resultsData);
@@ -89,14 +90,14 @@ const ResultsPage = () => {
       }
 
       // Fetch batches
-      const batchesRes = await fetch('/api/assessment/batches/');
+      const batchesRes = await fetchWithTokenRefresh('/api/assessment/batches/');
       if (batchesRes.ok) {
         const batchesData = await batchesRes.json();
         setBatches(batchesData.results || batchesData);
       }
 
       // Fetch courses
-      const coursesRes = await fetch('/api/assessment/courses/');
+      const coursesRes = await fetchWithTokenRefresh('/api/assessment/courses/');
       if (coursesRes.ok) {
         const coursesData = await coursesRes.json();
         setCourses(coursesData.results || coursesData);
@@ -237,21 +238,33 @@ const ResultsPage = () => {
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Assessment Results</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-12">
-            <div className="text-muted-foreground">Loading results...</div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">My Results</h1>
+          <p className="text-sm text-muted-foreground">Review your assessment scores and performance history.</p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Assessment Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center py-12">
+              <div className="text-muted-foreground">Loading results...</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">My Results</h1>
+        <p className="text-sm text-muted-foreground">Review your assessment scores and performance history.</p>
+      </div>
+
       {/* Statistics Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

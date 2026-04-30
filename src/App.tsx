@@ -1,8 +1,13 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { lazy, Suspense, useState, useEffect } from "react";
 import Index from "./components/common/Index";
+import CreateAssessment from "@/components/assessment/CreateAssesment";
+import AssignAssessment from "@/components/assessment/AssignAssesment";
+import StudentTest from "@/components/assessment/StudentTest";
+import ResultsPage from "@/components/assessment/ResultsPage";
+import DashboardLayout from "@/components/common/DashboardLayout";
 
 // Lazy loaded components
 const NotFound = lazy(() => import("./components/common/NotFound"));
@@ -40,6 +45,41 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode;
   }
 
   return <>{children}</>;
+};
+
+const AssessmentLayout = ({
+  role,
+  activePage,
+  user,
+  children,
+}: {
+  role: "faculty" | "student";
+  activePage: string;
+  user: any;
+  children: React.ReactNode;
+}) => {
+  const navigate = useNavigate();
+
+  const handlePageChange = (page: string) => {
+    if (page.startsWith("assessment/")) {
+      navigate(`/${page}`);
+      return;
+    }
+
+    navigate(role === "faculty" ? `/faculty/${page}` : page === "dashboard" ? "/dashboard" : `/${page}`);
+  };
+
+  return (
+    <DashboardLayout
+      role={role}
+      user={user}
+      activePage={activePage}
+      onPageChange={handlePageChange}
+      pageTitle="Assessment"
+    >
+      {children}
+    </DashboardLayout>
+  );
 };
 
 // Helper function to safely parse user data
@@ -151,6 +191,38 @@ const App = () => {
               <ResultsView />
               {shouldShowFloatingAssistant() && <FloatingAssistant />}
             </>
+          } />
+
+          <Route path="/assessment/create" element={
+            <ProtectedRoute allowedRoles={["teacher"]}>
+              <AssessmentLayout role="faculty" activePage="assessment/create" user={userData}>
+                <CreateAssessment />
+              </AssessmentLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assessment/assign" element={
+            <ProtectedRoute allowedRoles={["teacher"]}>
+              <AssessmentLayout role="faculty" activePage="assessment/assign" user={userData}>
+                <AssignAssessment />
+              </AssessmentLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assessment/test" element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <AssessmentLayout role="student" activePage="assessment/test" user={userData}>
+                <StudentTest />
+              </AssessmentLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assessment/results" element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <AssessmentLayout role="student" activePage="assessment/results" user={userData}>
+                <ResultsPage />
+              </AssessmentLayout>
+            </ProtectedRoute>
           } />
 
           {/* Revaluation & Makeup routes: accessible to both teachers and students. Render appropriate dashboard based on current role. */}

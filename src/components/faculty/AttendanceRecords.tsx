@@ -17,14 +17,11 @@ interface AttendanceRecord {
   date: string;
   subject: string | null;
   section: string | null;
-  semester: number | null;
-  branch: string | null;
+  batch: string | null;
   file_path: string | null;
   status: string;
-  branch_id: number | null;
+  batch_id: number | null;
   section_id: number | null;
-  subject_id: number | null;
-  semester_id: number | null;
   summary: {
     present_count: number;
     absent_count: number;
@@ -78,7 +75,7 @@ const AttendanceRecords = () => {
           page_size: pagination.pageSize,
         });
         if (res.success && res.data) {
-          setRecords(res.data);
+          setRecords(Array.isArray(res.data) ? res.data : []);
           pagination.updatePagination(res);
         } else {
           setError(res.message || "Failed to fetch records");
@@ -162,6 +159,10 @@ const AttendanceRecords = () => {
             <SkeletonTable rows={5} columns={8} />
           ) : error ? (
             <div className={`p-4 ${theme === 'dark' ? 'text-destructive' : 'text-red-600'}`}>{error}</div>
+          ) : records.length === 0 ? (
+            <div className={`p-6 text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
+              No attendance records found
+            </div>
           ) : (
             <div className="overflow-y-auto w-full overscroll-contain min-h-0 max-h-[60vh] md:max-h-none md:overflow-visible border rounded-md" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
               <div className="w-full overflow-x-auto">
@@ -170,9 +171,8 @@ const AttendanceRecords = () => {
                     <TableRow>
                       <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Date</TableHead>
                       <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Subject</TableHead>
+                      <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Batch</TableHead>
                       <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Section</TableHead>
-                      <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Semester</TableHead>
-                      <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Branch</TableHead>
                       <TableHead className={`hidden lg:table-cell text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Present</TableHead>
                       <TableHead className={`hidden lg:table-cell text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Absent</TableHead>
                       <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Attendance</TableHead>
@@ -185,9 +185,8 @@ const AttendanceRecords = () => {
                       <TableRow key={record.id} className={theme === 'dark' ? 'hover:bg-muted' : 'hover:bg-gray-50'}>
                         <TableCell className="text-xs md:text-xs lg:text-sm">{record.date}</TableCell>
                         <TableCell className="text-xs md:text-xs lg:text-sm">{record.subject}</TableCell>
+                        <TableCell className="text-xs md:text-xs lg:text-sm">{record.batch}</TableCell>
                         <TableCell className="text-xs md:text-xs lg:text-sm">{record.section}</TableCell>
-                        <TableCell className="text-xs md:text-xs lg:text-sm">{record.semester}</TableCell>
-                        <TableCell className="text-xs md:text-xs lg:text-sm">{record.branch}</TableCell>
                         <TableCell className={`hidden lg:table-cell text-xs md:text-xs lg:text-sm font-semibold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>{record.summary.present_count}</TableCell>
                         <TableCell className={`hidden lg:table-cell text-xs md:text-xs lg:text-sm font-semibold ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>{record.summary.absent_count}</TableCell>
                         <TableCell className="text-xs md:text-xs lg:text-sm font-semibold">{record.summary.present_percentage}%</TableCell>
@@ -226,7 +225,7 @@ const AttendanceRecords = () => {
                                     </div>
                                     <div className="space-y-1">
                                       <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Class</p>
-                                      <p className="text-sm font-semibold">Sem {selectedRecord.semester}, {selectedRecord.branch}</p>
+                                      <p className="text-sm font-semibold">Batch: {selectedRecord.batch}, Section: {selectedRecord.section}</p>
                                     </div>
                                     <div className="space-y-1">
                                       <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Percentage</p>

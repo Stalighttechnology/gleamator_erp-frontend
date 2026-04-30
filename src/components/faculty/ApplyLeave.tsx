@@ -40,8 +40,6 @@ interface LeaveRequestDisplay {
 }
 
 const LeaveRequests = () => {
-  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
-  const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [title, setTitle] = useState<string>('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [reason, setReason] = useState('');
@@ -56,17 +54,13 @@ const LeaveRequests = () => {
   const { theme } = useTheme();
   const today = new Date();
 
-  // Fetch branches and leave history on mount
+  // Fetch leave history on mount
   useEffect(() => {
     setLoading(true);
     getApplyLeaveBootstrap()
       .then((res) => {
         if (res.success && res.data) {
-          const { assignments, leave_requests, branches } = res.data;
-
-          // Set branches from the combined response
-          setBranches(branches);
-          if (branches.length > 0) setSelectedBranch(branches[0].id.toString());
+          const { leave_requests } = res.data;
 
           // Transform backend data to match original mock structure
           const transformedLeaves: LeaveRequestDisplay[] = leave_requests.map((leave) => {
@@ -106,8 +100,8 @@ const LeaveRequests = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!title.trim() || !selectedBranch || !dateRange?.from || !dateRange?.to || !reason.trim()) {
-      setError("Please provide a valid title, branch, date range and reason.");
+    if (!title.trim() || !dateRange?.from || !dateRange?.to || !reason.trim()) {
+      setError("Please provide a valid title, date range and reason.");
       return;
     }
 
@@ -115,7 +109,6 @@ const LeaveRequests = () => {
 
     const requestData = {
       title: title.trim(),
-      branch_ids: [parseInt(selectedBranch)],
       start_date: format(dateRange.from, "yyyy-MM-dd"),
       end_date: format(dateRange.to, "yyyy-MM-dd"),
       reason: reason.trim(),
@@ -147,7 +140,6 @@ const LeaveRequests = () => {
         setReason("");
 
         // Optimistically update the leave list instead of making another API call
-        const selectedBranchName = branches.find(b => b.id.toString() === selectedBranch)?.name || 'Unknown Branch';
         const newLeave: LeaveRequestDisplay = {
           id: `temp-${Date.now()}`, // Temporary ID
           title: title.trim(),
@@ -258,29 +250,6 @@ const LeaveRequests = () => {
               />
             </div>
             
-            {/* Branch Selection */}
-            <div className="space-y-0.5 sm:space-y-1 lg:space-y-2">
-              <Label className={`text-lg font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Branch</Label>
-              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger 
-                  className={`text-xs sm:text-sm h-8 sm:h-9 lg:h-10 ${theme === 'dark' ? 'bg-background border border-input text-foreground' : 'bg-white border border-gray-300 text-gray-900'}`}
-                >
-                  <SelectValue placeholder="Select branch" />
-                </SelectTrigger>
-                <SelectContent className={theme === 'dark' ? 'bg-background border border-input text-foreground' : 'bg-white border border-gray-300 text-gray-900'}>
-                  {branches.map((b) => (
-                    <SelectItem 
-                      key={b.id} 
-                      value={b.id.toString()} 
-                      className={`text-xs sm:text-sm ${theme === 'dark' ? 'hover:bg-accent' : 'hover:bg-gray-100'}`}
-                    >
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Date Range */}
             <div className="space-y-0.5 sm:space-y-1 lg:space-y-2">
               <Label className={`text-lg font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Date Range</Label>
