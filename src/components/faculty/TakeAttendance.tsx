@@ -40,6 +40,7 @@ const TakeAttendance = () => {
   const [assignments, setAssignments] = useState<FacultyAssignment[]>([]);
   const [selectedBatchId, setSelectedBatchId] = useState<string>("");
   const [selectedSection, setSelectedSection] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [students, setStudents] = useState<ClassStudent[]>([]);
   const [attendance, setAttendance] = useState<{ [studentId: number]: boolean }>({});
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -57,8 +58,7 @@ const TakeAttendance = () => {
         setAssignments(resp.data);
         // Auto-select first batch and section
         if (resp.data.length > 0) {
-          setSelectedBatchId(resp.data[0].batch_id.toString());
-          setSelectedSection(resp.data[0].section);
+          // No auto-select, let faculty choose
         }
       }
     };
@@ -104,13 +104,14 @@ const TakeAttendance = () => {
 
   // Get unique sections for selected batch
   const uniqueSections = selectedBatchId
-    ? [
-        ...new Set(
-          assignments
-            .filter(a => a.batch_id.toString() === selectedBatchId)
-            .map(a => a.section)
-        ),
-      ]
+    ? assignments
+        .filter(a => a.batch_id && a.batch_id.toString() === selectedBatchId)
+        .reduce((acc, a) => {
+          if (!acc.some(s => s.id === a.section_id)) {
+            acc.push({ id: a.section_id, name: a.section });
+          }
+          return acc;
+        }, [] as { id: number; name: string }[])
     : [];
 
   const handleAttendance = (studentId: number, present: boolean) => {
@@ -134,6 +135,7 @@ const TakeAttendance = () => {
       const res = await takeAttendance({
         batch_id: selectedBatchId,
         section_id: selectedSection,
+        date: selectedDate,
         method: "manual",
         attendance: attendanceArr,
       });
@@ -179,6 +181,7 @@ const TakeAttendance = () => {
       const res = await aiAttendance({
         batch_id: selectedBatchId,
         section_id: selectedSection,
+        date: selectedDate,
         photo: aiPhoto,
       });
 
@@ -213,15 +216,30 @@ const TakeAttendance = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4 w-full max-w-full">
-            {/* Batch and Section Selection */}
-            <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 w-full">
-              <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
-                <SelectTrigger className={`${theme === 'dark' ? 'bg-background border border-input text-foreground' : 'bg-white border border-gray-300 text-gray-900'} w-full`}>
+            {/* Date, Batch and Section Selection */}
+            <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 w-full">
+              <div className="w-full">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className={`w-full h-10 px-3 rounded-md border ${theme === 'dark' ? 'bg-background border-input text-foreground' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-primary`}
+                />
+              </div>
+              <Select 
+                value={selectedBatchId} 
+                onValueChange={(val) => {
+                  setSelectedBatchId(val);
+                  setSelectedSection(""); // Reset section when batch changes
+                }}
+                disabled={!selectedDate}
+              >
+                <SelectTrigger className={`${theme === 'dark' ? 'bg-background border border-input text-foreground' : 'bg-white border border-gray-300 text-gray-900'} w-full ${!selectedDate ? 'opacity-50' : ''}`}>
                   <SelectValue placeholder="Select Batch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {assignments.map(a => (
-                    <SelectItem key={a.batch_id} value={a.batch_id.toString()}>
+                  {Array.from(new Map(assignments.map(a => [a.batch_id, a])).values()).map((a, idx) => (
+                    <SelectItem key={a.batch_id || idx} value={a.batch_id ? a.batch_id.toString() : ""}>
                       {a.batch}
                     </SelectItem>
                   ))}
@@ -229,21 +247,22 @@ const TakeAttendance = () => {
               </Select>
 
               <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedBatchId}>
-                <SelectTrigger className={`${theme === 'dark' ? 'bg-background border border-input text-foreground' : 'bg-white border border-gray-300 text-gray-900'} w-full`}>
+                <SelectTrigger className={`${theme === 'dark' ? 'bg-background border border-input text-foreground' : 'bg-white border border-gray-300 text-gray-900'} w-full ${!selectedBatchId ? 'opacity-50' : ''}`}>
                   <SelectValue placeholder="Select Section" />
                 </SelectTrigger>
                 <SelectContent>
-                  {uniqueSections.map(section => (
-                    <SelectItem key={section} value={section}>
-                      {section}
+                  {uniqueSections.map(sec => (
+                    <SelectItem key={sec.id} value={sec.id.toString()}>
+                      {sec.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Tabs for Manual and AI Entry */}
-            <Tabs defaultValue="manual">
+            {/* Tabs for Manual and AI Entry - Only show after selection */}
+            {selectedBatchId && selectedSection ? (
+              <Tabs defaultValue="manual">
               <TabsList className={`inline-flex h-10 items-center justify-start gap-2 rounded-md p-1 overflow-auto ${theme === 'dark' ? 'bg-muted text-muted-foreground' : 'bg-gray-100 text-gray-500'}`}>
                 <TabsTrigger value="manual">Manual Entry</TabsTrigger>
                 <TabsTrigger value="ai">AI Processing</TabsTrigger>
@@ -344,7 +363,12 @@ const TakeAttendance = () => {
                   </div>
                 </div>
               </TabsContent>
-            </Tabs>
+              </Tabs>
+            ) : (
+              <div className={`p-10 text-center border-2 border-dashed rounded-xl ${theme === 'dark' ? 'border-border text-muted-foreground' : 'border-gray-200 text-gray-500'}`}>
+                <p>Please select Date, Batch, and Section to load student list.</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

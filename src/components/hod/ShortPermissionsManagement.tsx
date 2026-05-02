@@ -17,12 +17,18 @@ interface PermissionRequest {
   reason: string;
   date: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  start_time: string;
+  end_time: string;
+  check_in_location?: string;
+  is_checked_in?: boolean;
   submitted_at: string;
 }
 
 const ShortPermissionsManagement: React.FC<{ setError: any }> = ({ setError }) => {
   const [requests, setRequests] = useState<PermissionRequest[]>([]);
   const [loading, setLoading] = useState(false);
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [checkInLocation, setCheckInLocation] = useState("");
   const { theme } = useTheme();
   const { toast } = useToast();
 
@@ -60,12 +66,18 @@ const ShortPermissionsManagement: React.FC<{ setError: any }> = ({ setError }) =
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
-        body: JSON.stringify({ id, status }),
+        body: JSON.stringify({ 
+          id, 
+          status,
+          check_in_location: status === 'APPROVED' ? checkInLocation : undefined
+        }),
       });
       const data = await response.json();
-      if (data.success) {
-        setRequests(prev => prev.map(req => req.id === id ? { ...req, status } : req));
-        toast({
+        if (data.success) {
+          setRequests(prev => prev.map(req => req.id === id ? { ...req, status, check_in_location: status === 'APPROVED' ? checkInLocation : req.check_in_location } : req));
+          setApprovingId(null);
+          setCheckInLocation("");
+          toast({
           title: `Request ${status.charAt(0) + status.slice(1).toLowerCase()}`,
           description: `The permission request has been ${status.toLowerCase()} successfully.`
         });
@@ -156,28 +168,64 @@ const ShortPermissionsManagement: React.FC<{ setError: any }> = ({ setError }) =
                             <Calendar className="w-3 h-3 text-primary" /> {req.date}
                           </span>
                           <span className="opacity-70 mt-1 flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> {new Date(req.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <Clock className="w-3 h-3" /> {req.start_time} - {req.end_time}
                           </span>
                         </div>
                       </td>
                       <td className="py-4 px-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-600 hover:text-white rounded-full px-4"
-                            onClick={() => handleAction(req.id, "APPROVED")}
-                          >
-                            <Check className="w-4 h-4 mr-1" /> Approve
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-600 hover:text-white rounded-full px-4"
-                            onClick={() => handleAction(req.id, "REJECTED")}
-                          >
-                            <X className="w-4 h-4 mr-1" /> Reject
-                          </Button>
+                        <div className="flex flex-col items-end gap-2">
+                          {approvingId === req.id ? (
+                            <div className="flex flex-col gap-2 w-full max-w-[200px]">
+                              <input 
+                                type="text"
+                                placeholder="Set Check-in Location"
+                                value={checkInLocation}
+                                onChange={(e) => setCheckInLocation(e.target.value)}
+                                className={`text-xs p-2 rounded-md border ${theme === 'dark' ? 'bg-background border-border' : 'bg-white border-gray-200'}`}
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm"
+                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                                  onClick={() => handleAction(req.id, "APPROVED")}
+                                  disabled={!checkInLocation.trim()}
+                                >
+                                  Confirm
+                                </Button>
+                                <Button 
+                                  size="sm"
+                                  variant="ghost"
+                                  className="flex-1"
+                                  onClick={() => {
+                                    setApprovingId(null);
+                                    setCheckInLocation("");
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex justify-end gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-600 hover:text-white rounded-full px-4"
+                                onClick={() => setApprovingId(req.id)}
+                              >
+                                <Check className="w-4 h-4 mr-1" /> Approve
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-600 hover:text-white rounded-full px-4"
+                                onClick={() => handleAction(req.id, "REJECTED")}
+                              >
+                                <X className="w-4 h-4 mr-1" /> Reject
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

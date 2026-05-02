@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { applyLeave, getApplyLeaveBootstrap } from '../../utils/faculty_api';
+import { applyLeave, getApplyLeaveBootstrap, getFacultyLeaveRequests } from '../../utils/faculty_api';
 import { useTheme } from '@/context/ThemeContext';
 import { SkeletonList } from '@/components/ui/skeleton';
 import Swal from 'sweetalert2';
@@ -57,18 +57,23 @@ const LeaveRequests = () => {
   // Fetch leave history on mount
   useEffect(() => {
     setLoading(true);
-    getApplyLeaveBootstrap()
-      .then((res) => {
-        if (res.success && res.data) {
-          const { leave_requests } = res.data;
+    
+    // Fetch both bootstrap data (for assignments/branches) and the full leave requests list
+    Promise.all([
+      getApplyLeaveBootstrap(),
+      getFacultyLeaveRequests()
+    ])
+      .then(([bootstrapRes, leavesData]) => {
+        if (bootstrapRes.success && bootstrapRes.data) {
+          // Use the full leave list from the specific endpoint instead of the filtered bootstrap list
+          const leave_requests = leavesData || [];
 
           // Transform backend data to match original mock structure
           const transformedLeaves: LeaveRequestDisplay[] = leave_requests.map((leave) => {
-            console.log('Original status from backend:', leave.status);
-            const mappedStatus = (leave.status === 'PENDING' ? 'Pending' :
-                                leave.status === 'APPROVED' ? 'Approved' :
-                                leave.status === 'REJECTED' ? 'Rejected' : 'Pending') as 'Pending' | 'Approved' | 'Rejected';
-            console.log('Mapped status:', mappedStatus);
+            const rawStatus = (leave.status || 'PENDING').toUpperCase();
+            const mappedStatus = (rawStatus === 'PENDING' ? 'Pending' :
+                                rawStatus === 'APPROVED' ? 'Approved' :
+                                rawStatus === 'REJECTED' ? 'Rejected' : 'Pending') as 'Pending' | 'Approved' | 'Rejected';
 
             return {
               id: leave.id,
@@ -82,10 +87,13 @@ const LeaveRequests = () => {
           });
           setLeaveList(transformedLeaves);
         } else {
-          setError(res.message || 'Failed to load data');
+          setError(bootstrapRes.message || 'Failed to load data');
         }
       })
-      .catch(() => setError('Failed to load data'))
+      .catch((err) => {
+        console.error('Error loading leave data:', err);
+        setError('Failed to load data');
+      })
       .finally(() => setLoading(false));
   }, []);
 

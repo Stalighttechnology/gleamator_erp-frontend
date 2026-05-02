@@ -47,7 +47,7 @@ import {
 import { motion } from "framer-motion";
 import DashboardCard from "../common/DashboardCard";
 import { FaUserGraduate, FaChalkboardTeacher, FaUserCheck } from "react-icons/fa";
-import { getFacultyDashboardBootstrap, getFacultyAssignments, getStudentsForRegular } from "@/utils/faculty_api";
+import { getFacultyDashboardBootstrap, getFacultyAssignments, getStudentsForRegular, getFacultyLeaveRequests, FacultyLeaveRequest, getFacultyShortPermissions, FacultyShortPermissionRequest, checkInShortPermission } from "@/utils/faculty_api";
 import { useTheme } from "@/context/ThemeContext";
 import { SkeletonStatsGrid, SkeletonChart, SkeletonCard } from "../ui/skeleton";
 
@@ -89,6 +89,8 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
   const [todayClasses, setTodayClasses] = useState<TodayClass[]>([]);
   const [ongoingClass, setOngoingClass] = useState<TodayClass | null>(null);
   const [nextClass, setNextClass] = useState<TodayClass | null>(null);
+  const [leaveRequests, setLeaveRequests] = useState<FacultyLeaveRequest[]>([]);
+  const [shortPermissions, setShortPermissions] = useState<FacultyShortPermissionRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -190,8 +192,8 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
             const key = `${assignment.batch_id}-${assignment.section}`;
             if (!batchSectionMap.has(key)) {
               batchSectionMap.set(key, {
-                batch_id: assignment.batch_id.toString(),
-                section_id: assignment.section
+                batch_id: assignment.batch_id ? assignment.batch_id.toString() : "",
+                section_id: assignment.section_id.toString()
               });
             }
           }
@@ -255,6 +257,20 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
         setTodayClasses(todayClassesFromBootstrap);
         determineClassStatus(todayClassesFromBootstrap);
 
+        // Fetch Leave Requests
+        console.log('Fetching faculty leave requests...');
+        const leavesRes = await getFacultyLeaveRequests();
+        if (Array.isArray(leavesRes)) {
+          setLeaveRequests(leavesRes.slice(0, 5)); // Show only top 5 recent leaves
+        }
+
+        // Fetch Short Permissions
+        console.log('Fetching faculty short permissions...');
+        const shortPermsRes = await getFacultyShortPermissions();
+        if (shortPermsRes.success && shortPermsRes.data) {
+          setShortPermissions(shortPermsRes.data);
+        }
+
         
       } catch (err) {
         setError("Network error occurred while fetching data");
@@ -266,6 +282,17 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
     fetchData();
     // eslint-disable-next-line
   }, []);
+
+  const handleCheckIn = async (id: number) => {
+    try {
+      const res = await checkInShortPermission(id);
+      if (res.success) {
+        setShortPermissions(prev => prev.map(p => p.id === id ? { ...p, is_checked_in: true } : p));
+      }
+    } catch (err) {
+      console.error("Check-in error:", err);
+    }
+  };
 
   // We no longer load the full proctor student list on the dashboard.
   // Charts are replaced by aggregated performance metrics provided by the bootstrap API.
@@ -475,6 +502,105 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
             </CardContent>
           </Card>
         </section>
+
+        {/* Recent Leave Requests (New Section) */}
+        <section className="w-full">
+          <Card className={`h-full flex flex-col w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-200'} shadow-sm`}>
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className={`text-lg font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Recent Leave Requests</CardTitle>
+                <p className={`text-sm ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>Track your submitted leave applications</p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setActivePage("apply-leave")}
+                className={theme === 'dark' ? 'border-border' : ''}
+              >
+                View All
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {leaveRequests.length === 0 ? (
+                <div className={`text-center py-6 text-sm ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                  No recent leave requests found.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {leaveRequests.map((leave) => (
+                    <div 
+                      key={leave.id} 
+                      className={`p-4 border rounded-lg flex flex-col justify-between gap-2 ${
+                        theme === 'dark' ? 'bg-background border-border hover:bg-accent/50' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <h4 className={`font-semibold text-sm truncate ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>{leave.title}</h4>
+                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>
+                            {leave.start_date} to {leave.end_date}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          (leave.status || '').toUpperCase() === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-500' :
+                          (leave.status || '').toUpperCase() === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-500' :
+                          'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500'
+                        }`}>
+                          {leave.status === 'PENDING' ? 'Pending' : 
+                           leave.status === 'APPROVED' ? 'Approved' : 
+                           leave.status === 'REJECTED' ? 'Rejected' : leave.status}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className={`text-[10px] ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                          Applied: {leave.applied_on}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Active Short Permissions (New Section) */}
+        {shortPermissions.some(p => p.status === 'APPROVED' && !p.is_checked_in) && (
+          <section className="w-full">
+            <Card className={`border-2 border-primary shadow-lg ${theme === 'dark' ? 'bg-primary/5' : 'bg-primary/5'}`}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <MapPin className="text-primary w-5 h-5" />
+                  Active Permission Check-in
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Report back at the specified location once your permission time ends.</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {shortPermissions.filter(p => p.status === 'APPROVED' && !p.is_checked_in).map(perm => (
+                    <div key={perm.id} className={`p-4 rounded-xl border flex flex-col md:flex-row items-center justify-between gap-4 ${theme === 'dark' ? 'bg-background border-primary/20' : 'bg-white border-primary/20'}`}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          <Clock className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="font-bold">{perm.start_time} - {perm.end_time}</p>
+                          <p className="text-xs text-muted-foreground">Location: <span className="text-primary font-bold">{perm.check_in_location}</span></p>
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => handleCheckIn(perm.id)}
+                        className="w-full md:w-auto px-8 h-12 rounded-full font-bold shadow-lg shadow-primary/20"
+                      >
+                        Check-in at Location
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
 
       </div>
 

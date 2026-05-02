@@ -102,6 +102,7 @@ export interface TakeAttendanceRequest {
   section_id: string;
   method: "manual" | "ai";
   class_images?: File[];
+  date?: string;
   attendance?: Array<{ student_id: string; status: boolean }>;
 }
 
@@ -334,6 +335,7 @@ interface GetApplyLeaveBootstrapResponse {
   data?: {
     assignments: FacultyAssignment[];
     leave_requests: FacultyLeaveRequest[];
+    short_permission_requests: any[];
     branches: { id: number; name: string }[];
   };
 }
@@ -456,6 +458,19 @@ export interface FacultyLeaveRequest {
   reviewed_by?: string | null;
 }
 
+export interface FacultyShortPermissionRequest {
+  id: number;
+  type: string;
+  date: string;
+  reason: string;
+  status: string;
+  start_time: string;
+  end_time: string;
+  check_in_location: string;
+  is_checked_in: boolean;
+  submitted_at: string;
+}
+
 
 
 // Faculty-specific API functions
@@ -483,6 +498,9 @@ export const takeAttendance = async (
     formData.append("batch_id", data.batch_id);
     formData.append("section_id", data.section_id);
     formData.append("method", data.method);
+    if (data.date) {
+      formData.append("date", data.date);
+    }
     if (data.method === "ai" && data.class_images) {
       data.class_images.forEach((file, index) => {
         formData.append(`class_images[${index}]`, file);
@@ -509,6 +527,7 @@ export interface AIAttendanceRequest {
   batch_id: string;
   section_id: string;
   photo: File;
+  date?: string;
 }
 
 interface AIAttendanceResponse {
@@ -540,6 +559,9 @@ export const aiAttendance = async (
     formData.append("batch_id", data.batch_id);
     formData.append("section_id", data.section_id);
     formData.append("photo", data.photo);
+    if (data.date) {
+      formData.append("date", data.date);
+    }
 
     const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/ai-attendance/`, {
       method: "POST",
@@ -598,6 +620,39 @@ export const applyLeave = async (
     return await response.json();
   } catch (error) {
     console.error("Apply Leave Error:", error);
+    return { success: false, message: "Network error" };
+  }
+};
+
+export const getFacultyShortPermissions = async (): Promise<{ success: boolean; data?: FacultyShortPermissionRequest[]; message?: string }> => {
+  try {
+    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/short-permissions/submit/`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        "Content-Type": "application/json",
+      },
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Get Short Permissions Error:", error);
+    return { success: false, message: "Network error" };
+  }
+};
+
+export const checkInShortPermission = async (id: number): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/short-permissions/check-in/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Check-in Short Permission Error:", error);
     return { success: false, message: "Network error" };
   }
 };

@@ -21,6 +21,8 @@ import {
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 import { getHODStats, manageLeaves, manageProfile, getHODDashboard, getHODDashboardBootstrap } from "../../utils/hod_api";
+import { getFacultyShortPermissions, checkInShortPermission, FacultyShortPermissionRequest } from "../../utils/faculty_api";
+import { Clock, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "../../context/ThemeContext";
 import { SkeletonCard, SkeletonChart, SkeletonList, SkeletonStatsGrid, SkeletonTable, Skeleton } from "../ui/skeleton";
@@ -77,6 +79,7 @@ export default function HODStats({ setError, setPage, onBootstrapData }: HODStat
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [shortPermissions, setShortPermissions] = useState<FacultyShortPermissionRequest[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const navigate = useNavigate();
   const [branchId, setBranchId] = useState<string | null>(null);
@@ -157,6 +160,16 @@ export default function HODStats({ setError, setPage, onBootstrapData }: HODStat
       setErrors(["Failed to fetch dashboard data"]);
     } finally {
       setIsLoading(false);
+    }
+    
+    // Fetch short permissions
+    try {
+      const spRes = await getFacultyShortPermissions();
+      if (spRes.success && spRes.data) {
+        setShortPermissions(spRes.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch short permissions:", err);
     }
   };
 
@@ -266,10 +279,21 @@ const handleApprove = async (index: number) => {
     });
   };
 
-  // Initial data fetch
   useEffect(() => {
     fetchDashboardBootstrap();
   }, []);
+
+  const handleCheckIn = async (id: number) => {
+    try {
+      const res = await checkInShortPermission(id);
+      if (res.success) {
+        setShortPermissions(prev => prev.map(p => p.id === id ? { ...p, is_checked_in: true } : p));
+        Swal.fire("Success", "Checked-in successfully!", "success");
+      }
+    } catch (err) {
+      console.error("Check-in error:", err);
+    }
+  };
 
   // Transform attendance trend for chart
   const chartData = stats?.attendance_trend?.length
@@ -469,6 +493,39 @@ const handleApprove = async (index: number) => {
           </div>
         </div>
       </div>
+
+      {/* Active Short Permissions */}
+      {shortPermissions.some(p => p.status === 'APPROVED' && !p.is_checked_in) && (
+        <div className="mt-6">
+          <div className={`p-6 rounded-lg shadow-sm border-2 border-primary ${theme === 'dark' ? 'bg-primary/5 border-primary/30' : 'bg-primary/5 border-primary/20'}`}>
+            <div className="flex items-center gap-3 mb-4">
+              <MapPin className="text-primary w-6 h-6" />
+              <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Active Permission Check-in</h3>
+            </div>
+            <div className="space-y-4">
+              {shortPermissions.filter(p => p.status === 'APPROVED' && !p.is_checked_in).map(perm => (
+                <div key={perm.id} className={`p-4 rounded-xl border flex flex-col md:flex-row items-center justify-between gap-4 ${theme === 'dark' ? 'bg-background border-primary/20' : 'bg-white border-primary/10'}`}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="font-bold">{perm.start_time} - {perm.end_time}</p>
+                      <p className="text-xs text-muted-foreground">Location: <span className="text-primary font-bold">{perm.check_in_location}</span></p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => handleCheckIn(perm.id)}
+                    className="w-full md:w-auto px-8 py-3 bg-primary text-white rounded-full font-bold shadow-lg hover:bg-primary/90 transition-all"
+                  >
+                    Check-in at Location
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Leave Requests */}
       <div className={`p-6 rounded-lg shadow-sm text-sm ${theme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-gray-200'} ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>

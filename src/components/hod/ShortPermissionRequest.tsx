@@ -15,12 +15,16 @@ interface HistoryRequest {
   date: string;
   reason: string;
   status: string;
+  start_time?: string;
+  end_time?: string;
   submitted_at: string;
 }
 
 const ShortPermissionRequest: React.FC = () => {
   const [permissionType, setPermissionType] = useState<"1hr" | "2hr">("1hr");
   const [reason, setReason] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [history, setHistory] = useState<HistoryRequest[]>([]);
@@ -61,7 +65,9 @@ const ShortPermissionRequest: React.FC = () => {
     try {
       const response = await api.post('/hod/short-permissions/submit/', {
         type: permissionType,
-        reason: reason
+        reason: reason,
+        start_time: startTime,
+        end_time: endTime
       });
       
       if (response.data.success) {
@@ -160,7 +166,16 @@ const ShortPermissionRequest: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPermissionType("2hr")}
+                      onClick={() => {
+                        setPermissionType("2hr");
+                        // Automatically set end time if start time exists
+                        if (startTime) {
+                           const [h, m] = startTime.split(':').map(Number);
+                           const d = new Date();
+                           d.setHours(h + 2, m);
+                           setEndTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+                        }
+                      }}
                       className={`flex-1 py-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center gap-2 relative overflow-hidden group ${
                         permissionType === "2hr"
                           ? "border-primary bg-primary/5 text-primary shadow-lg shadow-primary/10"
@@ -175,6 +190,37 @@ const ShortPermissionRequest: React.FC = () => {
                          </motion.div>
                       )}
                     </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Start Time</label>
+                    <input 
+                      type="time" 
+                      value={startTime}
+                      onChange={(e) => {
+                        setStartTime(e.target.value);
+                        // Auto-calculate end time
+                        const hoursToAdd = permissionType === "1hr" ? 1 : 2;
+                        const [h, m] = e.target.value.split(':').map(Number);
+                        const d = new Date();
+                        d.setHours(h + hoursToAdd, m);
+                        setEndTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+                      }}
+                      className={`w-full p-4 rounded-2xl border-2 ${theme === 'dark' ? 'bg-background border-border' : 'bg-white border-gray-100'} focus:border-primary transition-all text-lg font-bold`}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">End Time</label>
+                    <input 
+                      type="time" 
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className={`w-full p-4 rounded-2xl border-2 ${theme === 'dark' ? 'bg-background border-border' : 'bg-white border-gray-100'} focus:border-primary transition-all text-lg font-bold`}
+                      required
+                    />
                   </div>
                 </div>
 
@@ -254,7 +300,7 @@ const ShortPermissionRequest: React.FC = () => {
                              <Calendar className="w-3 h-3" /> {item.date}
                            </span>
                            <span className="flex items-center gap-1">
-                             <Clock className="w-3 h-3" /> {new Date(item.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                             <Clock className="w-3 h-3" /> {item.start_time} - {item.end_time}
                            </span>
                         </div>
                       </motion.div>
