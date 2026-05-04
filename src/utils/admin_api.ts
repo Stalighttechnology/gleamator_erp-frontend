@@ -97,6 +97,9 @@ interface ManageBatchesRequest {
   name?: string;
   page?: number;
   page_size?: number;
+  sections?: string[];
+  courses?: string[];
+  faculty?: string[];
 }
 
 interface Notification {

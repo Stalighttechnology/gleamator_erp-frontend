@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { manageBatches } from "../../utils/admin_api";
 import { getSemesterBootstrap, getFacultyAssignmentsBootstrap } from "../../utils/hod_api";
+import { fetchWithTokenRefresh } from "../../utils/authService";
+import { API_ENDPOINT } from "../../utils/config";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
@@ -35,6 +37,10 @@ interface BatchManagementProps {
 
 const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, viewOnly = false }) => {
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalBatches, setTotalBatches] = useState(0);
+  const [pageSize] = useState(10);
   const [loading, setLoading] = useState(false);
   const [newBatch, setNewBatch] = useState<{ name: string; sections: string[] }>({ name: "", sections: [] });
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
@@ -50,18 +56,36 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<Batch | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewBatch, setViewBatch] = useState<Batch | null>(null);
+
+  // Students modal state
+  const [students, setStudents] = useState<Array<any>>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentsPage, setStudentsPage] = useState(1);
+  const [studentsTotalPages, setStudentsTotalPages] = useState(1);
+  const [studentsTotal, setStudentsTotal] = useState(0);
+  const STUDENTS_PAGE_SIZE = 8;
+  const [facultyPage, setFacultyPage] = useState(1);
+  const FACULTY_PAGE_SIZE = 8;
   const { theme } = useTheme();
 
   const fetchBatches = async () => {
     setLoading(true);
     if (setError) setError(null);
     try {
-      const res = await manageBatches();
+      const res = await manageBatches({ page: currentPage, page_size: pageSize });
+      // Handle paginated/responses which may be wrapped
       const hasResults = res && typeof res === 'object' && 'results' in res;
       const dataSource = hasResults ? (res as any).results : (res as any);
-      
+
       if (dataSource && dataSource.success) {
-        setBatches(dataSource.batches || []);
+        const batchesData = dataSource.batches || [];
+        setBatches(batchesData);
+        // Pagination metadata
+        const pagination = (hasResults ? res : dataSource) as any;
+        setTotalBatches(pagination.count || 0);
+        setTotalPages(Math.max(1, Math.ceil((pagination.count || 0) / pageSize)));
       }
     } catch (err) {
       if (setError) setError("Network error");
@@ -94,6 +118,53 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
     fetchBatches();
     if (!viewOnly) fetchOptions();
   }, [viewOnly]);
+
+  // Refetch when page changes
+  useEffect(() => {
+    fetchBatches();
+  }, [currentPage]);
+
+  const openViewDialog = async (batch: Batch) => {
+    setViewBatch(batch);
+    setViewDialogOpen(true);
+    setStudentsPage(1);
+    setFacultyPage(1);
+    await fetchBatchStudents(batch.id, 1);
+  };
+
+  const fetchBatchStudents = async (batchId: number, page: number = 1) => {
+    setStudentsLoading(true);
+    try {
+      const url = `${API_ENDPOINT}/hod/students/?batch_id=${batchId}&page=${page}&page_size=${STUDENTS_PAGE_SIZE}`;
+      const resp = await fetchWithTokenRefresh(url, { method: 'GET' });
+      const result = await resp.json();
+      if (!resp.ok) {
+        setStudents([]);
+        setStudentsTotal(0);
+        setStudentsTotalPages(1);
+      } else {
+        // DRF paginator returns results list directly
+        const hasResults = result && typeof result === 'object' && Array.isArray(result.results);
+        const list = hasResults ? result.results : (Array.isArray(result) ? result : result || []);
+        setStudents(list.map((s: any) => ({
+          usn: s.usn || s.student_id || s.usn,
+          name: s.name || s.user?.first_name || '',
+          email: s.email || s.user?.email || s.user?.email || '',
+          semester: s.semester || s.semester,
+          section: s.section || s.section,
+        })));
+        const pagination = hasResults ? result : result;
+        setStudentsTotal(pagination.count || (Array.isArray(list) ? list.length : 0));
+        setStudentsTotalPages(Math.max(1, Math.ceil((pagination.count || list.length || 0) / STUDENTS_PAGE_SIZE)));
+      }
+    } catch (e) {
+      setStudents([]);
+      setStudentsTotal(0);
+      setStudentsTotalPages(1);
+    } finally {
+      setStudentsLoading(false);
+    }
+  };
 
   const handleAddBatch = async () => {
     setLoading(true);
@@ -204,12 +275,12 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left border-collapse">
                 <thead>
-                  <tr className="border-b">
+                    <tr className="border-b">
                     <th className="py-3 px-4">Batch Name</th>
                     <th className="py-3 px-4">Sections</th>
                     <th className="py-3 px-4">Assignments</th>
                     <th className="py-3 px-4 text-center">Students</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4 text-right">View</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -246,16 +317,9 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
                       </td>
                       <td className="py-3 px-4 text-center">{batch.student_count}</td>
                       <td className="py-3 px-4 text-right">
-                        {!viewOnly && (
-                          <div className="flex justify-end gap-2">
-                            <Button size="icon" variant="ghost" onClick={() => handleEditBatch(batch)}>
-                              <Edit className="w-4 h-4 text-primary" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => { setBatchToDelete(batch); setDeleteDialogOpen(true); }}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex justify-end">
+                          <Button size="sm" variant="outline" onClick={() => openViewDialog(batch)}>View</Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -264,6 +328,14 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
             </div>
           )}
         </CardContent>
+        {/* Pagination controls for batches */}
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="text-sm text-muted-foreground">Showing page {currentPage} of {totalPages} ({totalBatches} batches)</div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1}>Prev</Button>
+            <Button size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages}>Next</Button>
+          </div>
+        </div>
       </Card>
 
       <Dialog open={!!editingBatch} onOpenChange={() => setEditingBatch(null)}>
@@ -364,6 +436,77 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
               }
               setLoading(false);
             }}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* View Batch Members Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Batch Members - {viewBatch?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="p-2 space-y-4">
+            <h4 className="font-medium">Students</h4>
+            <div className="overflow-x-auto">
+              {studentsLoading ? (
+                <div className="p-4">Loading...</div>
+              ) : students.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground">No students found</div>
+              ) : (
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="py-2 px-3">USN</th>
+                      <th className="py-2 px-3">Name</th>
+                      <th className="py-2 px-3">Email</th>
+                      <th className="py-2 px-3">Semester</th>
+                      <th className="py-2 px-3">Section</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {students.map((s) => (
+                      <tr key={s.usn} className="border-b hover:bg-muted/20">
+                        <td className="py-2 px-3">{s.usn}</td>
+                        <td className="py-2 px-3">{s.name}</td>
+                        <td className="py-2 px-3">{s.email}</td>
+                        <td className="py-2 px-3">{s.semester}</td>
+                        <td className="py-2 px-3">{s.section}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            {/* Students pagination - show only if more than page size */}
+            {studentsTotal > STUDENTS_PAGE_SIZE && (
+              <div className="flex items-center justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={async () => { const prev = Math.max(1, studentsPage - 1); setStudentsPage(prev); await fetchBatchStudents(viewBatch!.id, prev); }} disabled={studentsPage <= 1}>Prev</Button>
+                <div className="text-sm text-muted-foreground">Page {studentsPage} of {studentsTotalPages}</div>
+                <Button size="sm" onClick={async () => { const next = Math.min(studentsTotalPages, studentsPage + 1); setStudentsPage(next); await fetchBatchStudents(viewBatch!.id, next); }} disabled={studentsPage >= studentsTotalPages}>Next</Button>
+              </div>
+            )}
+
+            <h4 className="font-medium">Faculty</h4>
+            <div className="grid grid-cols-1 gap-2">
+              {(!viewBatch || !(viewBatch.faculty && viewBatch.faculty.length)) ? (
+                <div className="text-sm text-muted-foreground">No faculty assigned</div>
+              ) : (
+                viewBatch.faculty.slice((facultyPage - 1) * FACULTY_PAGE_SIZE, (facultyPage - 1) * FACULTY_PAGE_SIZE + FACULTY_PAGE_SIZE).map((f: any, idx: number) => (
+                  <div key={idx} className="p-2 border rounded">{f.name}</div>
+                ))
+              )}
+            </div>
+            {/* Faculty pagination - show only if more than page size */}
+            {(viewBatch?.faculty?.length || 0) > FACULTY_PAGE_SIZE && (
+              <div className="flex items-center justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={() => setFacultyPage(p => Math.max(1, p - 1))} disabled={facultyPage <= 1}>Prev</Button>
+                <div className="text-sm text-muted-foreground">Page {facultyPage} of {Math.max(1, Math.ceil((viewBatch?.faculty?.length || 0) / FACULTY_PAGE_SIZE))}</div>
+                <Button size="sm" onClick={() => setFacultyPage(p => Math.min(Math.max(1, Math.ceil((viewBatch?.faculty?.length || 0) / FACULTY_PAGE_SIZE)), p + 1))} disabled={facultyPage >= Math.max(1, Math.ceil((viewBatch?.faculty?.length || 0) / FACULTY_PAGE_SIZE))}>Next</Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

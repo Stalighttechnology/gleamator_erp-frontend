@@ -30,6 +30,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Loader2, Plus, Calendar as CalendarIcon } from "lucide-react";
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -54,6 +56,20 @@ const AdminAnnouncementManagement = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { theme } = useTheme();
+  const MySwal = withReactContent(Swal);
+
+  const showSwal = async (opts: { title: string; text?: string; icon?: 'success' | 'error' | 'warning' | 'info' }) => {
+    const currentTheme = theme === 'dark' ? 'dark' : 'light';
+    return MySwal.fire({
+      title: opts.title,
+      text: opts.text,
+      icon: opts.icon || 'info',
+      confirmButtonText: 'OK',
+      confirmButtonColor: currentTheme === 'dark' ? 'hsl(var(--primary))' : '#3b82f6',
+      background: currentTheme === 'dark' ? '#1c1c1e' : '#ffffff',
+      color: currentTheme === 'dark' ? '#ffffff' : '#000000',
+    });
+  };
 
   // Form state
   const [formData, setFormData] = useState<CreateAnnouncementRequest>({
@@ -88,12 +104,12 @@ const AdminAnnouncementManagement = () => {
 
   const handleCreateOrUpdate = async () => {
     if (!formData.title.trim() || !formData.message.trim()) {
-      alert("Please fill all required fields");
+      await showSwal({ title: 'Please fill all required fields', icon: 'warning' });
       return;
     }
 
     if (formData.target_roles.length === 0) {
-      alert("Please select at least one target role");
+      await showSwal({ title: 'Please select at least one target role', icon: 'warning' });
       return;
     }
 
@@ -104,24 +120,24 @@ const AdminAnnouncementManagement = () => {
           setMyAnnouncements((prev) =>
             prev.map((a) => (a.id === editingId ? response.data : a))
           );
-          alert("Announcement updated successfully");
+          await showSwal({ title: 'Announcement updated successfully', icon: 'success' });
         } else {
-          alert(response.message || "Failed to update announcement");
+          await showSwal({ title: response.message || 'Failed to update announcement', icon: 'error' });
         }
       } else {
         const response = await createAnnouncement(formData);
         if (response.success) {
           setMyAnnouncements((prev) => [response.data, ...prev]);
-          alert("Announcement created successfully");
+          await showSwal({ title: 'Announcement created successfully', icon: 'success' });
         } else {
-          alert(response.message || "Failed to create announcement");
+          await showSwal({ title: response.message || 'Failed to create announcement', icon: 'error' });
         }
       }
 
       setShowCreateDialog(false);
       resetForm();
     } catch (error: any) {
-      alert(error.message || "An error occurred");
+      await showSwal({ title: error?.message || 'An error occurred', icon: 'error' });
     }
   };
 
@@ -146,13 +162,13 @@ const AdminAnnouncementManagement = () => {
       const response = await deleteAnnouncement(deletingId);
       if (response.success) {
         setMyAnnouncements((prev) => prev.filter((a) => a.id !== deletingId));
-        alert("Announcement deleted successfully");
+        await showSwal({ title: 'Announcement deleted successfully', icon: 'success' });
       } else {
-        alert(response.message || "Failed to delete announcement");
+        await showSwal({ title: response.message || 'Failed to delete announcement', icon: 'error' });
       }
       setDeletingId(null);
     } catch (error: any) {
-      alert(error.message || "An error occurred");
+      await showSwal({ title: error?.message || 'An error occurred', icon: 'error' });
     }
   };
 
@@ -164,10 +180,10 @@ const AdminAnnouncementManagement = () => {
           prev.map((a) => (a.id === announcementId ? response.data : a))
         );
       } else {
-        alert(response.message || "Failed to toggle announcement");
+        await showSwal({ title: response.message || 'Failed to toggle announcement', icon: 'error' });
       }
     } catch (error: any) {
-      alert(error.message || "An error occurred");
+      await showSwal({ title: error?.message || 'An error occurred', icon: 'error' });
     }
   };
 

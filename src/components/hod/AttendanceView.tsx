@@ -16,7 +16,8 @@ import {
   DialogClose,
 } from "../ui/dialog";
 import { useToast } from "../ui/use-toast";
-import { manageProfile, manageSections, manageSubjects, getBranches, getSemesters, getAttendanceBootstrap } from "../../utils/hod_api";
+import { getAttendanceBootstrap, getHODStudentBootstrap } from "../../utils/hod_api";
+import { manageBatches } from "../../utils/admin_api";
 import { useTheme } from "../../context/ThemeContext";
 import { SkeletonTable } from "../ui/skeleton";
 
@@ -31,36 +32,9 @@ interface Student {
   section?: string;
 }
 
-interface Semester {
-  id: string;
-  number: number;
-}
-
 interface Section {
   id: string;
   name: string;
-  semester_id: string;
-}
-
-interface Subject {
-  id: string;
-  name: string;
-  subject_code: string;
-  semester_id: string;
-}
-
-// Define types for API response
-interface SectionResponse {
-  id: string;
-  name: string;
-  semester_id: string;
-}
-
-interface SubjectResponse {
-  id: string;
-  name: string;
-  subject_code: string;
-  semester_id: string;
 }
 
 interface AttendanceBootstrapResponse {
@@ -71,10 +45,8 @@ interface AttendanceBootstrapResponse {
       branch: string;
       branch_id: string;
     };
-    semesters: Semester[];
-    sections: SectionResponse[];
-    subjects: SubjectResponse[];
-    attendance: {
+    sections?: Section[];
+    attendance?: {
       students: Student[];
     };
   };
@@ -85,14 +57,9 @@ const AttendanceView = () => {
   const { theme } = useTheme();
 
   // Helper function to format attendance percentage
-  const formatAttendancePercentage = (percentage: number | string | null | undefined): string => {
-    if (percentage === "NA" || percentage === null || percentage === undefined) {
-      return "NA";
-    }
-    if (typeof percentage === "string") {
-      return percentage;
-    }
-    return `${percentage || 0}%`;
+  const formatAttendancePercentage = (percentage: number | null | undefined): string => {
+    if (percentage === null || percentage === undefined) return "NA";
+    return `${Math.round(Math.max(0, Math.min(100, percentage)))}%`;
   };
 
   // Helper function to get progress bar width
@@ -120,28 +87,30 @@ const AttendanceView = () => {
     search: "",
     currentPage: 1,
     selectedStudent: null as Student | null,
+    // filters now use batch_id + section_id only
     filters: {
-      semester_id: "",
+      batch_id: "",
       section_id: "",
-      subject_id: "",
     },
     students: [] as Student[],
     loading: true,
     error: null as string | null,
     branch: "",
     branchId: "",
-    semesters: [] as Semester[],
+    // batches and sections
+    batches: [] as Array<{ id: string; name: string; sections?: Array<{ id: string; name: string }> }> ,
     sections: [] as Section[],
-    subjects: [] as Subject[],
     pagination: {
       page: 1,
-      page_size: 50,
+      page_size: 10,
       total_students: 0,
       total_pages: 0,
     },
+    showLowAttendance: false as boolean,
+    selectedBatchId: "",
   });
 
-  const studentsPerPage = 50;
+  const studentsPerPage = 10;
 
   // Helper to update state
   const updateState = (newState: Partial<typeof state>) => {
@@ -151,35 +120,36 @@ const AttendanceView = () => {
   // Fetch all data using combined endpoint with pagination
   useEffect(() => {
     const fetchData = async () => {
+      // If no batch selected, do not fetch students — avoid incorrect default filters
+      if (!state.filters.batch_id) {
+        updateState({ loading: false });
+        console.debug("AttendanceView: no batch selected, skipping student fetch");
+        return;
+      }
       updateState({ loading: true, search: "", currentPage: 1 });
       try {
-        // Fetch data with pagination support
-        const response = await getAttendanceBootstrap("", {
+        // Fetch data with pagination support (use batch_id + section_id)
+        const params: any = {
           page: state.pagination.page,
           page_size: state.pagination.page_size,
-          ...(state.filters.semester_id && { semester_id: state.filters.semester_id }),
-          ...(state.filters.section_id && { section_id: state.filters.section_id }),
-          ...(state.filters.subject_id && { subject_id: state.filters.subject_id }),
-        });
+          batch_id: state.filters.batch_id,
+        };
+        if (state.filters.section_id) params.section_id = state.filters.section_id;
+        console.debug("AttendanceView: fetching attendance", { selectedBatchId: state.filters.batch_id, selectedSectionId: state.filters.section_id, params });
+        const response = await getAttendanceBootstrap("", params as any);
         if (response.success && response.data) {
+          // Do NOT override sections from server; sections must come from selected batch (client-side)
+          const students = (response.data.attendance?.students || []).map((st) => ({
+            ...st,
+            attendance_percentage: typeof st.attendance_percentage === "number" ? st.attendance_percentage as number : (typeof st.attendance_percentage === "string" && !isNaN(Number(st.attendance_percentage)) ? Number(st.attendance_percentage) : null)
+          }));
+          console.debug("AttendanceView: fetched students", { count: students.length });
           updateState({
             branch: response.data.profile?.branch || "",
             branchId: response.data.profile?.branch_id || "",
-            semesters: response.data.semesters || [],
-            sections: (response.data.sections || []).map((s) => ({
-              id: s.id || "",
-              name: s.name || "-",
-              semester_id: s.semester_id?.toString() || "-",
-            })),
-            subjects: (response.data.subjects || []).map((s) => ({
-              id: s.id || "",
-              name: s.name || "-",
-              subject_code: s.subject_code || "-",
-              semester_id: s.semester_id?.toString() || "-",
-            })),
-            students: response.data.attendance?.students || [],
+            students,
             pagination: {
-              page: response.count ? Math.ceil(response.count / state.pagination.page_size) : 1,
+              page: response.count ? response.count > 0 ? Math.ceil(response.count / state.pagination.page_size) : 1 : 1,
               page_size: state.pagination.page_size,
               total_students: response.count || 0,
               total_pages: response.count ? Math.ceil(response.count / state.pagination.page_size) : 1,
@@ -197,22 +167,105 @@ const AttendanceView = () => {
       }
     };
     fetchData();
-  }, [state.filters.semester_id, state.filters.section_id, state.filters.subject_id, state.pagination.page, state.pagination.page_size, toast]);
+  }, [state.filters.batch_id, state.filters.section_id, state.pagination.page, state.pagination.page_size, toast]);
+  // Update dependencies: fetch when batch or section or pagination change
+  // Note: we'll trigger fetch manually when relevant state changes below
 
-// Use fuzzy search on current page data
+// Fetch batches list on mount (for Batch filter)
+// Fetch batches helper (exposed for retry)
+const fetchBatchesList = async () => {
+  try {
+    console.debug("AttendanceView: fetching batches bootstrap");
+    // Use HOD student bootstrap which includes batches and sections together
+    const boot = await getHODStudentBootstrap(['profile', 'batches', 'sections']);
+    console.debug("AttendanceView: bootstrap result", boot);
+    if (boot && boot.success && boot.data) {
+      const sectionsList = Array.isArray(boot.data.sections) ? boot.data.sections : [];
+      // group sections by batch_id
+      const sectionsByBatch: Record<string, Array<{ id: any; name: any }>> = {};
+      sectionsList.forEach((s: any) => {
+        const bid = String(s.batch_id || s.batch || "");
+        if (!sectionsByBatch[bid]) sectionsByBatch[bid] = [];
+        sectionsByBatch[bid].push({ id: String(s.id), name: s.name });
+      });
+      const batchesList = Array.isArray(boot.data.batches) ? boot.data.batches.map((b: any) => ({ id: String(b.id), name: b.name, sections: sectionsByBatch[String(b.id)] || [] })) : [];
+      updateState({ batches: batchesList });
+      console.debug("AttendanceView: batches loaded", { count: batchesList.length });
+      return;
+    }
+
+    // fallback to admin API if bootstrap not available
+    console.debug("AttendanceView: bootstrap missing, falling back to manageBatches");
+    const res = await manageBatches({ page: 1, page_size: 1000 });
+    console.debug("AttendanceView: manageBatches result", res);
+    const hasResults = res && typeof res === 'object' && 'results' in res;
+    const resultsPayload = hasResults ? (res as any).results : res;
+    // normalize several shapes we've seen in the wild:
+    // 1) { count, results: [{...}, ...] }
+    // 2) { count, results: { success: true, batches: [...] } }
+    // 3) { success: true, batches: [...] }
+    // 4) plain array
+    let batchesArray: any[] = [];
+    if (Array.isArray(resultsPayload)) {
+      batchesArray = resultsPayload;
+    } else if (resultsPayload && resultsPayload.success && Array.isArray((resultsPayload as any).batches)) {
+      batchesArray = (resultsPayload as any).batches;
+    } else if ((res as any).batches && Array.isArray((res as any).batches)) {
+      batchesArray = (res as any).batches;
+    } else if (Array.isArray(res)) {
+      batchesArray = res as any[];
+    }
+
+    if (batchesArray.length > 0) {
+      const list = batchesArray.map((b: any) => ({ id: String(b.id), name: b.name || String(b.id), sections: b.sections || [] }));
+      updateState({ batches: list });
+      console.debug("AttendanceView: fallback batches loaded", { count: list.length });
+    } else {
+      console.debug("AttendanceView: no batches found in manageBatches response");
+    }
+  } catch (e) {
+    console.error("Failed to fetch batches", e);
+  }
+};
+
+useEffect(() => {
+  fetchBatchesList();
+}, []);
+
+// Use fuzzy search on backend results with a fallback substring search for short queries
 const fuse = new Fuse(state.students, {
   keys: ["name", "usn", "semester", "section"],
-  threshold: 0.3,
+  threshold: 0.35,
   includeScore: true,
+  ignoreLocation: true,
 });
 
-// Use fuzzy search
-const filteredStudents = state.search
-  ? fuse.search(state.search).map((result) => result.item)
-  : state.students;
+// Apply filters in order: backend -> search -> low-attendance
+let backendFiltered = state.students || [];
+let searched: Student[] = backendFiltered;
+if (state.search && state.search.trim().length > 0) {
+  const fuseResults = fuse.search(state.search).map(r => r.item);
+  if (fuseResults.length > 0) {
+    searched = fuseResults;
+  } else {
+    // fallback: simple case-insensitive substring match on name/usn/semester/section
+    const q = state.search.toLowerCase().trim();
+    searched = backendFiltered.filter((s) => {
+      const name = (s.name || "").toString().toLowerCase();
+      const usn = (s.usn || "").toString().toLowerCase();
+      const sem = (s.semester || "").toString().toLowerCase();
+      const sec = (s.section || "").toString().toLowerCase();
+      return name.includes(q) || usn.includes(q) || sem.includes(q) || sec.includes(q);
+    });
+  }
+}
+
+let lowFiltered = state.showLowAttendance ? searched.filter(s => typeof s.attendance_percentage === 'number' && s.attendance_percentage < 70) : searched;
 
 const totalPages = state.pagination.total_pages;
-const currentStudents = filteredStudents;  const handlePrev = () => {
+const currentStudents = lowFiltered;
+
+const handlePrev = () => {
     if (state.pagination.page > 1) {
       updateState({
         pagination: { ...state.pagination, page: state.pagination.page - 1 },
@@ -251,20 +304,9 @@ const currentStudents = filteredStudents;  const handlePrev = () => {
     doc.save(`attendance-report-${state.branch}-page-${state.pagination.page}.pdf`);
   };
 
-  // Helper to get display text for dropdowns
-  const getSemesterDisplay = (semesterId: string) => {
-    const semester = state.semesters.find((s) => s.id === semesterId);
-    return semester ? `Semester ${semester.number}` : "";
-  };
-
   const getSectionDisplay = (sectionId: string) => {
     const section = state.sections.find((s) => s.id === sectionId);
     return section ? `Section ${section.name}` : "";
-  };
-
-  const getSubjectDisplay = (subjectId: string) => {
-    const subject = state.subjects.find((s) => s.id === subjectId);
-    return subject ? subject.name : "";
   };
 
   if (state.loading && state.students.length === 0) {
@@ -288,80 +330,58 @@ const currentStudents = filteredStudents;  const handlePrev = () => {
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
-            value={state.filters.semester_id}
-            onValueChange={(value) =>
+            value={state.filters.batch_id}
+            onValueChange={(value) => {
+              const selected = state.batches.find((b) => b.id === value);
+              console.debug("AttendanceView: batch selected", { selectedBatchId: value });
               updateState({
-                filters: { semester_id: value, section_id: "", subject_id: "" },
-                sections: [],
-                subjects: [],
+                filters: { batch_id: value, section_id: "" },
+                sections: selected?.sections?.map((s: any) => ({ id: String(s.id), name: s.name || String(s.id) })) || [],
                 pagination: { ...state.pagination, page: 1 },
-              })
-            }
-            disabled={state.semesters.length === 0}
+                selectedBatchId: value,
+                students: [],
+              });
+            }}
+            disabled={state.batches.length === 0}
           >
             <SelectTrigger className={theme === 'dark' ? 'bg-background text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-              <SelectValue
-                placeholder={state.semesters.length === 0 ? "No semesters available" : "Select Semester"}
-              />
+              <SelectValue placeholder={state.batches.length === 0 ? "No batches available" : "Select Batch"} />
             </SelectTrigger>
             <SelectContent className={theme === 'dark' ? 'bg-background text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-              {state.semesters.map((semester) => (
-                <SelectItem  key={semester.id} value={semester.id} className={theme === 'dark' ? 'focus:bg-accent' : 'focus:bg-gray-100'}>
-                  Semester {semester.number}
+              {state.batches.map((batch) => (
+                <SelectItem key={batch.id} value={batch.id} className={theme === 'dark' ? 'focus:bg-accent' : 'focus:bg-gray-100'}>
+                  {batch.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {/* Retry batches if none loaded */}
+          {state.batches.length === 0 && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className={`text-sm ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>No batches available</span>
+              <Button size="sm" onClick={() => fetchBatchesList()}>Retry</Button>
+            </div>
+          )}
+
           <Select
             value={state.filters.section_id}
-            onValueChange={(value) => updateState({
-              filters: { ...state.filters, section_id: value },
-              pagination: { ...state.pagination, page: 1 }
-            })}
-            disabled={state.sections.length === 0 || !state.filters.semester_id}
+            onValueChange={(value) => {
+              console.debug("AttendanceView: section selected", { selectedSectionId: value });
+              updateState({ filters: { ...state.filters, section_id: value }, pagination: { ...state.pagination, page: 1 }, students: [] });
+            }}
+            disabled={state.sections.length === 0 || !state.filters.batch_id}
           >
             <SelectTrigger className={theme === 'dark' ? 'bg-background text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-              <SelectValue
-                placeholder={
-                  state.sections.length === 0 || !state.filters.semester_id ? "Select semester first" : "Select Section"
-                }
-              />
+              <SelectValue placeholder={state.sections.length === 0 || !state.filters.batch_id ? "Select batch first" : "Select Section"} />
             </SelectTrigger>
             <SelectContent className={theme === 'dark' ? 'bg-background text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-              {state.sections
-                .filter((section) => section.semester_id === state.filters.semester_id)
-                .map((section) => (
-                  <SelectItem key={section.id} value={section.id} className={theme === 'dark' ? 'focus:bg-accent' : 'focus:bg-gray-100'}>
-                    Section {section.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={state.filters.subject_id}
-            onValueChange={(value) => updateState({
-              filters: { ...state.filters, subject_id: value },
-              pagination: { ...state.pagination, page: 1 }
-            })}
-            disabled={state.subjects.length === 0 || !state.filters.semester_id}
-          >
-            <SelectTrigger className={theme === 'dark' ? 'bg-background text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-              <SelectValue
-                placeholder={
-                  state.subjects.length === 0 || !state.filters.semester_id ? "Select semester first" : "Select Subject"
-                }
-              />
-            </SelectTrigger>
-            <SelectContent className={theme === 'dark' ? 'bg-background text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-              {state.subjects
-                .filter((subject) => subject.semester_id === state.filters.semester_id)
-                .map((subject) => (
-                  <SelectItem key={subject.id} value={subject.id} className={theme === 'dark' ? 'focus:bg-accent' : 'focus:bg-gray-100'}>
-                    {subject.name}
-                  </SelectItem>
-                ))}
+              {state.sections.map((section) => (
+                <SelectItem key={section.id} value={section.id} className={theme === 'dark' ? 'focus:bg-accent' : 'focus:bg-gray-100'}>
+                  Section {section.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -375,26 +395,29 @@ const currentStudents = filteredStudents;  const handlePrev = () => {
               value={state.search}
               onChange={(e) => {
                 const value = e.target.value;
-                if (/^[a-zA-Z0-9]*$/.test(value)) {
-                  updateState({ search: value });
-                }
+                updateState({ search: value, pagination: { ...state.pagination, page: 1 } });
               }}
             />
-            {state.search && /[^a-zA-Z0-9]/.test(state.search) && (
-              <span className={`text-sm mt-1 ${theme === 'dark' ? 'text-destructive' : 'text-red-500'}`}>
-                Only alphanumeric characters are allowed
-              </span>
-            )}
           </div>
 
           {/* Export Button */}
-          <Button
-            className="ml-0 md:ml-4 flex items-center gap-2 bg-primary text-white border-primary hover:bg-primary/90 hover:border-primary/90 hover:text-white transition-all duration-200 ease-in-out transform hover:scale-105 shadow-md"
-            onClick={handleExportPDF}
-          >
-            <FileDown size={16} />
-            Export Report
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={state.showLowAttendance ? "destructive" : "default"}
+              onClick={() => updateState({ showLowAttendance: !state.showLowAttendance, pagination: { ...state.pagination, page: 1 } })}
+              className={state.showLowAttendance ? "bg-destructive text-white" : "bg-white text-gray-900"}
+            >
+              View Low Attendance
+            </Button>
+
+            <Button
+              className="ml-0 md:ml-4 flex items-center gap-2 bg-primary text-white border-primary hover:bg-primary/90 hover:border-primary/90 hover:text-white transition-all duration-200 ease-in-out transform hover:scale-105 shadow-md"
+              onClick={handleExportPDF}
+            >
+              <FileDown size={16} />
+              Export Report
+            </Button>
+          </div>
         </div>
 
 

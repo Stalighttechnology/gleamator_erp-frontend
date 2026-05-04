@@ -177,18 +177,13 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Branch Management", page: "branches" },
       { name: "Enroll Counselor/MIS", page: "enroll-user" },
       { name: "Batches", page: "batches" },
-      { name: "Question Paper Approvals", page: "qp-approvals" },
       { name: "Assessment Approvals", page: "assessment-approvals" },
-      { name: "Low Attendance", page: "low-attendance" },
       { name: "Student Attendance", page: "attendance" },
       { name: "Announcement Management", page: "announcement-management" },
-
       { name: "Leave Approvals", page: "hod-leaves" },
       { name: "Staff Attendance", page: "hod-attendance" },
       { name: "Users", page: "users" },
       { name: "Attendance Locations", page: "campus-locations" },
-
-      // Self
       { name: "Profile", page: "profile" },
     ],
 

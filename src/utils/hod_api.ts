@@ -1253,11 +1253,12 @@ export const getLowAttendanceStudents = async (
 
 export const getAttendanceBootstrap = async (
   branch_id?: string,
-  filters: { semester_id?: string; section_id?: string; subject_id?: string; page?: number; page_size?: number } = {}
+  filters: { batch_id?: string; semester_id?: string; section_id?: string; subject_id?: string; page?: number; page_size?: number } = {}
 ): Promise<GetAttendanceBootstrapResponse> => {
   try {
     const params: Record<string, string> = {};
     if (branch_id) params.branch_id = branch_id;
+    if ((filters as any).batch_id) params.batch_id = (filters as any).batch_id;
     if (filters.semester_id) params.semester_id = filters.semester_id;
     if (filters.section_id) params.section_id = filters.section_id;
     if (filters.subject_id) params.subject_id = filters.subject_id;
