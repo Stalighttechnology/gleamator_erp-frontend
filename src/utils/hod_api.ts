@@ -1,5 +1,6 @@
 import { API_ENDPOINT } from "./config";
 import { fetchWithTokenRefresh } from "./authService";
+import { getSections as getSectionsByBatch } from "./faculty_api";
 
 // Type definitions for request and response data
 interface HODStatsResponse {
@@ -319,6 +320,7 @@ interface ManageFacultyAssignmentsRequest {
   assignment_id?: string;
   faculty_id?: string;
   subject_id?: string;
+  batch_id?: string;
   semester_id?: string;
   section_id?: string;
   branch_id: string;
@@ -1856,11 +1858,12 @@ export const manageFacultyAssignments = async (
     if (method === "POST" && !data.action) {
       throw new Error("Action is required for POST requests");
     }
-    if (data.action === "create" && (!data.faculty_id || !data.subject_id || !data.semester_id || !data.section_id)) {
-      throw new Error("Faculty ID, Subject ID, Semester ID, and Section ID are required for create action");
+    // Allow either subject_id (legacy) or batch_id for assignments
+    if (data.action === "create" && (!data.faculty_id || !(data.subject_id || (data as any).batch_id) || !data.semester_id || !data.section_id)) {
+      throw new Error("Faculty ID, (Subject ID or Batch ID), Semester ID, and Section ID are required for create action");
     }
-    if (data.action === "update" && (!data.assignment_id || !data.faculty_id || !data.subject_id || !data.semester_id || !data.section_id)) {
-      throw new Error("Assignment ID, Faculty ID, Subject ID, Semester ID, and Section ID are required for update action");
+    if (data.action === "update" && (!data.assignment_id || !data.faculty_id || !(data.subject_id || (data as any).batch_id) || !data.semester_id || !data.section_id)) {
+      throw new Error("Assignment ID, Faculty ID, (Subject ID or Batch ID), Semester ID, and Section ID are required for update action");
     }
     if (data.action === "delete" && !data.assignment_id) {
       throw new Error("Assignment ID is required for delete action");
@@ -1870,6 +1873,8 @@ export const manageFacultyAssignments = async (
       const params = new URLSearchParams({ branch_id: data.branch_id });
       if (data.semester_id) params.append("semester_id", data.semester_id);
       if (data.section_id) params.append("section_id", data.section_id);
+      // support filtering by batch as well
+      if ((data as any).batch_id) params.append("batch_id", (data as any).batch_id);
       if ((data as any).page) params.append("page", (data as any).page.toString());
       if ((data as any).search) params.append("search", (data as any).search);
       url = `${API_ENDPOINT}/hod/faculty-assignments/?${params.toString()}`;
@@ -2570,5 +2575,85 @@ export const getFacultyAttendanceRecords = async (params?: {
   } catch (error) {
     console.error("Get Faculty Attendance Records Error:", error);
     return { success: false, message: "Network error" };
+  }
+};
+
+// Simple convenience wrapper for fetching batches list
+export const getBatches = async (): Promise<{ success: boolean; message?: string; data?: { batches?: Batch[] } }> => {
+  try {
+    const res = await manageBatches(undefined, undefined, "GET");
+    if (!res) return { success: false, message: 'No response from manageBatches' };
+    // normalize multiple possible response shapes observed in the wild:
+    // - { batches: [...] }
+    // - { results: { success: true, batches: [...] } }
+    // - { success: true, data: { batches: [...] } }
+    // - { success: true, data: [ {id,name}, ... ] }
+    // - { success: true, data: { results: { batches: [...] } } }
+    const anyRes = res as any;
+    let batches: Batch[] = [];
+
+    if (Array.isArray(anyRes.batches)) {
+      batches = anyRes.batches;
+    } else if (Array.isArray(anyRes.results?.batches)) {
+      batches = anyRes.results.batches;
+    } else if (Array.isArray(anyRes.data?.batches)) {
+      batches = anyRes.data.batches;
+    } else if (Array.isArray(anyRes.data)) {
+      batches = anyRes.data;
+    } else if (Array.isArray(anyRes.results)) {
+      batches = anyRes.results;
+    } else {
+      // Fallback: search one level deep for the first array found
+      for (const k of Object.keys(anyRes || {})) {
+        const v = anyRes[k];
+        if (Array.isArray(v)) {
+          batches = v;
+          break;
+        }
+        if (v && typeof v === 'object') {
+          for (const k2 of Object.keys(v)) {
+            if (Array.isArray(v[k2])) {
+              batches = v[k2];
+              break;
+            }
+          }
+          if (batches.length) break;
+        }
+      }
+    }
+
+    // If batches present but none contain `sections`, try fetching per-batch detail
+    const hasSections = batches.some((b: any) => Array.isArray(b.sections) && b.sections.length > 0);
+    if (!hasSections && batches.length) {
+      try {
+        const detailed = await Promise.all(batches.map(async (b: any) => {
+          try {
+            // Prefer faculty API which supports fetching sections by batch_id
+            const secRes = await getSectionsByBatch(String(b.id));
+            if (secRes && secRes.success && Array.isArray(secRes.data)) {
+              return { ...b, sections: secRes.data.map((s: any) => ({ id: s.id, name: s.name })) };
+            }
+            // fallback: try batch detail endpoint if faculty API didn't return sections
+            try {
+              const det = await manageBatches(undefined, String(b.id), "GET");
+              const detAny: any = det;
+              const secs = detAny?.sections ?? detAny?.data?.sections ?? detAny?.results?.sections ?? [];
+              return { ...b, sections: Array.isArray(secs) ? secs.map((s: any) => ({ id: s.id, name: s.name })) : [] };
+            } catch (e) {
+              return { ...b, sections: [] };
+            }
+          } catch (e) {
+            return { ...b, sections: [] };
+          }
+        }));
+        batches = detailed;
+      } catch (e) {
+        console.debug('getBatches: failed to fetch per-batch sections', e);
+      }
+    }
+
+    return { success: !!res.success, message: res.message, data: { batches } };
+  } catch (error: unknown) {
+    return handleApiError(error, (error as any).response) as any;
   }
 };

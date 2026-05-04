@@ -192,6 +192,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Dashboard", page: "dashboard" },
       { name: "Batch Assignment", page: "batches" },
       { name: "Courses", page: "subjects" },      // Enrollment & Setup
+      { name: "Faculty Assignments", page: "faculty-assignments" },
       { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
       { name: "Study Material", page: "study-materials" },
@@ -207,6 +208,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Dashboard", page: "dashboard" },
       { name: "Batch Assignment", page: "batches" },
       { name: "Courses", page: "subjects" },
+      { name: "Faculty Assignments", page: "faculty-assignments" },
       { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
       { name: "Study Material", page: "study-materials" },

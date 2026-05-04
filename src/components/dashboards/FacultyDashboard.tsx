@@ -19,6 +19,7 @@ import Chat from "../common/Chat";
 import FacultyProfile from "../faculty/facultyProfile";
 import GenerateStatistics from "../faculty/GenerateStatistics";
 import FacultyAttendance from "../faculty/FacultyAttendance";
+import FacultyAssignments from "../faculty/FacultyAssignments";
 import StudentInfoScanner from "../hod/StudentInfoScanner";
 import StudyMaterial from "../faculty/StudyMaterial";
 import { logoutUser, fetchWithTokenRefresh } from "../../utils/authService";
@@ -140,6 +141,7 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       'assessment/create': '/assessment/create',
       'assessment/assign': '/assessment/assign',
       'short-permission-request': '/faculty/short-permission-request'
+      ,'faculty-assignments': '/faculty/faculty-assignments'
     };
 
     const path = pathMap[page] || '/faculty/dashboard';
@@ -192,6 +194,8 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
         return <AttendanceRecords />;
       case "faculty-attendance":
         return <FacultyAttendance />;
+      case "faculty-assignments":
+        return <FacultyAssignments />;
       case "announcements":
       case "faculty-announcement-management":
         return <FacultyAnnouncementManagement />;

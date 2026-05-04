@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 import { SkeletonTable } from "../ui/skeleton";
 import { Input } from "../ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
-import { manageSubjects, getSemesters, manageProfile, getHODSubjectBootstrap } from "../../utils/hod_api";
+import { manageSubjects, getSemesters, manageProfile, getHODSubjectBootstrap, getHODStudentBootstrap } from "../../utils/hod_api";
 import { useTheme } from "../../context/ThemeContext";
 
 interface Subject {
@@ -15,6 +15,8 @@ interface Subject {
   semester_id: string;
   subject_type: string;
   credits?: number;
+  batch_id?: string;
+  section_id?: string;
 }
 
 interface Semester {
@@ -28,6 +30,8 @@ interface ManageSubjectsRequest {
   name?: string;
   subject_code?: string;
   semester_id?: string;
+  batch_id?: string;
+  section_id?: string;
   subject_id?: string;
   subject_type?: string;
   credits?: number;
@@ -52,10 +56,12 @@ function isErrorWithMessage(error: unknown): error is ErrorWithMessage {
 interface SubjectManagementState {
   subjects: Subject[];
   semesters: Semester[];
+  batches: Array<{ id: string; name: string }>;
+  sections: Array<{ id: string; name: string; batch_id?: string }>;
   deleteConfirmation: string | null;
   showModal: "add" | "edit" | null;
   currentSubject: Subject | null;
-  newSubject: { code: string; name: string; semester_id: string; subject_type: string; credits: number };
+  newSubject: { code: string; name: string; semester_id: string; subject_type: string; credits: number; batch_id?: string; section_id?: string };
   error: string | null;
   success: string | null;
   loading: boolean;
@@ -72,10 +78,12 @@ const SubjectManagement = () => {
   const [state, setState] = useState<SubjectManagementState>({
     subjects: [],
     semesters: [],
+    batches: [],
+    sections: [],
     deleteConfirmation: null,
     showModal: null,
     currentSubject: null,
-    newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3 },
+    newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3, batch_id: "", section_id: "" },
     error: null,
     success: null,
     loading: false,
@@ -125,6 +133,21 @@ const SubjectManagement = () => {
         }
       } else {
         updateState({ error: semestersRes.message || "Failed to fetch semesters" });
+      }
+
+      // Also fetch batches & sections for batch/section selects
+      try {
+        const stuBoot = await getHODStudentBootstrap(['profile', 'batches', 'sections']);
+        if (stuBoot && stuBoot.success && stuBoot.data) {
+          const batchesList = Array.isArray(stuBoot.data.batches) ? stuBoot.data.batches.map((b: any) => ({ id: String(b.id), name: b.name })) : [];
+          const sectionsList = Array.isArray(stuBoot.data.sections) ? stuBoot.data.sections.map((s: any) => ({ id: String(s.id), name: s.name, batch_id: String(s.batch_id || s.batch || "") })) : [];
+          updateState({ batches: batchesList, sections: sectionsList });
+        } else {
+          // fallback: try admin manageBatches if needed (not implemented here)
+          console.debug("No student bootstrap batches/sections available");
+        }
+      } catch (e) {
+        console.debug("Failed to fetch batches/sections:", e);
       }
 
       return branchId;
@@ -192,8 +215,8 @@ const SubjectManagement = () => {
 
   // Handle adding or updating a subject
   const handleSubmit = async () => {
-    if (!state.newSubject.code || !state.newSubject.name || !state.newSubject.semester_id) {
-      updateState({ error: "All fields are required" });
+    if (!state.newSubject.code || !state.newSubject.name) {
+      updateState({ error: "Code and name are required" });
       return;
     }
 
@@ -202,9 +225,12 @@ const SubjectManagement = () => {
       branch_id: state.branchId,
       name: state.newSubject.name,
       subject_code: state.newSubject.code,
-      semester_id: state.newSubject.semester_id,
-      subject_type: state.newSubject.subject_type,
-      credits: Number(state.newSubject.credits),
+      // enforce defaults for fields removed from UI
+      semester_id: "3",
+      subject_type: "regular",
+      credits: 3,
+      batch_id: state.newSubject.batch_id,
+      section_id: state.newSubject.section_id,
       ...(state.showModal === "edit" && state.currentSubject ? { subject_id: state.currentSubject.id } : {}),
     };
 
@@ -219,9 +245,12 @@ const SubjectManagement = () => {
           id: isCreate ? (createdId || `${Date.now()}`) : (state.currentSubject ? state.currentSubject.id : createdId || `${Date.now()}`),
           name: state.newSubject.name,
           subject_code: state.newSubject.code,
-          semester_id: state.newSubject.semester_id,
-          subject_type: state.newSubject.subject_type,
-          credits: state.newSubject.credits,
+          // UI no longer exposes these; keep backend-safe defaults locally
+          semester_id: "3",
+          subject_type: "regular",
+          credits: 3,
+          batch_id: state.newSubject.batch_id || "",
+          section_id: state.newSubject.section_id || "",
         };
 
         if (isCreate) {
@@ -235,7 +264,7 @@ const SubjectManagement = () => {
             totalPages: newTotalPages,
             success: "Course added successfully",
             showModal: null,
-            newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3 },
+            newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3, batch_id: "", section_id: "" },
             currentSubject: null,
           });
         } else {
@@ -245,7 +274,7 @@ const SubjectManagement = () => {
             subjects: newSubjects,
             success: "Course updated successfully",
             showModal: null,
-            newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3 },
+            newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3, batch_id: "", section_id: "" },
             currentSubject: null,
           });
         }
@@ -269,9 +298,11 @@ const SubjectManagement = () => {
       newSubject: {
         code: subject.subject_code,
         name: subject.name,
-        semester_id: subject.semester_id,
-        subject_type: subject.subject_type,
+        semester_id: subject.semester_id || "3",
+        subject_type: subject.subject_type || "regular",
         credits: subject.credits || 3,
+        batch_id: subject.batch_id || "",
+        section_id: subject.section_id || "",
       },
       showModal: "edit",
     });
@@ -331,6 +362,49 @@ const SubjectManagement = () => {
     return semester ? `Semester ${semester.number}` : `Semester ID: ${semesterId} (Not Found)`;
   };
 
+  const getBatchName = (batchId?: string): string => {
+    if (!batchId) return "";
+    const b = state.batches.find((bb) => String(bb.id) === String(batchId));
+    return b ? b.name : String(batchId);
+  };
+
+  const getSectionName = (sectionId?: string): string => {
+    if (!sectionId) return "";
+    const s = state.sections.find((ss) => String(ss.id) === String(sectionId));
+    return s ? s.name : String(sectionId);
+  };
+
+  // Resolve batch name from different subject shapes returned by API
+  const getBatchNameFromSubject = (subject: any): string => {
+    if (!subject) return "";
+    // direct name fields
+    if (subject.batch_name) return String(subject.batch_name);
+    if (subject.course && subject.course.batch_name) return String(subject.course.batch_name);
+    // nested objects with name
+    if (subject.batch && typeof subject.batch === 'object' && subject.batch.name) return String(subject.batch.name);
+    if (subject.course && subject.course.batch && typeof subject.course.batch === 'object' && subject.course.batch.name) return String(subject.course.batch.name);
+    // possible id fields (string, number, or object)
+    const maybeId =
+      subject.batch_id ??
+      (subject.batch && (typeof subject.batch === 'string' ? subject.batch : (subject.batch.id ?? subject.batch.batch_id))) ??
+      (subject.course && (subject.course.batch_id ?? subject.course.batch ?? subject.course.batch?.id));
+    return maybeId !== undefined && maybeId !== null && String(maybeId) !== '' ? getBatchName(String(maybeId)) : "";
+  };
+
+  // Resolve section name from different subject shapes returned by API
+  const getSectionNameFromSubject = (subject: any): string => {
+    if (!subject) return "";
+    if (subject.section_name) return String(subject.section_name);
+    if (subject.course && subject.course.section_name) return String(subject.course.section_name);
+    if (subject.section && typeof subject.section === 'object' && subject.section.name) return String(subject.section.name);
+    if (subject.course && subject.course.section && typeof subject.course.section === 'object' && subject.course.section.name) return String(subject.course.section.name);
+    const maybeId =
+      subject.section_id ??
+      (subject.section && (typeof subject.section === 'string' ? subject.section : (subject.section.id ?? subject.section.section_id))) ??
+      (subject.course && (subject.course.section_id ?? subject.course.section ?? subject.course.section?.id));
+    return maybeId !== undefined && maybeId !== null && String(maybeId) !== '' ? getSectionName(String(maybeId)) : "";
+  };
+
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-background text-foreground' : 'bg-gray-50 text-gray-900'}`}>
 
@@ -345,7 +419,7 @@ const SubjectManagement = () => {
               onClick={() => {
                 updateState({
                   showModal: "add",
-                  newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3 },
+                  newSubject: { code: "", name: "", semester_id: "3", subject_type: "regular", credits: 3, batch_id: "", section_id: "" },
                   currentSubject: null,
                 });
               }}
@@ -370,9 +444,9 @@ const SubjectManagement = () => {
                     <tr>
                       <th className="px-4 py-3 text-left">COURSE CODE</th>
                       <th className="px-4 py-3 text-left">COURSE NAME</th>
-                      <th className="px-4 py-3 text-left">SEMESTER</th>
-                      <th className="px-4 py-3 text-left">COURSE TYPE</th>
-                      <th className="px-4 py-3 text-left">COURSE CREDITS</th>
+                      <th className="px-4 py-3 text-left hidden">SEMESTER</th>
+                      <th className="px-4 py-3 text-left hidden">COURSE TYPE</th>
+                      <th className="px-4 py-3 text-left hidden">COURSE CREDITS</th>
                       <th className="px-4 py-3 text-left">ACTIONS</th>
                     </tr>
                   </thead>
@@ -386,9 +460,9 @@ const SubjectManagement = () => {
                       >
                         <td className="px-4 py-3">{subject.subject_code}</td>
                         <td className="px-4 py-3">{subject.name}</td>
-                        <td className="px-4 py-3">{getSemesterNumber(subject.semester_id)}</td>
-                        <td className="px-4 py-3">{subject.subject_type === 'regular' ? 'Regular' : subject.subject_type === 'elective' ? 'Elective Subjects' : 'Open Elective Subjects'}</td>
-                        <td className="px-4 py-3">{subject.credits ?? 0}</td>
+                        <td className="px-4 py-3 hidden">{getSemesterNumber(subject.semester_id)}</td>
+                        <td className="px-4 py-3 hidden">{subject.subject_type === 'regular' ? 'Regular' : subject.subject_type === 'elective' ? 'Elective Subjects' : 'Open Elective Subjects'}</td>
+                        <td className="px-4 py-3 hidden">{subject.credits ?? 0}</td>
                         <td className="px-4 py-3 flex gap-5">
                           <Pencil
                             className={`w-4 h-4 cursor-pointer ${theme === 'dark' ? 'text-primary hover:text-primary/80' : 'text-blue-600 hover:text-blue-800'}`}
@@ -414,9 +488,15 @@ const SubjectManagement = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1 pr-3">
-                        <div className="text-xs text-gray-500 mb-1">{subject.subject_code} • {getSemesterNumber(subject.semester_id)}</div>
+                        <div className="text-xs text-gray-500 mb-1">{subject.subject_code}</div>
                         <div className="font-medium text-sm mb-1">{subject.name}</div>
-                        <div className="text-sm text-gray-500">{subject.subject_type === 'regular' ? 'Regular' : subject.subject_type === 'elective' ? 'Elective' : 'Open Elective'} • {subject.credits ?? 0} credits</div>
+                        <div className="text-sm text-gray-500">
+                          {(() => {
+                            const b = getBatchNameFromSubject(subject);
+                            const s = getSectionNameFromSubject(subject);
+                            return b || s ? `${b}${b && s ? ' • ' : ''}${s}` : 'No batch/section';
+                          })()}
+                        </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <Pencil
@@ -535,60 +615,107 @@ const SubjectManagement = () => {
               />
             </div>
 
-            {/* Semester */}
+            {/* Batch */}
             <div className="mb-4">
-              <label className={`block mb-2 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Semester</label>
+              <label className={`block mb-2 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Batch</label>
               <Select
-                value={state.newSubject.semester_id}
-                onValueChange={(val: string) => updateState({ newSubject: { ...state.newSubject, semester_id: val }, modalError: null })}
+                value={state.newSubject.batch_id}
+                onValueChange={(val: string) => updateState({ newSubject: { ...state.newSubject, batch_id: val }, modalError: null })}
                 disabled={state.loading}
               >
                 <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
-                  <SelectValue placeholder="Select Semester" />
+                  <SelectValue placeholder="Select Batch" />
                 </SelectTrigger>
                 <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                  {state.semesters.map((semester) => (
-                    <SelectItem key={semester.id} value={semester.id}>
-                      Semester {semester.number}
-                    </SelectItem>
-                  ))}
+                  {/* Populate batch options via API when available */}
+                  {state.batches.length === 0 ? (
+                    <SelectItem value="__none">No batches</SelectItem>
+                  ) : (
+                    state.batches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)
+                  )}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Course Type */}
+            {/* Section */}
             <div className="mb-4">
-              <label className={`block mb-2 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Course Type</label>
+              <label className={`block mb-2 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Section</label>
               <Select
-                value={state.newSubject.subject_type}
-                onValueChange={(val: string) => updateState({ newSubject: { ...state.newSubject, subject_type: val }, modalError: null })}
+                value={state.newSubject.section_id}
+                onValueChange={(val: string) => updateState({ newSubject: { ...state.newSubject, section_id: val }, modalError: null })}
                 disabled={state.loading}
               >
                 <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
-                  <SelectValue placeholder="Select Type" />
+                  <SelectValue placeholder="Select Section" />
                 </SelectTrigger>
                 <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                  <SelectItem value="regular">Regular</SelectItem>
-                  <SelectItem value="elective">Elective Subjects</SelectItem>
-                  <SelectItem value="open_elective">Open Elective Subjects</SelectItem>
+                    {/* Populate section options via API when available */}
+                    {(() => {
+                      const selectedBatch = state.newSubject.batch_id || "";
+                      const options = state.sections.filter((s) => String(s.batch_id || "") === String(selectedBatch));
+                      if (!options.length) return <SelectItem value="__none">No sections</SelectItem>;
+                      return options.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>);
+                    })()}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Course Credits */}
-            <div className="mb-4">
-              <label className={`block mb-2 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Course Credits</label>
-              <Input
-                type="number"
-                min={0}
-                value={state.newSubject.credits}
-                onChange={(e) =>
-                  updateState({ newSubject: { ...state.newSubject, credits: Number(e.target.value) }, modalError: null })
-                }
-                placeholder="e.g., 3"
-                disabled={state.loading}
-                className={`${theme === 'dark' ? 'bg-card border-border text-foreground placeholder:text-muted-foreground' : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-500'} px-3 py-2 rounded`}
-              />
+            <div className="hidden">
+              {/* Semester */}
+              <div className="mb-4">
+                <label className={`block mb-2 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Semester</label>
+                <Select
+                  value={state.newSubject.semester_id}
+                  onValueChange={(val: string) => updateState({ newSubject: { ...state.newSubject, semester_id: val }, modalError: null })}
+                  disabled={state.loading}
+                >
+                  <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
+                    <SelectValue placeholder="Select Semester" />
+                  </SelectTrigger>
+                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
+                    {state.semesters.map((semester) => (
+                      <SelectItem key={semester.id} value={semester.id}>
+                        Semester {semester.number}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Course Type */}
+              <div className="mb-4">
+                <label className={`block mb-2 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Course Type</label>
+                <Select
+                  value={state.newSubject.subject_type}
+                  onValueChange={(val: string) => updateState({ newSubject: { ...state.newSubject, subject_type: val }, modalError: null })}
+                  disabled={state.loading}
+                >
+                  <SelectTrigger className={`w-full ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}`}>
+                    <SelectValue placeholder="Select Type" />
+                  </SelectTrigger>
+                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
+                    <SelectItem value="regular">Regular</SelectItem>
+                    <SelectItem value="elective">Elective Subjects</SelectItem>
+                    <SelectItem value="open_elective">Open Elective Subjects</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Course Credits */}
+              <div className="mb-4">
+                <label className={`block mb-2 ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Course Credits</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={state.newSubject.credits}
+                  onChange={(e) =>
+                    updateState({ newSubject: { ...state.newSubject, credits: Number(e.target.value) }, modalError: null })
+                  }
+                  placeholder="e.g., 3"
+                  disabled={state.loading}
+                  className={`${theme === 'dark' ? 'bg-card border-border text-foreground placeholder:text-muted-foreground' : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-500'} px-3 py-2 rounded`}
+                />
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -597,7 +724,7 @@ const SubjectManagement = () => {
                 onClick={() => {
                   updateState({
                     showModal: null,
-                    newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3 },
+                    newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3, batch_id: "", section_id: "" },
                     currentSubject: null,
                     modalError: null,
                   });
@@ -610,8 +737,8 @@ const SubjectManagement = () => {
 
               <Button
                 onClick={async () => {
-                  if (!state.newSubject.code || !state.newSubject.name || !state.newSubject.semester_id) {
-                    updateState({ modalError: "All fields are required" });
+                  if (!state.newSubject.code || !state.newSubject.name) {
+                    updateState({ modalError: "Code and name are required" });
                     return;
                   }
 
@@ -620,9 +747,12 @@ const SubjectManagement = () => {
                     branch_id: state.branchId,
                     name: state.newSubject.name,
                     subject_code: state.newSubject.code,
-                    semester_id: state.newSubject.semester_id,
-                    subject_type: state.newSubject.subject_type,
-                    credits: Number(state.newSubject.credits),
+                    // always send defaults for hidden fields
+                    semester_id: "3",
+                    subject_type: "regular",
+                    credits: 3,
+                    batch_id: state.newSubject.batch_id,
+                    section_id: state.newSubject.section_id,
                     ...(state.showModal === "edit" && state.currentSubject ? { subject_id: state.currentSubject.id } : {}),
                   };
 
@@ -636,9 +766,11 @@ const SubjectManagement = () => {
                         id: isCreate ? (createdId || `${Date.now()}`) : (state.currentSubject ? state.currentSubject.id : createdId || `${Date.now()}`),
                         name: state.newSubject.name,
                         subject_code: state.newSubject.code,
-                        semester_id: state.newSubject.semester_id,
-                        subject_type: state.newSubject.subject_type,
-                        credits: state.newSubject.credits,
+                        semester_id: "3",
+                        subject_type: "regular",
+                        credits: 3,
+                        batch_id: state.newSubject.batch_id || "",
+                        section_id: state.newSubject.section_id || "",
                       };
 
                       if (isCreate) {
@@ -651,7 +783,7 @@ const SubjectManagement = () => {
                           totalPages: newTotalPages,
                           success: "Subject added successfully",
                           showModal: null,
-                          newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3 },
+                          newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3, batch_id: "", section_id: "" },
                           currentSubject: null,
                           modalError: null,
                         });
@@ -661,7 +793,7 @@ const SubjectManagement = () => {
                           subjects: newSubjects,
                           success: "Subject updated successfully",
                           showModal: null,
-                          newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3 },
+                          newSubject: { code: "", name: "", semester_id: "", subject_type: "regular", credits: 3, batch_id: "", section_id: "" },
                           currentSubject: null,
                           modalError: null,
                         });

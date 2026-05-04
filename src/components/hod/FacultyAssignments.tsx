@@ -6,7 +6,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import { useToast } from "../ui/use-toast";
 import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "../ui/dialog";
-import { manageFacultyAssignments, manageSections, getFacultyAssignmentsBootstrap, getHODTimetableSemesterData } from "../../utils/hod_api";
+import { manageFacultyAssignments, manageSections, getFacultyAssignmentsBootstrap, getBatches, manageBatches, getHODStudentBootstrap } from "../../utils/hod_api";
+import { getSections as getSectionsByBatch } from "../../utils/faculty_api";
 import { useTheme } from "../../context/ThemeContext";
 
 // Interfaces
@@ -28,6 +29,7 @@ interface ManageFacultyAssignmentsRequest {
   assignment_id?: string;
   faculty_id?: string;
   subject_id?: string;
+  batch_id?: string;
   semester_id?: string;
   section_id?: string;
   branch_id: string;
@@ -36,11 +38,14 @@ interface ManageFacultyAssignmentsRequest {
 interface Assignment {
   id: string;
   faculty: string;
-  subject: string;
+  subject?: string;
+  batch_name?: string;
+  batch?: string;
   section: string;
   semester: number;
   faculty_id: string;
-  subject_id: string;
+  subject_id?: string;
+  batch_id?: string;
   section_id: string;
   semester_id: string;
   branch_id?: string; // Add optional branch_id property
@@ -170,25 +175,28 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
   const { toast } = useToast();
   const [state, setState] = useState({
     facultyId: "",
-    subjectId: "",
     sectionId: "",
-    semesterId: "",
+    semesterId: "3",
+    batchId: "",
     assignments: [] as Assignment[],
     editingId: null as string | null,
     deleteId: null as string | null,
     openDeleteModal: false,
     loading: true,
     isAssigning: false,
-    subjects: [] as Subject[],
+    // subjects removed - now using batches
     sections: [] as Section[],
     semesters: [] as Semester[],
     faculties: [] as Faculty[],
     facultySearch: "",
     branchId: "",
-    filterSemesterId: "",
+    filterBatchId: "",
     filterSectionId: "",
     filterSections: [] as Section[],
   });
+
+  // Local batches state (separate from the composite state)
+  const [batches, setBatches] = useState<Array<any>>([]);
 
   // Helper to update state (stable reference for hooks)
   const updateState = useCallback((newState: Partial<typeof state>) => {
@@ -201,25 +209,27 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
     return f ? `${f.first_name} ${f.last_name || ''}`.trim() : 'This faculty';
   };
 
-  const hasDuplicateAssignment = (subjectId: string, sectionId: string, semesterId: string, excludeId?: string) =>
-    state.assignments.some(a => a.subject_id === subjectId && a.section_id === sectionId && a.semester_id === semesterId && a.id !== excludeId);
+  const hasDuplicateAssignment = (batchId: string, sectionId: string, semesterId: string, excludeId?: string) =>
+    state.assignments.some(a => String(a.batch_id || a.subject_id || '') === String(batchId) && a.section_id === sectionId && a.semester_id === semesterId && a.id !== excludeId);
 
-  const hasDuplicateFaculty = (facultyId: string, subjectId: string, sectionId: string, semesterId: string, excludeId?: string) =>
-    state.assignments.some(a => a.faculty_id === facultyId && a.subject_id === subjectId && a.section_id === sectionId && a.semester_id === semesterId && a.id !== excludeId);
+  const hasDuplicateFaculty = (facultyId: string, batchId: string, sectionId: string, semesterId: string, excludeId?: string) =>
+    state.assignments.some(a => a.faculty_id === facultyId && String(a.batch_id || a.subject_id || '') === String(batchId) && a.section_id === sectionId && a.semester_id === semesterId && a.id !== excludeId);
 
-  const buildAssignmentFromForm = (form?: { facultyId?: string; subjectId?: string; sectionId?: string; semesterId?: string }) => {
+  const buildAssignmentFromForm = (form?: { facultyId?: string; batchId?: string; sectionId?: string; semesterId?: string }) => {
     const fId = form?.facultyId ?? state.facultyId;
-    const sId = form?.subjectId ?? state.subjectId;
+    const bId = form?.batchId ?? state.batchId;
     const secId = form?.sectionId ?? state.sectionId;
     const semId = form?.semesterId ?? state.semesterId;
 
+    const batchObj = batches.find((b) => String(b.id) === String(bId)) || undefined;
+
     return {
       faculty_id: fId,
-      subject_id: sId,
+      batch_id: bId,
       section_id: secId,
       semester_id: semId,
       faculty: buildFacultyName(fId),
-      subject: state.subjects.find(s => s.id === sId)?.name || '',
+      batch_name: batchObj?.name || '',
       section: state.sections.find(s => s.id === secId)?.name || '',
       semester: state.semesters.find(s => s.id === semId)?.number || 0,
     } as Partial<Assignment>;
@@ -227,7 +237,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
 
     type FormState = {
       facultyId: string;
-      subjectId: string;
+      batchId: string;
       sectionId: string;
       semesterId: string;
       editingId: string | null;
@@ -253,7 +263,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
   const reconcileCreateResponse = (response: ManageAssignmentsResponse, originalFormStateLocal: FormState) => {
     const createdId = response.data?.assignment_id;
     if (createdId) {
-      const replaced = state.assignments.map((a) => (String(a.id).startsWith('temp-') && a.faculty_id === originalFormStateLocal.facultyId && a.subject_id === originalFormStateLocal.subjectId && a.section_id === originalFormStateLocal.sectionId && a.semester_id === originalFormStateLocal.semesterId)
+      const replaced = state.assignments.map((a) => (String(a.id).startsWith('temp-') && a.faculty_id === originalFormStateLocal.facultyId && String(a.batch_id || a.subject_id || '') === String(originalFormStateLocal.batchId) && a.section_id === originalFormStateLocal.sectionId && a.semester_id === originalFormStateLocal.semesterId)
         ? { ...a, id: createdId }
         : a
       );
@@ -265,7 +275,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
     updateState({
       assignments: originalAssignmentsLocal,
       facultyId: originalFormStateLocal.facultyId,
-      subjectId: originalFormStateLocal.subjectId,
+      batchId: originalFormStateLocal.batchId,
       sectionId: originalFormStateLocal.sectionId,
       semesterId: originalFormStateLocal.semesterId,
       editingId: originalFormStateLocal.editingId,
@@ -360,53 +370,109 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
     fetchInitialData();
   }, [toast, setError, updateState]);
 
-  // Fetch subjects and sections when semester changes
+  // Fetch batches (and their sections) once branchId is available
   useEffect(() => {
-    const fetchSemesterData = async () => {
-      if (!state.semesterId || !state.branchId) return;
-
-      updateState({ loading: true });
+    let mounted = true;
+    const fetchBatches = async () => {
+      if (!state.branchId) return;
       try {
-        const res = await getHODTimetableSemesterData(state.semesterId);
-        if (res.success && res.data) {
-          updateState({
-            subjects: res.data.subjects || [],
-            sections: res.data.sections || []
-          });
+        // Try the generic batches endpoint first
+        const res = await getBatches();
+        let finalBatches: any[] = [];
+        if (res && res.success) {
+          finalBatches = res.data?.batches || [];
         }
+
+        // If batches exist but none include sections, fetch student bootstrap (batches+sections)
+        const hasSections = finalBatches.some(b => Array.isArray(b.sections) && b.sections.length > 0);
+        if (!hasSections) {
+          try {
+            const stuBoot = await getHODStudentBootstrap(['batches', 'sections']);
+            if (stuBoot && stuBoot.success && stuBoot.data) {
+              const bootBatches = Array.isArray(stuBoot.data.batches) ? stuBoot.data.batches.map((b: any) => ({ id: b.id, name: b.name })) : [];
+              const bootSections = Array.isArray(stuBoot.data.sections) ? stuBoot.data.sections.map((s: any) => ({ id: s.id, name: s.name, batch_id: s.batch_id || s.batch || s.batch_id })) : [];
+              // attach sections to batches by matching batch id
+              finalBatches = bootBatches.map((b: any) => ({
+                ...b,
+                sections: bootSections.filter((s: any) => String(s.batch_id) === String(b.id)).map((s: any) => ({ id: s.id, name: s.name }))
+              }));
+            }
+          } catch (e) {
+            console.debug('Failed to fetch student bootstrap for sections', e);
+          }
+        }
+
+        if (mounted) setBatches(finalBatches);
       } catch (err) {
-        console.error("Error fetching semester data:", err);
-      } finally {
-        updateState({ loading: false });
+        console.error("Error fetching batches:", err);
       }
     };
-    fetchSemesterData();
-  }, [state.semesterId, state.branchId, updateState]);
+    fetchBatches();
+    return () => { mounted = false; };
+  }, [state.branchId]);
 
-  // Fetch sections for filter when filter semester changes
+  // When a batch is selected, ensure its sections are loaded. If the batch object lacks sections,
+  // fetch batch detail via `manageBatches(batchId)` and attach sections to the batch entry.
+  useEffect(() => {
+    let mounted = true;
+    const ensureBatchSections = async () => {
+      const bId = (state as any).batchId;
+      if (!bId) return;
+      const selected = batches.find(b => String(b.id) === String(bId));
+      if (selected && Array.isArray(selected.sections) && selected.sections.length) return;
+      try {
+        const detail = await manageBatches(undefined, String(bId), "GET");
+        let anyRes: any = detail;
+        let sections = anyRes?.sections ?? anyRes?.data?.sections ?? anyRes?.results?.sections ?? [];
+
+        // If no sections from batch detail, try faculty API which supports batch_id
+        if ((!sections || !sections.length)) {
+          try {
+            const secRes = await getSectionsByBatch(String(bId));
+            if (secRes && secRes.success && Array.isArray(secRes.data) && secRes.data.length) {
+              sections = secRes.data;
+            }
+          } catch (err) {
+            console.debug('getSectionsByBatch failed', err);
+          }
+        }
+
+        if (mounted && sections && sections.length) {
+          const normalized = sections.map((s: any) => ({ id: s.id, name: s.name }));
+          setBatches(prev => prev.map(b => String(b.id) === String(bId) ? { ...b, sections: normalized } : b));
+        }
+      } catch (e) {
+        console.debug('Failed to fetch batch detail for sections', e);
+      }
+    };
+    ensureBatchSections();
+    return () => { mounted = false; };
+  }, [(state as any).batchId, batches]);
+
+  // Fetch sections for filter when filter batch changes
   useEffect(() => {
     const fetchFilterSections = async () => {
-      if (!state.filterSemesterId || !state.branchId) {
+      if (!state.branchId || !(state as any).filterBatchId) {
         updateState({ filterSections: [], filterSectionId: "" });
         return;
       }
 
       try {
-        const sectionsRes = await manageSections({ branch_id: state.branchId, semester_id: state.filterSemesterId }, "GET");
-        if (sectionsRes.success) {
-          updateState({ filterSections: sectionsRes.data || [], filterSectionId: "" });
+        const secRes = await getSectionsByBatch(String((state as any).filterBatchId));
+        if (secRes && secRes.success) {
+          updateState({ filterSections: secRes.data || [], filterSectionId: "" });
         }
       } catch (err) {
         console.error("Error fetching filter sections:", err);
       }
     };
     fetchFilterSections();
-  }, [state.filterSemesterId, state.branchId, updateState]);
+  }, [(state as any).filterBatchId, state.branchId, updateState]);
 
-  // Fetch assignments when filters change
+  // Fetch assignments when batch/section filters change
   useEffect(() => {
     const fetchAssignments = async () => {
-      if (!state.branchId || !state.filterSemesterId || !state.filterSectionId) {
+      if (!state.branchId || !(state as any).filterBatchId || !state.filterSectionId) {
         updateState({ assignments: [] });
         return;
       }
@@ -415,7 +481,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
       try {
         const response = await manageFacultyAssignments({
           branch_id: state.branchId,
-          semester_id: state.filterSemesterId,
+          batch_id: (state as any).filterBatchId,
           section_id: state.filterSectionId,
         }, "GET");
 
@@ -432,20 +498,20 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
     };
 
     fetchAssignments();
-  }, [state.branchId, state.filterSemesterId, state.filterSectionId, updateState]);
+  }, [state.branchId, (state as any).filterBatchId, state.filterSectionId, updateState]);
 
   const resetForm = () => {
     updateState({
       facultyId: "",
-      subjectId: "",
+      batchId: "",
       sectionId: "",
-      semesterId: "",
+      semesterId: "3",
       editingId: null,
     });
   };
 
   const validateForm = () => {
-    if (!state.facultyId || !state.subjectId || !state.sectionId || !state.semesterId) {
+    if (!state.facultyId || !(state as any).batchId || !state.sectionId) {
       toast({
         title: "Error",
         description: "Please select all required fields",
@@ -457,11 +523,13 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
       toast({ title: "Error", description: "Invalid faculty selected", variant: "destructive" });
       return false;
     }
-    if (!state.subjects.some(s => s.id === state.subjectId)) {
-      toast({ title: "Error", description: "Invalid subject selected", variant: "destructive" });
+    // subject removed - validate batch
+    if (!batches.some(b => String(b.id) === String((state as any).batchId))) {
+      toast({ title: "Error", description: "Invalid batch selected", variant: "destructive" });
       return false;
     }
-    if (!state.sections.some(s => s.id === state.sectionId)) {
+    const selectedBatch = batches.find(b => String(b.id) === String((state as any).batchId));
+    if (!selectedBatch || !selectedBatch.sections || !selectedBatch.sections.some((s: any) => String(s.id) === String(state.sectionId))) {
       toast({ title: "Error", description: "Invalid section selected", variant: "destructive" });
       return false;
     }
@@ -476,23 +544,23 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
     if (!validateForm() || !state.branchId) return;
 
     // 🚨 Case 1: Prevent multiple faculties or duplicate faculty assignment for same subject/section/semester
-    if (hasDuplicateAssignment(state.subjectId, state.sectionId, state.semesterId, state.editingId)) {
-      const dup = state.assignments.find(a => a.subject_id === state.subjectId && a.section_id === state.sectionId && a.semester_id === state.semesterId && a.id !== state.editingId);
+    if (hasDuplicateAssignment((state as any).batchId, state.sectionId, state.semesterId, state.editingId)) {
+      const dup = state.assignments.find(a => String(a.batch_id || a.subject_id || '') === String((state as any).batchId) && a.section_id === state.sectionId && a.semester_id === state.semesterId && a.id !== state.editingId);
       toast({
         variant: "destructive",
         title: "Duplicate Assignment",
-        description: `Subject "${dup?.subject || ''}" is already assigned to Section ${dup?.section || ''}, Semester ${dup?.semester || ''}. Only one faculty can be assigned.`,
+        description: `Batch "${(dup as any).batch_name || dup?.batch || dup?.subject || ''}" is already assigned to Section ${dup?.section || ''}, Semester ${dup?.semester || ''}. Only one faculty can be assigned.`,
       });
       return;
     }
 
-    if (hasDuplicateFaculty(state.facultyId, state.subjectId, state.sectionId, state.semesterId, state.editingId)) {
-      const dupF = state.assignments.find(a => a.faculty_id === state.facultyId && a.subject_id === state.subjectId && a.section_id === state.sectionId && a.semester_id === state.semesterId && a.id !== state.editingId);
+    if (hasDuplicateFaculty(state.facultyId, (state as any).batchId, state.sectionId, state.semesterId, state.editingId)) {
+      const dupF = state.assignments.find(a => a.faculty_id === state.facultyId && String(a.batch_id || a.subject_id || '') === String((state as any).batchId) && a.section_id === state.sectionId && a.semester_id === state.semesterId && a.id !== state.editingId);
       const facultyName = buildFacultyName(state.facultyId);
       toast({
         variant: "destructive",
         title: "Duplicate Faculty Assignment",
-        description: `${facultyName} is already assigned to ${dupF?.subject || ''} - Section ${dupF?.section || ''}, Semester ${dupF?.semester || ''}.`,
+        description: `${facultyName} is already assigned to ${(dupF as any).batch_name || dupF?.subject || ''} - Section ${dupF?.section || ''}, Semester ${dupF?.semester || ''}.`,
       });
       return;
     }
@@ -502,7 +570,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
     const originalAssignments = [...state.assignments];
     const originalFormState = {
       facultyId: state.facultyId,
-      subjectId: state.subjectId,
+      batchId: (state as any).batchId,
       sectionId: state.sectionId,
       semesterId: state.semesterId,
       editingId: state.editingId,
@@ -520,8 +588,8 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
       action: isEditing ? "update" : "create",
       assignment_id: state.editingId,
       faculty_id: originalFormState.facultyId,
-      subject_id: originalFormState.subjectId,
-      semester_id: originalFormState.semesterId,
+      batch_id: originalFormState.batchId,
+      semester_id: "3",
       section_id: originalFormState.sectionId,
       branch_id: state.branchId,
     };
@@ -537,7 +605,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
     updateState({
       editingId: assignment.id,
       facultyId: assignment.faculty_id,
-      subjectId: assignment.subject_id,
+      batchId: (assignment as any).batch_id || (assignment as any).batch || "",
       sectionId: assignment.section_id,
       semesterId: assignment.semester_id,
     });
@@ -619,51 +687,69 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
                 <Select
                   value={state.facultyId}
                   onValueChange={(value) => updateState({ facultyId: value })}
-                  onOpenChange={(open) => {
-                    if (!open) updateState({ facultySearch: "" });
-                  }}
                   disabled={state.loading || state.isAssigning || state.faculties.length === 0}
                 >
                   <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
                     <SelectValue placeholder={state.faculties.length === 0 ? "No faculties available" : "Select Faculty"} />
                   </SelectTrigger>
                   <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    <div className="px-3 py-2">
-                      <input
-                        type="text"
-                        autoFocus
-                        placeholder="Search faculty"
-                        value={state.facultySearch}
-                        onChange={(e) => updateState({ facultySearch: e.target.value })}
-                        onKeyDown={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => e.stopPropagation()}
-                        className={`w-full px-2 py-1 text-sm rounded border placeholder-gray-400 ${theme === 'dark' ? 'bg-card border-border text-foreground placeholder:text-muted-foreground' : 'bg-white border-gray-300 text-gray-900'}`}
-                      />
-                    </div>
-                    <div className="max-h-60 overflow-y-auto">
-                      {state.faculties
-                        .filter((f) => {
-                          const q = state.facultySearch?.trim().toLowerCase();
-                          if (!q) return true;
-                          const name = `${f.first_name} ${f.last_name || ''}`.toLowerCase();
-                          return name.includes(q) || (f.username || '').toLowerCase().includes(q);
-                        })
-                        .map((faculty) => (
-                          <SelectItem key={faculty.id} value={faculty.id} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
-                            {faculty.first_name} {faculty.last_name || ""}
-                          </SelectItem>
-                        ))}
-                    </div>
+                    {state.faculties.map((faculty) => (
+                      <SelectItem key={faculty.id} value={faculty.id} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
+                        {faculty.first_name} {faculty.last_name || ""}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 </label>
               </div>
+
               <div>
+                <label className={`block mb-1 text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Batch
+                <Select
+                  value={(state as any).batchId}
+                  onValueChange={(value) => updateState({ batchId: value, sectionId: "" })}
+                  disabled={state.loading || state.isAssigning || batches.length === 0}
+                >
+                  <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
+                    <SelectValue placeholder={batches.length === 0 ? "No batches available" : "Select Batch"} />
+                  </SelectTrigger>
+                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
+                    {batches.map((batch) => (
+                      <SelectItem key={batch.id} value={String(batch.id)} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
+                        {batch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                </label>
+              </div>
+
+              <div>
+                <label className={`block mb-1 text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Section
+                <Select
+                  value={state.sectionId}
+                  onValueChange={(value) => updateState({ sectionId: value })}
+                  disabled={state.loading || state.isAssigning || !(batches.find(b => String(b.id) === String((state as any).batchId))?.sections?.length)}
+                >
+                  <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
+                    <SelectValue placeholder={!(batches.find(b => String(b.id) === String((state as any).batchId))?.sections?.length) ? "No sections available" : "Select Section"} />
+                  </SelectTrigger>
+                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
+                    {(batches.find(b => String(b.id) === String((state as any).batchId))?.sections || []).map((section: any) => (
+                      <SelectItem key={section.id} value={String(section.id)} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
+                        {section.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                </label>
+              </div>
+
+              <div className="hidden">
                 <label className={`block mb-1 text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Semester
                 <Select
                   value={state.semesterId}
-                  onValueChange={(value) => updateState({ semesterId: value, subjectId: "", sectionId: "" })}
+                  onValueChange={(value) => updateState({ semesterId: value, batchId: "", sectionId: "" })}
                   disabled={state.loading || state.isAssigning || state.semesters.length === 0}
                 >
                   <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
@@ -679,51 +765,9 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
                 </Select>
                 </label>
               </div>
-              <div>
-                <label className={`block mb-1 text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Course
-                <Select
-                  value={state.subjectId}
-                  onValueChange={(value) => updateState({ subjectId: value })}
-                  disabled={state.loading || state.isAssigning || !state.semesterId || state.subjects.length === 0}
-                >
-                  <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    <SelectValue placeholder={state.subjects.length === 0 ? "No subjects available" : "Select Subject"} />
-                  </SelectTrigger>
-                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    {state.subjects
-                      .map((subject) => (
-                        <SelectItem key={subject.id} value={subject.id} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
-                          {subject.name} ({subject.subject_code})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                </label>
-              </div>
-              <div>
-                <label className={`block mb-1 text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Section
-                <Select
-                  value={state.sectionId}
-                  onValueChange={(value) => updateState({ sectionId: value })}
-                  disabled={state.loading || state.isAssigning || !state.semesterId || state.sections.length === 0}
-                >
-                  <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    <SelectValue placeholder={state.sections.length === 0 ? "No sections available" : "Select Section"} />
-                  </SelectTrigger>
-                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    {state.sections
-                      .map((section) => (
-                        <SelectItem key={section.id} value={section.id} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
-                          Section {section.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                </label>
-              </div>
             </div>
             <div className="flex justify-end gap-2">
-              {(state.facultyId || state.subjectId || state.sectionId || state.semesterId || state.editingId) && (
+              {(state.facultyId || (state as any).batchId || state.sectionId || state.semesterId || state.editingId) && (
                 <Button
                   variant="outline"
                   onClick={resetForm}
@@ -764,18 +808,18 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Select
-                  value={state.filterSemesterId || "all"}
-                  onValueChange={(value) => updateState({ filterSemesterId: value === "all" ? "" : value, filterSectionId: "" })}
-                  disabled={state.loading || state.semesters.length === 0}
+                  value={(state as any).filterBatchId || "all"}
+                  onValueChange={(value) => updateState({ filterBatchId: value === "all" ? "" : value, filterSectionId: "" })}
+                  disabled={state.loading || batches.length === 0}
                 >
                   <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    <SelectValue placeholder="All Semesters" />
+                    <SelectValue placeholder="All Batches" />
                   </SelectTrigger>
                   <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    <SelectItem value="all" className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>All Semesters</SelectItem>
-                    {state.semesters.map((semester) => (
-                      <SelectItem key={semester.id} value={semester.id} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
-                        Semester {semester.number}
+                    <SelectItem value="all" className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>All Batches</SelectItem>
+                    {batches.map((batch) => (
+                      <SelectItem key={batch.id} value={String(batch.id)} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
+                        {batch.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -785,7 +829,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
                 <Select
                   value={state.filterSectionId || "all"}
                   onValueChange={(value) => updateState({ filterSectionId: value === "all" ? "" : value })}
-                  disabled={state.loading || !state.filterSemesterId || state.filterSections.length === 0}
+                  disabled={state.loading || !(state as any).filterBatchId || state.filterSections.length === 0}
                 >
                   <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
                     <SelectValue placeholder="All Sections" />
@@ -799,10 +843,10 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
                     ))}
                   </SelectContent>
                 </Select>
-                {(state.filterSemesterId || state.filterSectionId) && (
+                {((state as any).filterBatchId || state.filterSectionId) && (
                   <Button
                     variant="ghost"
-                    onClick={() => updateState({ filterSemesterId: "", filterSectionId: "" })}
+                    onClick={() => updateState({ filterBatchId: "", filterSectionId: "" })}
                     className="bg-primary hover:bg-[#9147e0] text-white"
                   >
                     Clear
@@ -812,20 +856,20 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
             </div>
             {(() => {
               if (state.loading) return <SkeletonTable rows={5} cols={5} />;
-              if (!state.filterSemesterId || !state.filterSectionId) return <div className={`text-center py-8 border-2 border-dashed rounded-lg ${theme === 'dark' ? 'border-border text-muted-foreground' : 'border-gray-200 text-gray-500'}`}>Please select a semester and section to view assignments.</div>;
+              if (!(state as any).filterBatchId || !state.filterSectionId) return <div className={`text-center py-8 border-2 border-dashed rounded-lg ${theme === 'dark' ? 'border-border text-muted-foreground' : 'border-gray-200 text-gray-500'}`}>Please select a batch and section to view assignments.</div>;
               if (filteredAssignments.length === 0) return <div className={`text-center py-4 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>No assignments found for the selected criteria.</div>;
 
               return (
                 <div className={`rounded-md overflow-x-auto ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>
                   <table className="w-full text-sm scroll-smooth">
                     <thead className={theme === 'dark' ? 'bg-card sticky top-0 z-10 border-border' : 'bg-gray-100 sticky top-0 z-10 border-gray-300'}>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Course</th>
-                        <th className="text-left p-2">Section</th>
-                        <th className="text-left p-2">Semester</th>
-                        <th className="text-left p-2">Assigned Faculty</th>
-                        <th className="text-left p-2">Actions</th>
-                      </tr>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Batch</th>
+                          <th className="text-left p-2">Section</th>
+                          <th className="text-left p-2">Semester</th>
+                          <th className="text-left p-2">Assigned Faculty</th>
+                          <th className="text-left p-2">Actions</th>
+                        </tr>
                     </thead>
                     <tbody>
                       {filteredAssignments.map((assignment) => (
@@ -833,7 +877,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
                           key={assignment.id}
                           className={`border-b ${theme === 'dark' ? 'border-border hover:bg-accent' : 'border-gray-300 hover:bg-gray-100'}`}
                         >
-                          <td className="p-2">{assignment.subject}</td>
+                          <td className="p-2">{(assignment as any).batch_name || assignment.batch || assignment.subject || ''}</td>
                           <td className="p-2">{assignment.section}</td>
                           <td className="p-2">{assignment.semester}</td>
                           <td className="p-2">
