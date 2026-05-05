@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { 
   getFacultyAssignments, 
-  getStudentsForRegular, 
+  getProctorStudentsForStats as getFacultyStudents, 
   FacultyAssignment 
 } from "../../utils/faculty_api";
 import { useTheme } from "@/context/ThemeContext";
@@ -26,6 +26,7 @@ const BatchStudents = () => {
       setLoading(true);
       try {
         const res = await getFacultyAssignments();
+        console.log('getFacultyAssignments (BatchStudents):', res);
         if (res.success && res.data) {
           setAssignments(res.data);
           // Auto-select first assignment if available
@@ -45,17 +46,14 @@ const BatchStudents = () => {
 
   useEffect(() => {
     const fetchStudents = async () => {
-      if (!selectedAssignmentKey) return;
-      
-      const [batch_id, section_id] = selectedAssignmentKey.split("-");
+      // We keep the selection UI but fetch the unified faculty student list
       setFetchingStudents(true);
       try {
-        const res = await getStudentsForRegular({ batch_id, section_id });
-        if (res.success && res.data?.students) {
-          setStudents(res.data.students);
-        } else {
-          setStudents([]);
-        }
+        const res = await getFacultyStudents({ page: 1, page_size: 500 });
+        const { normalizeStudents } = await import("@/utils/student_utils");
+        const normalized = normalizeStudents(res);
+        console.log(`getFacultyStudents (BatchStudents):`, res, 'normalized:', normalized);
+        setStudents(normalized);
       } catch (error) {
         console.error("Failed to fetch students:", error);
         setStudents([]);

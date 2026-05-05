@@ -22,7 +22,8 @@ import {
 } from "../ui/select";
 import { Button } from "../ui/button";
 import { Check, X, UploadCloud } from "lucide-react";
-import { takeAttendance, aiAttendance, getStudentsForRegular, getFacultyAssignments, ClassStudent } from "@/utils/faculty_api";
+import { takeAttendance, aiAttendance, ClassStudent } from "@/utils/faculty_api";
+import { fetchWithTokenRefresh } from '@/utils/authService';
 import { useTheme } from "@/context/ThemeContext";
 import { SkeletonTable } from "@/components/ui/skeleton";
 
@@ -32,14 +33,12 @@ interface FacultyAssignment {
   section: string;
   subject_name: string;
 }
-
 const TakeAttendance = () => {
   const { toast } = useToast();
   const { theme } = useTheme();
   
-  const [assignments, setAssignments] = useState<FacultyAssignment[]>([]);
-  const [selectedBatchId, setSelectedBatchId] = useState<string>("");
-  const [selectedSection, setSelectedSection] = useState<string>("");
+  const [batches, setBatches] = useState<any[]>([]);
+  const [selectedBatch, setSelectedBatch] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [students, setStudents] = useState<ClassStudent[]>([]);
   const [attendance, setAttendance] = useState<{ [studentId: number]: boolean }>({});
@@ -50,78 +49,67 @@ const TakeAttendance = () => {
   const [aiResults, setAiResults] = useState<any>(null);
   const [processingAI, setProcessingAI] = useState(false);
 
-  // Load assignments on mount
+  // Fetch batches on mount
   useEffect(() => {
-    const loadAssignments = async () => {
-      const resp = await getFacultyAssignments();
-      if (resp?.success && resp.data) {
-        setAssignments(resp.data);
-        // Auto-select first batch and section
-        if (resp.data.length > 0) {
-          // No auto-select, let faculty choose
-        }
+    let mounted = true;
+    const fetchBatches = async () => {
+      try {
+        const resp = await fetchWithTokenRefresh(`/api/assessment/batches/`, { method: 'GET' });
+        const json = await resp.json();
+        const batchList = json.results?.batches || json.batches || json.results || json || [];
+        if (!mounted) return;
+        setBatches(Array.isArray(batchList) ? batchList : []);
+      } catch (e) {
+        console.error('Failed to fetch batches for attendance:', e);
+        if (mounted) setBatches([]);
       }
     };
-    loadAssignments();
+    fetchBatches();
+    return () => { mounted = false; };
   }, []);
 
-  // Load students when batch and section are selected
+  // Fetch students for selected batch
   useEffect(() => {
-    if (!selectedBatchId || !selectedSection) {
+    if (!selectedBatch) {
       setStudents([]);
       setAttendance({});
       return;
     }
 
-    const loadStudents = async () => {
+    let mounted = true;
+    const fetchStudents = async () => {
       setLoadingStudents(true);
       try {
-        const resp = await getStudentsForRegular({
-          batch_id: selectedBatchId,
-          section_id: selectedSection,
-        });
-        if (resp?.success && resp.data?.students) {
-          const studentList = resp.data.students.map(s => ({
-            id: s.id,
-            name: s.name,
-            usn: s.usn,
-          }));
-          setStudents(studentList);
-          setAttendance({});
-          setErrorMsg("");
-        } else {
-          setErrorMsg(resp?.message || "Failed to load students");
+        const res = await fetchWithTokenRefresh(`/api/faculty/students/?batch_id=${selectedBatch}`);
+        const json = await res.json();
+        console.log('Students API (TakeAttendance):', json);
+        const studentList = json.results?.data || json.data || json.results || json || [];
+        if (!mounted) return;
+        setStudents(Array.isArray(studentList) ? studentList : []);
+        setAttendance({});
+        setErrorMsg('');
+      } catch (err) {
+        console.error('Error fetching students', err);
+        if (mounted) {
+          setStudents([]);
+          setErrorMsg('Failed to load students');
         }
-      } catch (e) {
-        setErrorMsg("Failed to load students");
       } finally {
-        setLoadingStudents(false);
+        if (mounted) setLoadingStudents(false);
       }
     };
+    fetchStudents();
+    return () => { mounted = false; };
+  }, [selectedBatch]);
 
-    loadStudents();
-  }, [selectedBatchId, selectedSection]);
-
-  // Get unique sections for selected batch
-  const uniqueSections = selectedBatchId
-    ? assignments
-        .filter(a => a.batch_id && a.batch_id.toString() === selectedBatchId)
-        .reduce((acc, a) => {
-          if (!acc.some(s => s.id === a.section_id)) {
-            acc.push({ id: a.section_id, name: a.section });
-          }
-          return acc;
-        }, [] as { id: number; name: string }[])
-    : [];
+  // no sections/assignments logic — batches and students are driven by student API
 
   const handleAttendance = (studentId: number, present: boolean) => {
     setAttendance(prev => ({ ...prev, [studentId]: present }));
   };
 
   const handleSubmit = async () => {
-    if (!selectedBatchId || !selectedSection || students.length === 0) {
-      return;
-    }
+    if (!selectedBatch || students.length === 0) return;
 
     setSubmitting(true);
     setErrorMsg("");
@@ -133,8 +121,8 @@ const TakeAttendance = () => {
       }));
 
       const res = await takeAttendance({
-        batch_id: selectedBatchId,
-        section_id: selectedSection,
+        batch_id: selectedBatch,
+        section_id: "",
         date: selectedDate,
         method: "manual",
         attendance: attendanceArr,
@@ -170,36 +158,28 @@ const TakeAttendance = () => {
   };
 
   const handleAIProcess = async () => {
-    if (!selectedBatchId || !selectedSection || !aiPhoto) {
-      return;
-    }
+    if (!selectedBatch || !aiPhoto) return;
 
     setProcessingAI(true);
     setErrorMsg("");
 
     try {
       const res = await aiAttendance({
-        batch_id: selectedBatchId,
-        section_id: selectedSection,
+        batch_id: selectedBatch,
+        section_id: "",
         date: selectedDate,
         photo: aiPhoto,
       });
 
       if (res.success) {
         setAiResults(res.data);
-        toast({
-          title: "Success",
-          description: "AI attendance processed successfully!",
-        });
+        toast({ title: "Success", description: "AI attendance processed successfully!" });
       } else {
         setErrorMsg(res.message || "Failed to process AI attendance");
       }
     } catch (e: unknown) {
-      if (e instanceof Error) {
-        setErrorMsg(e.message || "Failed to process AI attendance");
-      } else {
-        setErrorMsg("Failed to process AI attendance");
-      }
+      if (e instanceof Error) setErrorMsg(e.message || "Failed to process AI attendance");
+      else setErrorMsg("Failed to process AI attendance");
     } finally {
       setProcessingAI(false);
     }
@@ -226,34 +206,18 @@ const TakeAttendance = () => {
                   className={`w-full h-10 px-3 rounded-md border ${theme === 'dark' ? 'bg-background border-input text-foreground' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-primary`}
                 />
               </div>
-              <Select 
-                value={selectedBatchId} 
-                onValueChange={(val) => {
-                  setSelectedBatchId(val);
-                  setSelectedSection(""); // Reset section when batch changes
-                }}
+              <Select
+                value={selectedBatch}
+                onValueChange={(val) => setSelectedBatch(val)}
                 disabled={!selectedDate}
               >
                 <SelectTrigger className={`${theme === 'dark' ? 'bg-background border border-input text-foreground' : 'bg-white border border-gray-300 text-gray-900'} w-full ${!selectedDate ? 'opacity-50' : ''}`}>
                   <SelectValue placeholder="Select Batch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from(new Map(assignments.map(a => [a.batch_id, a])).values()).map((a, idx) => (
-                    <SelectItem key={a.batch_id || idx} value={a.batch_id ? a.batch_id.toString() : ""}>
-                      {a.batch}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedBatchId}>
-                <SelectTrigger className={`${theme === 'dark' ? 'bg-background border border-input text-foreground' : 'bg-white border border-gray-300 text-gray-900'} w-full ${!selectedBatchId ? 'opacity-50' : ''}`}>
-                  <SelectValue placeholder="Select Section" />
-                </SelectTrigger>
-                <SelectContent>
-                  {uniqueSections.map(sec => (
-                    <SelectItem key={sec.id} value={sec.id.toString()}>
-                      {sec.name}
+                  {batches.map((batch) => (
+                    <SelectItem key={batch.id} value={String(batch.id)}>
+                      {batch.name} {batch.branch ? `- ${batch.branch}` : ''} {batch.semester ? `(Sem ${batch.semester})` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -261,7 +225,7 @@ const TakeAttendance = () => {
             </div>
 
             {/* Tabs for Manual and AI Entry - Only show after selection */}
-            {selectedBatchId && selectedSection ? (
+            {selectedBatch ? (
               <Tabs defaultValue="manual">
               <TabsList className={`inline-flex h-10 items-center justify-start gap-2 rounded-md p-1 overflow-auto ${theme === 'dark' ? 'bg-muted text-muted-foreground' : 'bg-gray-100 text-gray-500'}`}>
                 <TabsTrigger value="manual">Manual Entry</TabsTrigger>
@@ -312,7 +276,9 @@ const TakeAttendance = () => {
                   </>
                 ) : (
                   <div className={`text-center p-6 mt-4 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
-                    Select batch and section to load students
+                    {batches.length === 0 ? (
+                      'No batches available'
+                    ) : (selectedBatch ? 'No students found for this batch' : 'Select a batch to load students')}
                   </div>
                 )}
               </TabsContent>

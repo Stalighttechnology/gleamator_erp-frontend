@@ -47,7 +47,10 @@ import {
 import { motion } from "framer-motion";
 import DashboardCard from "../common/DashboardCard";
 import { FaUserGraduate, FaChalkboardTeacher, FaUserCheck } from "react-icons/fa";
-import { getFacultyDashboardBootstrap, getFacultyAssignments, getStudentsForRegular, getFacultyLeaveRequests, FacultyLeaveRequest, getFacultyShortPermissions, FacultyShortPermissionRequest, checkInShortPermission } from "@/utils/faculty_api";
+import { getFacultyDashboardBootstrap, getFacultyAssignments, getProctorStudentsForStats as getFacultyStudents, getFacultyLeaveRequests, FacultyLeaveRequest, getFacultyShortPermissions, FacultyShortPermissionRequest, checkInShortPermission } from "@/utils/faculty_api";
+import { fetchWithTokenRefresh } from '@/utils/authService';
+import { API_ENDPOINT } from '@/utils/config';
+import normalizeStudents from '@/utils/student_utils';
 import { useTheme } from "@/context/ThemeContext";
 import { SkeletonStatsGrid, SkeletonChart, SkeletonCard } from "../ui/skeleton";
 
@@ -90,6 +93,9 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
   const [ongoingClass, setOngoingClass] = useState<TodayClass | null>(null);
   const [nextClass, setNextClass] = useState<TodayClass | null>(null);
   const [leaveRequests, setLeaveRequests] = useState<FacultyLeaveRequest[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [selectedBatch, setSelectedBatch] = useState<number | string | null>(null);
   const [shortPermissions, setShortPermissions] = useState<FacultyShortPermissionRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -177,44 +183,26 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
     const fetchData = async () => {
       setLoading(true);
       console.log('Starting to fetch faculty dashboard data...');
+      let totalBatchStudents = 0;
       try {
-        // Fetch batch students count
+        // Fetch faculty assignments (kept for UI/selection only)
         console.log('Fetching faculty assignments...');
         const assignmentsRes = await getFacultyAssignments();
-        let totalBatchStudents = 0;
-        
-        if (assignmentsRes && assignmentsRes.success && assignmentsRes.data) {
-          const assignments = assignmentsRes.data;
-          const batchSectionMap = new Map<string, { batch_id: string; section_id: string }>();
-          
-          // Get unique batch/section combinations
-          for (const assignment of assignments) {
-            const key = `${assignment.batch_id}-${assignment.section}`;
-            if (!batchSectionMap.has(key)) {
-              batchSectionMap.set(key, {
-                batch_id: assignment.batch_id ? assignment.batch_id.toString() : "",
-                section_id: assignment.section_id.toString()
-              });
-            }
-          }
-          
-          // Fetch students for each batch/section and count unique students
-          const studentIds = new Set<number>();
-          for (const [, batchSection] of batchSectionMap) {
-            const studentsRes = await getStudentsForRegular({
-              batch_id: batchSection.batch_id,
-              section_id: batchSection.section_id
-            });
-            
-            if (studentsRes && studentsRes.success && studentsRes.data?.students) {
-              for (const student of studentsRes.data.students) {
-                studentIds.add(student.id);
-              }
-            }
-          }
-          
-          totalBatchStudents = studentIds.size;
+        console.log('Faculty assignments response:', assignmentsRes);
+
+        // Fetch students using the unified faculty students API (minimal payload)
+        try {
+          const studentsRes = await getFacultyStudents({ page: 1, page_size: 500 });
+          const normalized = normalizeStudents(studentsRes);
+          console.log('Students (unified API):', studentsRes);
+          console.log('Students (normalized):', normalized);
+          setStudents(normalized);
+          totalBatchStudents = Array.isArray(normalized) ? normalized.length : 0;
           setBatchStudentsCount(totalBatchStudents);
+        } catch (e) {
+          console.error('Failed to load students from unified API:', e);
+          setStudents([]);
+          setBatchStudentsCount(0);
         }
 
         // Fetch bootstrap data (performance trends)
@@ -283,6 +271,9 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
     // eslint-disable-next-line
   }, []);
 
+  // Previously we fetched /faculty/batches/ and then per-batch students.
+  // New flow: use unified `getFacultyStudents` API for all student lists (backend returns faculty's assigned students).
+
   const handleCheckIn = async (id: number) => {
     try {
       const res = await checkInShortPermission(id);
@@ -320,7 +311,7 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
         <motion.div className="h-full" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <DashboardCard
             title="Students in Batch"
-            value={batchStudentsCount || 0}
+            value={students?.length || batchStudentsCount || 0}
             description="Total students in your assigned batches"
             icon={<FaUserGraduate className={theme === 'dark' ? "text-blue-400 text-3xl" : "text-blue-500 text-3xl"} />}
             className="h-full"

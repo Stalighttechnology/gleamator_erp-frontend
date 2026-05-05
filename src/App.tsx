@@ -7,6 +7,7 @@ import CreateAssessment from "@/components/assessment/CreateAssesment";
 import AssignAssessment from "@/components/assessment/AssignAssesment";
 import StudentTest from "@/components/assessment/StudentTest";
 import ResultsPage from "@/components/assessment/ResultsPage";
+import StudentResults from "./components/assessment/StudentResults";
 import DashboardLayout from "@/components/common/DashboardLayout";
 
 // Lazy loaded components
@@ -219,9 +220,17 @@ const App = () => {
           } />
 
           <Route path="/assessment/results" element={
-            <ProtectedRoute allowedRoles={["student"]}>
-              <AssessmentLayout role="student" activePage="assessment/results" user={userData}>
+            <ProtectedRoute allowedRoles={["teacher","admin"]}>
+              <AssessmentLayout role="faculty" activePage="assessment/results" user={userData}>
                 <ResultsPage />
+              </AssessmentLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assessment/my-results" element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <AssessmentLayout role="student" activePage="assessment/my-results" user={userData}>
+                <StudentResults />
               </AssessmentLayout>
             </ProtectedRoute>
           } />

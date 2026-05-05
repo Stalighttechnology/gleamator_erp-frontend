@@ -63,9 +63,9 @@ const ResultsPage = () => {
   const [stats, setStats] = useState<Stats | null>(null);
 
   const [filters, setFilters] = useState({
-    batch_id: '',
-    course_id: '',
-    status: '',
+    batch_id: '__all',
+    course_id: '__all',
+    status: '__all',
     search: '',
   });
 
@@ -81,26 +81,50 @@ const ResultsPage = () => {
     try {
       setLoading(true);
 
-      // Fetch results
-      const resultsRes = await fetchWithTokenRefresh('/api/assessment/results/');
+      const normalize = (res: any) => {
+        if (!res) return [];
+        if (Array.isArray(res)) return res;
+        if (Array.isArray(res.data)) return res.data;
+        if (Array.isArray(res.results)) return res.results;
+        if (res.data && Array.isArray(res.data.data)) return res.data.data;
+        return [];
+      };
+
+      const normalizeOptions = (res: any) => {
+        const arr = normalize(res);
+        if (!Array.isArray(arr)) return [];
+        return arr
+          .map((item: any) => {
+            if (!item) return null;
+            if (typeof item === 'string') return { id: item, name: item };
+            const id = item.id ?? item.batch_id ?? item.pk ?? item.value ?? item.name ?? null;
+            const name = item.name ?? item.batch_name ?? item.title ?? String(id ?? '');
+            return { id, name };
+          })
+          .filter((opt: any) => opt && opt.name && String(opt.name).trim() !== '');
+      };
+
+      // Fetch results (use stable endpoint)
+      const resultsRes = await fetchWithTokenRefresh('/api/assessment/my-results/');
       if (resultsRes.ok) {
         const resultsData = await resultsRes.json();
-        setResults(resultsData.results || resultsData);
-        setFilteredResults(resultsData.results || resultsData);
+        const normalized = normalize(resultsData);
+        setResults(normalized);
+        setFilteredResults(normalized);
       }
 
       // Fetch batches
       const batchesRes = await fetchWithTokenRefresh('/api/assessment/batches/');
       if (batchesRes.ok) {
         const batchesData = await batchesRes.json();
-        setBatches(batchesData.results || batchesData);
+        setBatches(normalizeOptions(batchesData));
       }
 
       // Fetch courses
       const coursesRes = await fetchWithTokenRefresh('/api/assessment/courses/');
       if (coursesRes.ok) {
         const coursesData = await coursesRes.json();
-        setCourses(coursesData.results || coursesData);
+        setCourses(normalizeOptions(coursesData));
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -117,12 +141,16 @@ const ResultsPage = () => {
   const applyFilters = () => {
     let filtered = [...results];
 
-    if (filters.batch_id) {
-      filtered = filtered.filter(r => String(r.batch_name) === filters.batch_id);
+    if (filters.batch_id && filters.batch_id !== '__all') {
+      filtered = filtered.filter(r =>
+        String(r.batch_name) === filters.batch_id || String((r as any).batch_id) === filters.batch_id
+      );
     }
 
-    if (filters.course_id) {
-      filtered = filtered.filter(r => String(r.course_name) === filters.course_id);
+    if (filters.course_id && filters.course_id !== '__all') {
+      filtered = filtered.filter(r =>
+        String(r.course_name) === filters.course_id || String((r as any).course_id) === filters.course_id
+      );
     }
 
     if (filters.status) {
@@ -355,9 +383,9 @@ const ResultsPage = () => {
                   <SelectValue placeholder="All Batches" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Batches</SelectItem>
+                  <SelectItem value="__all">All Batches</SelectItem>
                   {batches.map(batch => (
-                    <SelectItem key={batch.id} value={batch.name}>
+                    <SelectItem key={batch.id ?? batch.name} value={String(batch.id)}>
                       {batch.name}
                     </SelectItem>
                   ))}
@@ -372,9 +400,9 @@ const ResultsPage = () => {
                   <SelectValue placeholder="All Courses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Courses</SelectItem>
+                  <SelectItem value="__all">All Courses</SelectItem>
                   {courses.map(course => (
-                    <SelectItem key={course.id} value={course.name}>
+                    <SelectItem key={course.id ?? course.name} value={String(course.id)}>
                       {course.name}
                     </SelectItem>
                   ))}
@@ -389,7 +417,7 @@ const ResultsPage = () => {
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="__all">All Status</SelectItem>
                   <SelectItem value="passed">Passed</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
                 </SelectContent>

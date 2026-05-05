@@ -276,12 +276,12 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
               <table className="w-full text-sm text-left border-collapse">
                 <thead>
                     <tr className="border-b">
-                    <th className="py-3 px-4">Batch Name</th>
-                    <th className="py-3 px-4">Sections</th>
-                    <th className="py-3 px-4">Assignments</th>
-                    <th className="py-3 px-4 text-center">Students</th>
-                    <th className="py-3 px-4 text-right">View</th>
-                  </tr>
+                      <th className="py-3 px-4">Batch Name</th>
+                      <th className="py-3 px-4">Sections</th>
+                      <th className="py-3 px-4">Faculty</th>
+                      <th className="py-3 px-4 text-center">Students</th>
+                      <th className="py-3 px-4 text-right">View</th>
+                    </tr>
                 </thead>
                 <tbody>
                   {batches.map((batch) => (
@@ -299,19 +299,20 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {batch.courses && batch.courses.length > 0 && (
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              <Book className="w-3 h-3" /> {batch.courses.length} Courses
-                            </Badge>
-                          )}
-                          {batch.faculty && batch.faculty.length > 0 && (
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <Users className="w-3 h-3" /> {batch.faculty.length} Faculty
-                            </Badge>
-                          )}
-                          {(!batch.courses?.length && !batch.faculty?.length) && (
-                            <span className="text-xs text-muted-foreground italic">No assignments</span>
+                        <div className="flex flex-wrap gap-2">
+                          {batch.faculty && batch.faculty.length > 0 ? (
+                            batch.faculty.map((f: any, idx: number) => {
+                              const name = typeof f === 'string'
+                                ? f
+                                : (f.name || `${f.first_name || ''} ${f.last_name || ''}`.trim() || f.id || 'Unknown');
+                              return (
+                                <Badge key={idx} variant="outline" className="px-2 py-0.5 rounded-full bg-primary/5 text-primary border-primary/20">
+                                  {name}
+                                </Badge>
+                              );
+                            })
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">No Faculty</span>
                           )}
                         </div>
                       </td>

@@ -206,7 +206,7 @@ const FacultyAnnouncementManagement = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <CardTitle className={`text-xl sm:text-2xl font-semibold leading-none tracking-tight ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
-                Announcements for Proctor Students
+                Announcements for My Students
               </CardTitle>
               <p className={theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}>
                 Create and manage announcements for your proctor group
@@ -225,14 +225,14 @@ const FacultyAnnouncementManagement = () => {
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle className={`text-2xl font-semibold leading-none tracking-tight ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
-                    {editingId
-                      ? "Edit Announcement"
-                      : "Create Announcement for Proctor Students"}
+                      {editingId
+                        ? "Edit Announcement"
+                        : "Create Announcement for My Students"}
                   </DialogTitle>
                   <DialogDescription className={theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}>
-                    {editingId
-                      ? "Update the announcement details below"
-                      : "Create a new announcement that will be sent to your proctor students"}
+                      {editingId
+                        ? "Update the announcement details below"
+                        : "Create a new announcement that will be sent to your students"}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -299,7 +299,7 @@ const FacultyAnnouncementManagement = () => {
 
                   <div className="p-3 rounded-lg bg-muted">
                     <p className="text-sm text-muted-foreground">
-                      ℹ️ This announcement will be visible to your proctor students only
+                      ℹ️ This announcement will be visible to your students only
                     </p>
                   </div>
 

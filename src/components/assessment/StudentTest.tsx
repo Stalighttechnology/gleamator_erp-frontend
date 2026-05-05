@@ -87,7 +87,38 @@ const StudentTest = () => {
       if (!response.ok) throw new Error('Failed to fetch assignments');
 
       const data = await response.json();
-      setAssignments(data.results || data);
+      console.debug('Assignments API response:', data);
+      const list =
+        data?.data ||
+        data?.results?.data ||
+        data?.results ||
+        data ||
+        [];
+
+      // Normalize each item to the shape expected by this component:
+      // { id, assessment: { id, title, total_questions, duration_minutes, passing_percentage }, start_time, end_time }
+      const normalized = (Array.isArray(list) ? list : []).map((item: any) => {
+        // If already in expected shape, return as-is
+        if (item && item.id && item.assessment) return item;
+
+        const assignmentId = item.assignment_id ?? item.id ?? null;
+        const assessmentObj = item.assessment ?? {
+          id: item.assessment_id ?? item.assessmentId ?? null,
+          title: item.title ?? item.assessment_title ?? '',
+          total_questions: item.total_questions ?? item.total_marks ?? null,
+          duration_minutes: item.duration_minutes ?? item.duration ?? null,
+          passing_percentage: item.passing_percentage ?? item.passing_percentage ?? null,
+        };
+
+        return {
+          id: assignmentId,
+          assessment: assessmentObj,
+          start_time: item.start_time ?? item.start_time,
+          end_time: item.end_time ?? item.end_time,
+        };
+      }).filter(Boolean);
+
+      setAssignments(normalized);
     } catch (error) {
       console.error('Error fetching assignments:', error);
       toast({
@@ -125,16 +156,29 @@ const StudentTest = () => {
     try {
       setLoading(true);
 
+      const assignmentId = (assignment as any).id ?? (assignment as any).assignment_id ?? null;
+      if (!assignmentId) {
+        console.error('startAttempt: missing assignment id', assignment);
+        MySwal.fire('Error', 'Invalid assignment selected. Please refresh and try again.', 'error');
+        return;
+      }
+
       const response = await fetchWithTokenRefresh('/api/assessment/attempts/start/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignment_id: assignment.id }),
+        body: JSON.stringify({ assignment_id: assignmentId }),
       });
 
-      if (!response.ok) throw new Error('Failed to start attempt');
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
 
-      const data = await response.json();
-      
+      if (!response.ok) {
+        console.error('Start attempt failed', response.status, data || text);
+        const msg = data?.message || data?.detail || text || 'Failed to start attempt';
+        MySwal.fire('Error', msg, 'error');
+        return;
+      }
+
       setCurrentAssignment(assignment);
       setAttempt(data.attempt);
       setQuestions(data.questions || []);

@@ -123,10 +123,18 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
   }
   
   const getActivePageFromPath = (pathname: string): string => {
-    const pathParts = pathname.split('/');
-    const lastPart = pathParts[pathParts.length - 1];
-    
-    // Map URL paths to page names
+    // Normalize and handle root '/hod' specially
+    if (!pathname || pathname === '/hod' || pathname === '/hod/') return 'dashboard';
+
+    // Remove leading/trailing slashes and take the first segment after /hod/
+    const cleaned = pathname.replace(/^\/+|\/+$/g, '');
+    const parts = cleaned.split('/');
+    // If path starts with 'hod', the next segment is the page; otherwise use first segment
+    let candidate = parts[0] === 'hod' ? (parts[1] || '') : parts[0] || '';
+
+    if (!candidate) return 'dashboard';
+
+    // Known remapping for legacy or alias routes
     const pathMap: { [key: string]: string } = {
       'dashboard': 'dashboard',
       'enrollment-management': 'enrollment-management',
@@ -143,10 +151,13 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'study-materials': 'study-materials',
       'hod-profile': 'hod-profile',
       'short-permission-request': 'short-permission-request',
-      'batches': 'batches'
+      'batches': 'batches',
+      // Accept explicit hod-announcement-management segment as-is
+      'hod-announcement-management': 'hod-announcement-management'
     };
-    
-    return pathMap[lastPart] || 'dashboard';
+
+    // Prefer mapped value, otherwise return the raw candidate so new routes work without edits
+    return pathMap[candidate] || candidate || 'dashboard';
   };
 
   const [activePage, setActivePage] = useState<string>(getActivePageFromPath(location.pathname));
@@ -212,6 +223,8 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'study-materials': '/hod/study-materials',
       'hod-profile': '/hod/hod-profile',
       'short-permission-request': '/hod/short-permission-request',
+      // Allow the announcement menu value used in the sidebar to map to the announcements page
+      'hod-announcement-management': '/hod/hod-announcement-management',
       'batches': '/hod/batches'
     };
     

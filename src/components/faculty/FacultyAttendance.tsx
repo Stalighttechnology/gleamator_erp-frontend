@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useTheme } from "@/context/ThemeContext";
 import { SkeletonCard, SkeletonList } from "@/components/ui/skeleton";
-import { markFacultyAttendance, getFacultyAttendanceRecords, MarkFacultyAttendanceRequest, FacultyAttendanceRecord } from "@/utils/faculty_api";
+import { markFacultyAttendance, getFacultyAttendanceRecords, getFacultyAssignments, getProctorStudentsForStats as getFacultyStudents, MarkFacultyAttendanceRequest, FacultyAttendanceRecord } from "@/utils/faculty_api";
+import normalizeStudents from '@/utils/student_utils';
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,6 +18,8 @@ const FacultyAttendance = () => {
   const [loadingMessage, setLoadingMessage] = useState("");
   const [todayRecord, setTodayRecord] = useState<FacultyAttendanceRecord | null>(null);
   const [recentRecords, setRecentRecords] = useState<FacultyAttendanceRecord[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState<boolean>(true);
   const [historyRecords, setHistoryRecords] = useState<FacultyAttendanceRecord[]>([]);
   const [historyPage, setHistoryPage] = useState<number>(1);
   const [historyPageSize] = useState<number>(10);
@@ -40,6 +43,7 @@ const FacultyAttendance = () => {
       const startDate = weekAgo.toISOString().split('T')[0];
 
       const resp = await fetchHistoryPage(1, startDate);
+      console.log('getFacultyAttendanceRecords (FacultyAttendance) history resp:', resp);
       if (resp && resp.success && resp.data) {
         setRecentRecords(resp.data.slice(0, 7));
         const today = new Date().toISOString().split('T')[0];
@@ -49,6 +53,42 @@ const FacultyAttendance = () => {
           setAttendanceStatus(todayRec.status as "present" | "absent");
           setNotes(todayRec.notes || "");
         }
+      }
+
+      // Fetch assignments and canonical students list, then enrich students with batch info
+      try {
+        setStudentsLoading(true);
+        const assignments = await getFacultyAssignments();
+        console.log('getFacultyAssignments (FacultyAttendance):', assignments);
+
+        const studentsRes = await getFacultyStudents({ page: 1, page_size: 500 });
+        console.log('getFacultyStudents (FacultyAttendance) raw:', studentsRes);
+        const normalized = normalizeStudents(studentsRes);
+        console.log('getFacultyStudents (FacultyAttendance) normalized:', normalized);
+
+        const batchMap: Record<string, { name?: string; section?: string }> = {};
+        if (assignments && assignments.success && assignments.data && Array.isArray(assignments.data)) {
+          for (const a of assignments.data) {
+            const bid = (a.batch_id ?? a.batchId ?? a.id)?.toString?.() ?? '';
+            batchMap[bid] = {
+              name: a.batch || a.batch_name || a.batchName || a.batchLabel || a.batch_display || a.batch_id_display,
+              section: a.section || a.section_name || a.sectionId || a.section_id || ''
+            };
+          }
+        }
+
+        const enriched = (normalized || []).map((s: any) => ({
+          ...s,
+          batchName: s.batch || batchMap[(s.batch_id ?? s.batchId ?? '')]?.name || 'N/A',
+          section: s.section || batchMap[(s.batch_id ?? s.batchId ?? '')]?.section || s.section || 'N/A'
+        }));
+
+        setStudents(enriched);
+      } catch (e) {
+        console.error('Failed to fetch/enrich students for FacultyAttendance:', e);
+        setStudents([]);
+      } finally {
+        setStudentsLoading(false);
       }
     } catch (error) {
       console.error("Error fetching attendance data:", error);
@@ -216,6 +256,8 @@ const FacultyAttendance = () => {
       </div>
     );
   }
+
+  const totalBatchStudents = students?.length || 0;
 
   return (
     <div className={` md: space-y-6 ${theme === 'dark' ? 'bg-background text-foreground' : 'bg-gray-50 text-gray-900'}`}>
@@ -422,6 +464,42 @@ const FacultyAttendance = () => {
           </AnimatePresence>
         </CardContent>
       </Card>
+      {/* Students List (enriched with batch & section) */}
+      <Card className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-200'}>
+        <CardHeader>
+          <CardTitle className={`text-lg font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Students ({totalBatchStudents})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {studentsLoading ? (
+            <SkeletonList items={5} />
+          ) : students.length === 0 ? (
+            <div className={`p-4 text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>No students found</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className={`${theme === 'dark' ? 'bg-muted text-foreground' : 'bg-gray-100 text-gray-900'} font-medium`}> 
+                  <tr>
+                    <th className="px-4 py-2">USN</th>
+                    <th className="px-4 py-2">Name</th>
+                    <th className="px-4 py-2">Batch</th>
+                    <th className="px-4 py-2">Section</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {students.map((s: any) => (
+                    <tr key={s.id} className={theme === 'dark' ? 'hover:bg-muted' : 'hover:bg-gray-50'}>
+                      <td className="px-4 py-2 font-mono">{s.usn}</td>
+                      <td className="px-4 py-2">{s.name}</td>
+                      <td className="px-4 py-2">{s.batchName || s.batch || 'N/A'}</td>
+                      <td className="px-4 py-2">{s.section || 'N/A'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Attendance Records */}
       <Card className={theme === 'dark' ? 'bg-card text-foreground' : 'bg-white text-gray-900'}>
@@ -575,4 +653,4 @@ const FacultyAttendance = () => {
   );
 };
 
-export default FacultyAttendance;
+export default FacultyAttendance;

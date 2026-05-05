@@ -47,6 +47,8 @@ const AssignAssessment = () => {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -57,7 +59,7 @@ const AssignAssessment = () => {
   });
 
   const [submitting, setSubmitting] = useState(false);
-  const selectedAssessment = assessments.find((assessment) => String(assessment.id) === formData.assessment_id);
+  const selectedAssessment = assessments.find((a) => String(a.id) === formData.assessment_id);
   const canAssignSelectedAssessment = selectedAssessment?.status === 'approved';
 
   useEffect(() => {
@@ -68,36 +70,29 @@ const AssignAssessment = () => {
     try {
       setLoading(true);
 
-      // Fetch all assessments so faculty can see pending/rejected tests, but assign only after approval.
       const assessmentsRes = await fetchWithTokenRefresh('/api/assessment/assessments/?status=all');
       if (assessmentsRes.ok) {
         const assessmentsData = await assessmentsRes.json();
-        const assessmentList = assessmentsData.results?.assessments || assessmentsData.assessments || assessmentsData.results || assessmentsData;
-        setAssessments(Array.isArray(assessmentList) ? assessmentList : []);
+        const list = assessmentsData.results?.assessments || assessmentsData.assessments || assessmentsData.results || assessmentsData;
+        setAssessments(Array.isArray(list) ? list : []);
       }
 
-      // Fetch batches
       const batchesRes = await fetchWithTokenRefresh('/api/assessment/batches/');
       if (batchesRes.ok) {
         const batchesData = await batchesRes.json();
-        const batchList = batchesData.results?.batches || batchesData.batches || batchesData.results || batchesData;
-        setBatches(Array.isArray(batchList) ? batchList : []);
+        const list = batchesData.results?.batches || batchesData.batches || batchesData.results || batchesData;
+        setBatches(Array.isArray(list) ? list : []);
       }
 
-      // Fetch existing assignments
       const assignmentsRes = await fetchWithTokenRefresh('/api/assessment/assignments/');
       if (assignmentsRes.ok) {
         const assignmentsData = await assignmentsRes.json();
-        const assignmentList = assignmentsData.results?.assignments || assignmentsData.assignments || assignmentsData.results || assignmentsData;
-        setAssignments(Array.isArray(assignmentList) ? assignmentList : []);
+        const list = assignmentsData.results?.assignments || assignmentsData.assignments || assignmentsData.results || assignmentsData;
+        setAssignments(Array.isArray(list) ? list : []);
       }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load data',
-        variant: 'destructive',
-      });
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      toast({ title: 'Error', description: 'Failed to load data', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -106,6 +101,37 @@ const AssignAssessment = () => {
   const handleFormChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  // Fetch students when batch selection changes
+  useEffect(() => {
+    const batchId = formData.batch_id;
+    if (!batchId) {
+      setStudents([]);
+      setSelectedStudents([]);
+      return;
+    }
+
+    let mounted = true;
+    const fetchStudents = async () => {
+      try {
+        const res = await fetchWithTokenRefresh(`/api/faculty/students/?batch_id=${batchId}`);
+        const json = await res.json();
+        const list = json.results?.data || json.data || json.results || json || [];
+        if (!mounted) return;
+        setStudents(Array.isArray(list) ? list : []);
+        setSelectedStudents([]);
+      } catch (err) {
+        console.error('Error fetching students', err);
+        if (mounted) {
+          setStudents([]);
+          setSelectedStudents([]);
+        }
+      }
+    };
+
+    fetchStudents();
+    return () => { mounted = false; };
+  }, [formData.batch_id]);
 
   const validateForm = (): boolean => {
     if (!formData.assessment_id) {
@@ -131,9 +157,13 @@ const AssignAssessment = () => {
 
     const start = new Date(formData.start_time);
     const end = new Date(formData.end_time);
-
     if (end <= start) {
       MySwal.fire('Validation Error', 'End time must be after start time', 'warning');
+      return false;
+    }
+
+    if (selectedStudents.length === 0) {
+      MySwal.fire('Validation Error', 'Select at least one student', 'warning');
       return false;
     }
 
@@ -145,7 +175,7 @@ const AssignAssessment = () => {
 
     const result = await MySwal.fire({
       title: 'Assign Assessment?',
-      text: 'This will make the assessment available to the selected batch.',
+      text: 'This will make the assessment available to the selected students',
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: 'hsl(var(--primary))',
@@ -158,12 +188,12 @@ const AssignAssessment = () => {
 
     try {
       setSubmitting(true);
-
       const payload = {
         assessment_id: Number(formData.assessment_id),
         batch_id: Number(formData.batch_id),
         start_time: formData.start_time,
         end_time: formData.end_time,
+        student_ids: selectedStudents,
       };
 
       const response = await fetchWithTokenRefresh('/api/assessment/assignments/', {
@@ -172,27 +202,23 @@ const AssignAssessment = () => {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error('Failed to assign assessment');
+      if (!response.ok) {
+        let bodyText = '';
+        try { bodyText = await response.text(); } catch (e) { /* ignore */ }
+        console.error('Assign failed', response.status, bodyText);
+        throw new Error(bodyText || 'Failed to assign assessment');
+      }
+      await response.json();
 
-      const newAssignment = await response.json();
+      toast({ title: 'Success', description: 'Assessment assigned successfully' });
 
-      toast({
-        title: 'Success',
-        description: 'Assessment assigned successfully',
-      });
+      setFormData({ assessment_id: '', batch_id: '', start_time: '', end_time: '' });
+      setSelectedStudents([]);
+      setStudents([]);
 
-      // Reset form
-      setFormData({
-        assessment_id: '',
-        batch_id: '',
-        start_time: '',
-        end_time: '',
-      });
-
-      // Refresh assignments list
       fetchData();
-    } catch (error) {
-      console.error('Error assigning assessment:', error);
+    } catch (err) {
+      console.error('Error assigning assessment:', err);
       MySwal.fire('Error', 'Failed to assign assessment. Please try again.', 'error');
     } finally {
       setSubmitting(false);
@@ -209,7 +235,6 @@ const AssignAssessment = () => {
       approved: { variant: 'default', label: 'Approved' },
       rejected: { variant: 'destructive', label: 'Rejected' },
     };
-
     const config = statusConfig[status] || { variant: 'outline', label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
@@ -243,7 +268,6 @@ const AssignAssessment = () => {
         <p className="text-sm text-muted-foreground">Assign approved assessments to batches with a schedule.</p>
       </div>
 
-      {/* Assignment Form */}
       <Card>
         <CardHeader>
           <CardTitle>Assign Assessment to Batch</CardTitle>
@@ -265,9 +289,7 @@ const AssignAssessment = () => {
                 </SelectContent>
               </Select>
               {selectedAssessment && !canAssignSelectedAssessment && (
-                <p className="text-xs text-muted-foreground">
-                  Admin approval is required before this assessment can be assigned.
-                </p>
+                <p className="text-xs text-muted-foreground">Admin approval is required before this assessment can be assigned.</p>
               )}
             </div>
 
@@ -287,24 +309,50 @@ const AssignAssessment = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="start-time">Start Date & Time *</Label>
-              <Input
-                id="start-time"
-                type="datetime-local"
-                value={formData.start_time}
-                onChange={(e) => handleFormChange('start_time', e.target.value)}
-              />
+            <div className="space-y-2 md:col-span-2">
+              <Label>Students</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="select-all-students"
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedStudents(students.map((s) => s.id));
+                    else setSelectedStudents([]);
+                  }}
+                  checked={students.length > 0 && selectedStudents.length === students.length}
+                />
+                <label htmlFor="select-all-students" className="text-sm">Select All</label>
+              </div>
+
+              <div className="max-h-60 overflow-y-auto border rounded p-2 mt-2">
+                {students.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">No students loaded for selected batch</div>
+                ) : (
+                  students.map((student) => (
+                    <div key={student.id} className="flex items-center gap-3 p-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedStudents.includes(student.id)}
+                        onChange={() => setSelectedStudents((prev) => prev.includes(student.id) ? prev.filter((id) => id !== student.id) : [...prev, student.id])}
+                      />
+                      <div className="flex-1 text-sm">
+                        <div className="font-medium">{student.name || student.full_name || student.first_name || '-'}</div>
+                        <div className="text-xs text-muted-foreground">{student.usn || student.roll_no || ''}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="end-time">End Date & Time *</Label>
-              <Input
-                id="end-time"
-                type="datetime-local"
-                value={formData.end_time}
-                onChange={(e) => handleFormChange('end_time', e.target.value)}
-              />
+              <Label htmlFor="start-time">Start Date *</Label>
+              <Input id="start-time" type="date" value={formData.start_time} onChange={(e) => handleFormChange('start_time', e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="end-time">End Date *</Label>
+              <Input id="end-time" type="date" value={formData.end_time} onChange={(e) => handleFormChange('end_time', e.target.value)} />
             </div>
           </div>
 
@@ -316,7 +364,6 @@ const AssignAssessment = () => {
         </CardContent>
       </Card>
 
-      {/* Existing Assignments */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -326,9 +373,7 @@ const AssignAssessment = () => {
         </CardHeader>
         <CardContent>
           {assignments.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No assignments created yet
-            </div>
+            <div className="text-center py-12 text-muted-foreground">No assignments created yet</div>
           ) : (
             <div className="space-y-3">
               {assignments.map((assignment) => (
@@ -337,20 +382,11 @@ const AssignAssessment = () => {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 space-y-2">
                         <div className="font-semibold">{assignment.assessment?.title || assignment.assessment_title || '-'}</div>
-                        
+
                         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Users size={14} />
-                            {assignment.batch?.name || assignment.batch_name || '-'}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar size={14} />
-                            {new Date(assignment.start_time).toLocaleDateString()}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock size={14} />
-                            {new Date(assignment.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(assignment.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
+                          <div className="flex items-center gap-1"><Users size={14} />{assignment.batch?.name || assignment.batch_name || '-'}</div>
+                          <div className="flex items-center gap-1"><Calendar size={14} />{new Date(assignment.start_time).toLocaleDateString()}</div>
+                          <div className="flex items-center gap-1"><Clock size={14} />{new Date(assignment.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(assignment.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                         </div>
 
                         <div className="flex flex-wrap gap-2 text-xs">
@@ -360,9 +396,7 @@ const AssignAssessment = () => {
                         </div>
                       </div>
 
-                      <div>
-                        {getStatusBadge(assignment.status || 'active')}
-                      </div>
+                      <div>{getStatusBadge(assignment.status || 'active')}</div>
                     </div>
                   </CardContent>
                 </Card>

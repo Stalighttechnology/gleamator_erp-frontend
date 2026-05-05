@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileTextIcon } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line, CartesianGrid, ResponsiveContainer, LabelList } from "recharts";
-import { ProctorStudent, getProctorStudentsForStats } from '../../utils/faculty_api';
+import { ProctorStudent, getProctorStudentsForStats as getFacultyStudents } from '../../utils/faculty_api';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useTheme } from "@/context/ThemeContext";
@@ -24,12 +24,18 @@ const GenerateStatistics: React.FC = () => {
     const refetch = async () => {
       setProctorStudentsLoading(true);
       try {
-        const res = await getProctorStudentsForStats({ page, page_size: pageSize });
-        if (res.success && res.data) {
-          if (mounted) setProctorStudents(res.data);
+        const res = await getFacultyStudents({ page, page_size: pageSize });
+        try {
+          const { normalizeStudents } = await import('@/utils/student_utils');
+          console.log('FULL RESPONSE (proctor students):', res);
+          const normalized = normalizeStudents(res);
+          console.log('NORMALIZED (proctor students):', normalized);
+          if (mounted) setProctorStudents(normalized);
           if (res.pagination) {
             if (mounted) setTotalPages(res.pagination.total_pages || 1);
           }
+        } catch (e) {
+          if (mounted) setProctorStudents([]);
         }
       } catch (e) {
         if (mounted) setProctorStudents([]);
@@ -66,7 +72,7 @@ const GenerateStatistics: React.FC = () => {
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
-    doc.text("Proctor Students Report", 14, 16);
+    doc.text("My Students Report", 14, 16);
     const tableColumn = ["USN", "Name", "Attendance %", "Avg Mark"];
     const tableRows = proctorStudents.map(student => [
       student.usn,
