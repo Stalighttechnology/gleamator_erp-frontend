@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { SkeletonCard } from "../ui/skeleton";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { manageStudents, getElectiveEnrollmentBootstrap, enrollStaff } from "../../utils/hod_api";
+import { manageStudents, getElectiveEnrollmentBootstrap, enrollStaff, createMis } from "../../utils/hod_api";
+import { getBranchesWithHODs } from "../../utils/admin_api";
 import { useHODBootstrap } from "../../context/HODBootstrapContext";
 import { useTheme } from "../../context/ThemeContext";
 import { API_ENDPOINT } from "../../utils/config";
@@ -232,21 +233,41 @@ const EnrollmentManagement = () => {
     
     setIsCreatingStaff(true);
     try {
-      const res = await enrollStaff({
-        ...staffForm,
-        role: selectedRole as "teacher" | "mis"
-      });
-      
-      if (res.success) {
+      let res: any = null;
+      if (selectedRole === 'mis') {
+        // Call dedicated MIS creation endpoint — backend will inherit branch and batch
+        res = await createMis({
+          first_name: staffForm.first_name,
+          last_name: staffForm.last_name,
+          email: staffForm.email,
+          mobile_number: staffForm.phone || undefined,
+        });
+      } else {
+        res = await enrollStaff({
+          ...staffForm,
+          role: selectedRole as "teacher"
+        });
+      }
+
+      if (res && res.success) {
         toast({
           title: "Success",
           description: `${selectedRole === 'teacher' ? 'Faculty' : 'MIS'} created successfully.`,
         });
         setStaffForm({ email: "", first_name: "", last_name: "", phone: "", designation: "" });
+
+        // Refresh branches/MIS listing so BranchesManagement shows the new MIS immediately
+        try {
+          await getBranchesWithHODs();
+        } catch (e) {
+          // best-effort
+        }
+        // notify other components to refresh
+        try { window.dispatchEvent(new Event('branches:updated')); } catch (e) { /* ignore */ }
       } else {
         toast({
           title: "Error",
-          description: res.message || "Failed to create staff account.",
+          description: res?.message || "Failed to create staff account.",
           variant: "destructive"
         });
       }

@@ -1,13 +1,13 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { lazy, Suspense, useState, useEffect } from "react";
 import Index from "./components/common/Index";
-import CreateAssessment from "@/components/assessment/CreateAssesment";
-import AssignAssessment from "@/components/assessment/AssignAssesment";
-import StudentTest from "@/components/assessment/StudentTest";
-import ResultsPage from "@/components/assessment/ResultsPage";
-import StudentResults from "./components/assessment/StudentResults";
+import CreateAssessment from "@/components/faculty/CreateAssessment";
+import AssignAssessment from "@/components/faculty/AssignAssessment";
+import StudentTest from "@/components/student/StudentTest";
+import ResultsPage from "@/components/common/ResultsPage";
+import StudentResults from "@/components/student/StudentResults";
 import DashboardLayout from "@/components/common/DashboardLayout";
 
 // Lazy loaded components
@@ -195,43 +195,30 @@ const App = () => {
             </>
           } />
 
-          <Route path="/assessment/create" element={
-            <ProtectedRoute allowedRoles={["teacher"]}>
-              <AssessmentLayout role="faculty" activePage="assessment/create" user={userData}>
-                <CreateAssessment />
-              </AssessmentLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/assessment/assign" element={
-            <ProtectedRoute allowedRoles={["teacher"]}>
-              <AssessmentLayout role="faculty" activePage="assessment/assign" user={userData}>
-                <AssignAssessment />
-              </AssessmentLayout>
-            </ProtectedRoute>
-          } />
+          <Route path="/assessment/create" element={<ProtectedRoute allowedRoles={["teacher"]}><Navigate to="/faculty/assessment/create" replace /></ProtectedRoute>} />
+          <Route path="/assessment/assign" element={<ProtectedRoute allowedRoles={["teacher"]}><Navigate to="/faculty/assessment/assign" replace /></ProtectedRoute>} />
 
           <Route path="/assessment/test" element={
             <ProtectedRoute allowedRoles={["student"]}>
-              <AssessmentLayout role="student" activePage="assessment/test" user={userData}>
-                <StudentTest />
-              </AssessmentLayout>
+              <>
+                <StudentDashboard user={userData} setPage={() => {}} />
+                {shouldShowFloatingAssistant() && <FloatingAssistant />}
+              </>
             </ProtectedRoute>
           } />
 
           <Route path="/assessment/results" element={
             <ProtectedRoute allowedRoles={["teacher","admin"]}>
-              <AssessmentLayout role="faculty" activePage="assessment/results" user={userData}>
-                <ResultsPage />
-              </AssessmentLayout>
+              <Navigate to={localStorage.getItem("role") === "admin" ? "/admin/assessment/results" : "/faculty/assessment/results"} replace />
             </ProtectedRoute>
           } />
 
           <Route path="/assessment/my-results" element={
             <ProtectedRoute allowedRoles={["student"]}>
-              <AssessmentLayout role="student" activePage="assessment/my-results" user={userData}>
-                <StudentResults />
-              </AssessmentLayout>
+              <>
+                <StudentDashboard user={userData} setPage={() => {}} />
+                {shouldShowFloatingAssistant() && <FloatingAssistant />}
+              </>
             </ProtectedRoute>
           } />
 
@@ -279,10 +266,16 @@ const App = () => {
           } />
 
           <Route path="/attendance" element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "student"]}>
               <>
-                <Attendance />
-                {shouldShowFloatingAssistant() && <FloatingAssistant />}
+                {localStorage.getItem('role') === 'student' ? (
+                  <StudentDashboard user={userData} setPage={() => { }} />
+                ) : (
+                  <>
+                    <Attendance />
+                    {shouldShowFloatingAssistant() && <FloatingAssistant />}
+                  </>
+                )}
               </>
             </ProtectedRoute>
           } />

@@ -43,7 +43,6 @@ const FacultyAttendance = () => {
       const startDate = weekAgo.toISOString().split('T')[0];
 
       const resp = await fetchHistoryPage(1, startDate);
-      console.log('getFacultyAttendanceRecords (FacultyAttendance) history resp:', resp);
       if (resp && resp.success && resp.data) {
         setRecentRecords(resp.data.slice(0, 7));
         const today = new Date().toISOString().split('T')[0];
@@ -59,12 +58,9 @@ const FacultyAttendance = () => {
       try {
         setStudentsLoading(true);
         const assignments = await getFacultyAssignments();
-        console.log('getFacultyAssignments (FacultyAttendance):', assignments);
 
         const studentsRes = await getFacultyStudents({ page: 1, page_size: 500 });
-        console.log('getFacultyStudents (FacultyAttendance) raw:', studentsRes);
         const normalized = normalizeStudents(studentsRes);
-        console.log('getFacultyStudents (FacultyAttendance) normalized:', normalized);
 
         const batchMap: Record<string, { name?: string; section?: string }> = {};
         if (assignments && assignments.success && assignments.data && Array.isArray(assignments.data)) {

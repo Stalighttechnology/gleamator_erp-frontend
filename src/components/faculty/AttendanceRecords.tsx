@@ -74,7 +74,6 @@ const AttendanceRecords = () => {
           page: pagination.page,
           page_size: pagination.pageSize,
         });
-        console.log('getAttendanceRecordsWithSummary:', res);
         if (res.success && res.data) {
           setRecords(Array.isArray(res.data) ? res.data : []);
           pagination.updatePagination(res);

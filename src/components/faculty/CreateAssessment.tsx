@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import QuestionBuilder from "./QuestionBuilder";
 import { fetchWithTokenRefresh } from "@/utils/authService";
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
@@ -25,6 +24,65 @@ interface AssessmentFormData {
   passing_percentage: number;
   total_questions: number;
 }
+
+// Inline QuestionBuilder to avoid a separate unused file
+const QuestionBuilder = ({ questions, updateQuestion }: { questions: Question[]; updateQuestion: (id: string, field: keyof Question, value: string) => void; }) => {
+  return (
+    <div className="space-y-4">
+      {questions.map((question, index) => (
+        <Card key={question.id} className="border-2 hover:border-primary/50 transition-colors">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">{index + 1}</span>
+              Question {index + 1}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Question Text *</Label>
+              <textarea
+                placeholder="Enter your question here..."
+                value={question.question_text}
+                onChange={(e) => updateQuestion(question.id, 'question_text', e.target.value)}
+                rows={3}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Option A *</Label>
+                <Input value={question.option_a} onChange={(e) => updateQuestion(question.id, 'option_a', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Option B *</Label>
+                <Input value={question.option_b} onChange={(e) => updateQuestion(question.id, 'option_b', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Option C *</Label>
+                <Input value={question.option_c} onChange={(e) => updateQuestion(question.id, 'option_c', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Option D *</Label>
+                <Input value={question.option_d} onChange={(e) => updateQuestion(question.id, 'option_d', e.target.value)} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Correct Answer *</Label>
+              <select value={question.correct_answer} onChange={(e) => updateQuestion(question.id, 'correct_answer', e.target.value)} className="p-2 border rounded w-40">
+                <option value="A">Option A</option>
+                <option value="B">Option B</option>
+                <option value="C">Option C</option>
+                <option value="D">Option D</option>
+              </select>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
 
 const CreateAssessment = () => {
   const { toast } = useToast();
@@ -113,7 +171,6 @@ const CreateAssessment = () => {
       setSaving(true);
       const payload = buildPayload();
 
-      // API call simulation
       const response = await fetchWithTokenRefresh('/api/assessment/assessments/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -139,7 +196,6 @@ const CreateAssessment = () => {
         confirmButtonColor: 'hsl(var(--primary))',
       });
 
-      // Reset form
       setFormData({ title: '', duration_minutes: 60, passing_percentage: 40, total_questions: 10 });
       setQuestions([]);
       setShowQuestions(false);
@@ -217,9 +273,7 @@ const CreateAssessment = () => {
 
           {!showQuestions && (
             <div className="mt-6">
-              <Button onClick={initializeQuestions} className="w-full md:w-auto">
-                Initialize Questions
-              </Button>
+              <Button onClick={initializeQuestions} className="w-full md:w-auto">Initialize Questions</Button>
             </div>
           )}
         </CardContent>
@@ -232,32 +286,13 @@ const CreateAssessment = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-wrap gap-3">
-                <Button
-                  onClick={() => saveAssessment('draft')}
-                  variant="outline"
-                  disabled={saving}
-                  className="flex-1 md:flex-none"
-                >
+                <Button onClick={() => saveAssessment('draft')} variant="outline" disabled={saving} className="flex-1 md:flex-none">
                   {saving ? 'Saving...' : 'Save as Draft'}
                 </Button>
-                <Button
-                  onClick={() => saveAssessment('pending_approval')}
-                  disabled={saving}
-                  className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white"
-                >
+                <Button onClick={() => saveAssessment('pending_approval')} disabled={saving} className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white">
                   {saving ? 'Submitting...' : 'Submit for Approval'}
                 </Button>
-                <Button
-                  onClick={() => {
-                    setShowQuestions(false);
-                    setQuestions([]);
-                  }}
-                  variant="ghost"
-                  disabled={saving}
-                  className="flex-1 md:flex-none"
-                >
-                  Cancel
-                </Button>
+                <Button onClick={() => { setShowQuestions(false); setQuestions([]); }} variant="ghost" disabled={saving} className="flex-1 md:flex-none">Cancel</Button>
               </div>
             </CardContent>
           </Card>

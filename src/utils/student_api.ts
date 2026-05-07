@@ -371,10 +371,7 @@ export const submitLeaveRequest = async (
   data: SubmitLeaveRequestRequest
 ): Promise<SubmitLeaveRequestResponse> => {
   try {
-    console.log("=== SUBMIT LEAVE REQUEST START ==="); // Debug log
-    console.log("Submitting leave request with data:", data); // Debug log
-    console.log("API Base URL:", API_ENDPOINT); // Debug log
-    console.log("Auth token exists:", !!localStorage.getItem("access_token")); // Debug log
+    // submit leave request
     
     const token = localStorage.getItem("access_token");
     if (!token) {
@@ -391,8 +388,7 @@ export const submitLeaveRequest = async (
       body: JSON.stringify(data),
     });
     
-    console.log("Submit leave request API response status:", response.status); // Debug log
-    console.log("Submit leave request API response headers:", [...response.headers.entries()]); // Debug log
+    // response received
     
     if (!response.ok) {
       console.error("API response not ok:", response.status, response.statusText); // Debug log
@@ -402,7 +398,7 @@ export const submitLeaveRequest = async (
     }
     
     const contentType = response.headers.get("content-type");
-    console.log("Response content type:", contentType); // Debug log
+    // content type checked
     
     if (!contentType || !contentType.includes("application/json")) {
       const textResponse = await response.text();
@@ -411,15 +407,11 @@ export const submitLeaveRequest = async (
     }
     
     const responseData = await response.json();
-    console.log("Submit leave request API response data:", responseData); // Debug log
     
     // Check if the response has the expected structure
     if (!responseData.hasOwnProperty('success')) {
-      console.warn("Unexpected API response structure:", responseData);
       return { success: false, message: "Unexpected API response structure" };
     }
-    
-    console.log("=== SUBMIT LEAVE REQUEST END ==="); // Debug log
     return responseData;
   } catch (error) {
     console.error("Submit Leave Request Error:", error);
@@ -429,9 +421,7 @@ export const submitLeaveRequest = async (
 
 export const getLeaveRequests = async (): Promise<GetLeaveRequestsResponse> => {
   try {
-    console.log("=== GET LEAVE REQUESTS START ==="); // Debug log
-    console.log("API Base URL:", API_ENDPOINT); // Debug log
-    console.log("Auth token exists:", !!localStorage.getItem("access_token")); // Debug log
+    // get leave requests
     
     const token = localStorage.getItem("access_token");
     if (!token) {
@@ -439,7 +429,7 @@ export const getLeaveRequests = async (): Promise<GetLeaveRequestsResponse> => {
       return { success: false, message: "No authentication token found" };
     }
     
-    console.log("Fetching leave requests from API..."); // Debug log
+    // fetching leave requests
     const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/student/leave-requests/`, {
       method: "GET",
       headers: {
@@ -448,8 +438,7 @@ export const getLeaveRequests = async (): Promise<GetLeaveRequestsResponse> => {
       },
     });
     
-    console.log("Leave requests API response status:", response.status); // Debug log
-    console.log("Leave requests API response headers:", [...response.headers.entries()]); // Debug log
+    // response received
     
     if (!response.ok) {
       console.error("API response not ok:", response.status, response.statusText); // Debug log
@@ -459,7 +448,7 @@ export const getLeaveRequests = async (): Promise<GetLeaveRequestsResponse> => {
     }
     
     const contentType = response.headers.get("content-type");
-    console.log("Response content type:", contentType); // Debug log
+    // content type checked
     
     if (!contentType || !contentType.includes("application/json")) {
       const textResponse = await response.text();
@@ -468,23 +457,9 @@ export const getLeaveRequests = async (): Promise<GetLeaveRequestsResponse> => {
     }
     
     const responseData = await response.json();
-    console.log("Leave requests API response data:", responseData); // Debug log
-    
-    // Check if the response has the expected structure
     if (!responseData.hasOwnProperty('success')) {
-      console.warn("Unexpected API response structure:", responseData);
       return { success: false, message: "Unexpected API response structure" };
     }
-    
-    // Additional validation for leave requests
-    if (responseData.success && responseData.leave_requests) {
-      console.log("Leave requests count:", responseData.leave_requests.length);
-      if (responseData.leave_requests.length > 0) {
-        console.log("First leave request:", responseData.leave_requests[0]);
-      }
-    }
-    
-    console.log("=== GET LEAVE REQUESTS END ==="); // Debug log
     return responseData;
   } catch (error) {
     console.error("Get Leave Requests Error:", error);

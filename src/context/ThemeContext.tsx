@@ -11,7 +11,6 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Initialize with value from localStorage immediately (synchronously)
   const getInitialTheme = () => {
     const savedTheme = localStorage.getItem('user-theme-preference');
-    console.log('ThemeContext - getInitialTheme:', { savedTheme });
     if (savedTheme) {
       return savedTheme;
     }
@@ -23,7 +22,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [theme, setTheme] = useState<string>(getInitialTheme());
 
   useEffect(() => {
-    console.log('ThemeContext - Applying theme:', theme);
+    // apply selected theme to document
     // Apply theme to document
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -47,7 +46,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     // Save theme preference (persists across login sessions)
     localStorage.setItem('user-theme-preference', theme);
-    console.log('ThemeContext - Saved to localStorage:', theme, 'Current value:', localStorage.getItem('user-theme-preference'));
+    // preference saved to localStorage
   }, [theme]);
 
   const toggleTheme = () => {

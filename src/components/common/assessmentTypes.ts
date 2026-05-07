@@ -7,3 +7,5 @@ export interface QuestionPayload {
   correct_answer: string;
   explanation: string;
 }
+
+export type AssessmentStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'active' | 'completed';

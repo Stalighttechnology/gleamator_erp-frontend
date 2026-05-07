@@ -172,7 +172,10 @@ interface ManageUsersResponse {
   count?: number;
   next?: string | null;
   previous?: string | null;
-  results?: User[];
+  results?: User[] | {
+    success: boolean;
+    users: User[];
+  };
 }
 
 interface ManageAdminProfileRequest {
@@ -324,7 +327,12 @@ interface BranchesWithHODsResponse {
   count?: number;
   next?: string | null;
   previous?: string | null;
-  results?: Branch[];
+  results?: Branch[] | {
+    success: boolean;
+    branches: Branch[];
+    hods: HODUser[];
+    mis_all?: HODUser[];
+  };
 }
 
 export const getBranchesWithHODs = async (
@@ -359,6 +367,33 @@ export const getBranchesWithHODs = async (
   } catch (error) {
     console.error("Get Branches with HODs Error:", error);
     return { success: false, message: "Network error" };
+  }
+};
+
+export const assignMis = async (
+  mis_id: number,
+  branch_id: number
+): Promise<any> => {
+  try {
+    console.log({ mis_id, branch_id });
+    const url = `${API_ENDPOINT}/admin/assign-mis/`;
+    const response = await fetchWithTokenRefresh(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ mis_id, branch_id })
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      console.error('Assign MIS Failed:', { status: response.status, result });
+      return { success: false, message: result.message || `HTTP ${response.status}` };
+    }
+    return result;
+  } catch (error) {
+    console.error('Assign MIS Error:', error);
+    return { success: false, message: 'Network error' };
   }
 };
 
@@ -896,5 +931,30 @@ export const manageCampusLocation = async (
   } catch (error) {
     console.error("Manage Campus Location Error:", error);
     return { success: false, message: "Network error" };
+  }
+};
+
+export const clearMis = async (
+  branch_id: number
+): Promise<any> => {
+  try {
+    const url = `${API_ENDPOINT}/admin/clear-mis/`;
+    const response = await fetchWithTokenRefresh(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ branch_id })
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      console.error('Clear MIS Failed:', { status: response.status, result });
+      return { success: false, message: result.message || `HTTP ${response.status}` };
+    }
+    return result;
+  } catch (error) {
+    console.error('Clear MIS Error:', error);
+    return { success: false, message: 'Network error' };
   }
 };

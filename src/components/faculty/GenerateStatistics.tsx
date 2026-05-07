@@ -23,14 +23,12 @@ const GenerateStatistics: React.FC = () => {
     let mounted = true;
     const refetch = async () => {
       setProctorStudentsLoading(true);
-      try {
-        const res = await getFacultyStudents({ page, page_size: pageSize });
         try {
-          const { normalizeStudents } = await import('@/utils/student_utils');
-          console.log('FULL RESPONSE (proctor students):', res);
-          const normalized = normalizeStudents(res);
-          console.log('NORMALIZED (proctor students):', normalized);
-          if (mounted) setProctorStudents(normalized);
+          const res = await getFacultyStudents({ page, page_size: pageSize });
+          try {
+            const { normalizeStudents } = await import('@/utils/student_utils');
+            const normalized = normalizeStudents(res);
+            if (mounted) setProctorStudents(normalized);
           if (res.pagination) {
             if (mounted) setTotalPages(res.pagination.total_pages || 1);
           }

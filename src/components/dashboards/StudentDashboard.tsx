@@ -60,7 +60,6 @@ const StudentDashboard = ({ user, setPage }: StudentDashboardProps) => {
 
   // Handle page changes by updating URL
   const handlePageChange = (page: string) => {
-    console.log("Changing page to:", page); // Debug log
     const path = page === 'dashboard' ? '/dashboard' : `/${page}`;
     navigate(path);
   };
@@ -82,6 +81,9 @@ const StudentDashboard = ({ user, setPage }: StudentDashboardProps) => {
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
+
+  const StudentTest = lazy(() => import("@/components/student/StudentTest"));
+  const StudentResults = lazy(() => import("@/components/student/StudentResults"));
 
   const renderContent = () => {
     const orgPlan = (user as any)?.org_plan || "basic";
@@ -131,6 +133,18 @@ const StudentDashboard = ({ user, setPage }: StudentDashboardProps) => {
         return <Revaluation />;
       case "makeupexam":
         return <MakeupExam />;
+      case "assessment/test":
+        return (
+          <Suspense fallback={<div className="text-muted-foreground">Loading test...</div>}>
+            <StudentTest />
+          </Suspense>
+        );
+      case "assessment/my-results":
+        return (
+          <Suspense fallback={<div className="text-muted-foreground">Loading results...</div>}>
+            <StudentResults />
+          </Suspense>
+        );
       case "student-hostel-details":
         const StudentHostelDetails = lazy(() => import("../student/StudentHostelDetails"));
         return <StudentHostelDetails />;

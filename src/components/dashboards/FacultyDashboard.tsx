@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import DashboardLayout from "../common/DashboardLayout";
 import FacultyStats from "../faculty/FacultyStats";
@@ -20,6 +20,9 @@ import FacultyProfile from "../faculty/facultyProfile";
 import GenerateStatistics from "../faculty/GenerateStatistics";
 import FacultyAttendance from "../faculty/FacultyAttendance";
 import FacultyAssignments from "../faculty/FacultyAssignments";
+const CreateAssessment = lazy(() => import("@/components/faculty/CreateAssessment"));
+const AssignAssessment = lazy(() => import("@/components/faculty/AssignAssessment"));
+const ResultsPage = lazy(() => import("@/components/common/ResultsPage"));
 import StudentInfoScanner from "../hod/StudentInfoScanner";
 import StudyMaterial from "../faculty/StudyMaterial";
 import { logoutUser, fetchWithTokenRefresh } from "../../utils/authService";
@@ -51,6 +54,10 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
 
   const getActivePageFromPath = (pathname: string): string => {
     const pathParts = pathname.split('/').filter(Boolean);
+    const assessmentIndex = pathParts.indexOf('assessment');
+    if (assessmentIndex >= 0) {
+      return `assessment/${pathParts[assessmentIndex + 1] || ''}`;
+    }
     const lastPart = pathParts[pathParts.length - 1] || '';
 
     // Map URL paths to page names
@@ -138,10 +145,11 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       'scan-student-info': '/faculty/scan-student-info',
       'study-materials': '/faculty/study-materials',
       'faculty-announcement-management': '/faculty/announcements',
-      'assessment/create': '/assessment/create',
-      'assessment/assign': '/assessment/assign',
-      'short-permission-request': '/faculty/short-permission-request'
-      ,'faculty-assignments': '/faculty/faculty-assignments'
+      'assessment/create': '/faculty/assessment/create',
+      'assessment/assign': '/faculty/assessment/assign',
+      'assessment/results': '/faculty/assessment/results',
+      'short-permission-request': '/faculty/short-permission-request',
+      'faculty-assignments': '/faculty/faculty-assignments'
     };
 
     const path = pathMap[page] || '/faculty/dashboard';
@@ -221,6 +229,12 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
         return <StudentInfoScanner />;
       case "study-materials":
         return <StudyMaterial />;
+      case "assessment/create":
+        return <Suspense fallback={<div className="text-muted-foreground">Loading assessment...</div>}><CreateAssessment /></Suspense>;
+      case "assessment/assign":
+        return <Suspense fallback={<div className="text-muted-foreground">Loading assessment...</div>}><AssignAssessment /></Suspense>;
+      case "assessment/results":
+        return <Suspense fallback={<div className="text-muted-foreground">Loading assessment results...</div>}><ResultsPage /></Suspense>;
       case "short-permission-request":
         return <ShortPermissionRequest />;
       default:

@@ -126,9 +126,7 @@ export const fetchWithTokenRefresh = async (url: string, options: RequestInit = 
     return response;
   } catch (error) {
     console.error("Fetch with token refresh error:", error);
-    localStorage.clear();
-    stopTokenRefresh();
-    window.location.href = "/"; // Redirect to home
+    // Do not force logout on transient errors here; let callers handle it.
     throw error;
   }
 };
@@ -141,7 +139,6 @@ export const refreshToken = async (): Promise<RefreshTokenResponse> => {
       throw new Error("No refresh token available");
     }
 
-    console.log("Sending token refresh request:", { refresh });
     const response = await fetch(`${API_ENDPOINT}/token/refresh/`, {
       method: "POST",
       headers: {
@@ -152,7 +149,6 @@ export const refreshToken = async (): Promise<RefreshTokenResponse> => {
     });
 
     const result: RefreshTokenResponse = await response.json();
-    console.log("Token refresh response:", result);
 
     if (!response.ok) {
       throw new Error(result.message || "Token refresh failed");
@@ -164,7 +160,7 @@ export const refreshToken = async (): Promise<RefreshTokenResponse> => {
     };
   } catch (error: any) {
     console.error("Refresh Token Error:", error);
-    localStorage.clear();
+    // Don't force-clear storage for transient network errors. Stop proactive refresh.
     stopTokenRefresh();
     return { success: false, message: error.message || "Network error" };
   }
@@ -182,12 +178,10 @@ export const startTokenRefresh = () => {
       if (refreshResult.refresh) {
         localStorage.setItem("refresh_token", refreshResult.refresh);
       }
-      console.log("Access token refreshed proactively");
     } else {
       console.error("Proactive token refresh failed:", refreshResult.message);
-      localStorage.clear();
+      // Stop proactive refresh but do not force logout; let request-time refresh handle it.
       stopTokenRefresh();
-      window.location.href = "/"; // Redirect to home
     }
   }, 900000); // 15 minutes
 };

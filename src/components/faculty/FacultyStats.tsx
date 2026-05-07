@@ -182,20 +182,15 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      console.log('Starting to fetch faculty dashboard data...');
       let totalBatchStudents = 0;
       try {
         // Fetch faculty assignments (kept for UI/selection only)
-        console.log('Fetching faculty assignments...');
         const assignmentsRes = await getFacultyAssignments();
-        console.log('Faculty assignments response:', assignmentsRes);
 
         // Fetch students using the unified faculty students API (minimal payload)
         try {
           const studentsRes = await getFacultyStudents({ page: 1, page_size: 500 });
           const normalized = normalizeStudents(studentsRes);
-          console.log('Students (unified API):', studentsRes);
-          console.log('Students (normalized):', normalized);
           setStudents(normalized);
           totalBatchStudents = Array.isArray(normalized) ? normalized.length : 0;
           setBatchStudentsCount(totalBatchStudents);
@@ -206,9 +201,7 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
         }
 
         // Fetch bootstrap data (performance trends)
-        console.log('Fetching bootstrap data...');
         const bootstrapRes = await getFacultyDashboardBootstrap();
-        console.log('Bootstrap response:', bootstrapRes);
         if (bootstrapRes.success && bootstrapRes.data) {
           const { performance_trends, subject_performance_trends } = bootstrapRes.data;
           setPerformanceTrends(performance_trends || {});
@@ -241,19 +234,16 @@ const FacultyStats = ({ setActivePage }: FacultyStatsProps) => {
 
         // Use today's classes from bootstrap response (single-call dashboard)
         const todayClassesFromBootstrap = bootstrapRes.data?.today_classes || [];
-        console.log('Today classes (from bootstrap):', todayClassesFromBootstrap);
         setTodayClasses(todayClassesFromBootstrap);
         determineClassStatus(todayClassesFromBootstrap);
 
         // Fetch Leave Requests
-        console.log('Fetching faculty leave requests...');
         const leavesRes = await getFacultyLeaveRequests();
         if (Array.isArray(leavesRes)) {
           setLeaveRequests(leavesRes.slice(0, 5)); // Show only top 5 recent leaves
         }
 
         // Fetch Short Permissions
-        console.log('Fetching faculty short permissions...');
         const shortPermsRes = await getFacultyShortPermissions();
         if (shortPermsRes.success && shortPermsRes.data) {
           setShortPermissions(shortPermsRes.data);

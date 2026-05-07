@@ -20,6 +20,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
 const MySwal = withReactContent(Swal);
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import useClientPagination from '@/hooks/useClientPagination';
 
 type LeaveStatusType = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -93,6 +95,9 @@ const SubmitLeaveRequest = () => {
     });
   }, [leaves, statusFilter, query]);
 
+  // Pagination for leaves history (8 per page)
+  const leavesPagination = useClientPagination(filteredLeaves, 8);
+
   // Close filter dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -130,23 +135,10 @@ const SubmitLeaveRequest = () => {
       reason: reason.trim(),
     };
 
-    console.log("Submitting leave request with data:", requestData); // Debug log
+    // Submitting leave request
 
     try {
       await leaveRequestMutation.mutateAsync(requestData);
-
-      // Optimistically update the local state with the new leave request
-      const newLeaveRequest: LeaveRequest = {
-        id: Date.now(), // Temporary ID until refetch
-        start_date: requestData.start_date,
-        end_date: requestData.end_date,
-        title: requestData.title,
-        reason: requestData.reason,
-        status: 'PENDING',
-        submitted_at: new Date().toISOString(),
-      };
-
-      setLeaves(prevLeaves => [newLeaveRequest, ...prevLeaves]);
 
       // Show success toast and a subtle modal for confirmation
       toast({ title: 'Leave Request Submitted', description: 'Your request was submitted successfully.' });
@@ -342,6 +334,7 @@ const SubmitLeaveRequest = () => {
                 No leave requests found.
               </div>
             ) : (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow className={theme === 'dark' ? 'border-border' : 'border-gray-200'}>
@@ -352,7 +345,7 @@ const SubmitLeaveRequest = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLeaves.map((item) => (
+                  {leavesPagination.current.map((item) => (
                     <TableRow key={item.id} className={theme === 'dark' ? 'border-border hover:bg-accent/50' : 'border-gray-200 hover:bg-gray-50'}>
                       <TableCell className={`font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
                         {item.title && item.title.trim() && item.title !== 'N/A' ? item.title : 'Untitled'}
@@ -385,6 +378,18 @@ const SubmitLeaveRequest = () => {
                   ))}
                 </TableBody>
               </Table>
+              {leavesPagination.showPagination && (
+                <div className="p-3 flex items-center justify-end gap-2">
+                  <button onClick={leavesPagination.prev} disabled={leavesPagination.page === 1} className="p-1 rounded-md border">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="text-sm text-muted-foreground">{leavesPagination.page} / {leavesPagination.totalPages}</div>
+                  <button onClick={leavesPagination.next} disabled={leavesPagination.page === leavesPagination.totalPages} className="p-1 rounded-md border">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              </>
             )}
           </CardContent>
         </Card>

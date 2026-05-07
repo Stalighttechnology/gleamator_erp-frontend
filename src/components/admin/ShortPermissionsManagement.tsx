@@ -32,7 +32,7 @@ const ShortPermissionsManagement: React.FC<{ setError: any, toast: any }> = ({ s
           {
             id: 1,
             user_name: "John Counselor",
-            user_role: "HOD",
+            user_role: "Counselor",
             type: "1hr",
             reason: "Personal bank work during lunch break extend",
             date: "2026-04-27",
@@ -42,7 +42,7 @@ const ShortPermissionsManagement: React.FC<{ setError: any, toast: any }> = ({ s
           {
             id: 2,
             user_name: "Sarah MIS",
-            user_role: "HOD",
+            user_role: "Counselor",
             type: "2hr",
             reason: "Hospital appointment for family member",
             date: "2026-04-27",

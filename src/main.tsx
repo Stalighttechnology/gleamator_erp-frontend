@@ -39,14 +39,14 @@ if ('serviceWorker' in navigator) {
     
     navigator.serviceWorker.register(swUrl)
       .then((registration) => {
-        console.log('Service Worker registered successfully:', registration);
-        registration.update()
+        // perform a periodic update less frequently in development
+        registration.update();
         setInterval(() => {
-          registration.update()
-        }, 5000)
+          registration.update();
+        }, 60 * 60 * 1000); // hourly
       })
-      .catch((error) => {
-        console.log('Service Worker registration failed:', error);
+      .catch(() => {
+        // ignore service worker registration failures silently
       });
   });
 }

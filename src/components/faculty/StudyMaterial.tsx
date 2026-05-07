@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Download, FileText, UploadCloud, X } from "lucide-react";
-import { getStudyMaterials, uploadStudyMaterial, getFacultyAssignments, getSections, FacultyAssignment } from "../../utils/faculty_api";
+import { getStudyMaterials, uploadStudyMaterial, getSections } from "../../utils/faculty_api";
 import { useTheme } from "../../context/ThemeContext";
+import { fetchWithTokenRefresh } from "@/utils/authService";
 import {
   Select,
   SelectContent,
@@ -20,6 +21,8 @@ interface StudyMaterial {
   semester: string;
   uploaded_by: string;
   file_url: string;
+  batch?: string | null;
+  section?: string | null;
 }
 
 interface Subject {
@@ -30,42 +33,26 @@ interface Subject {
   section: string;
 }
 
-interface AssignedSection {
-  section: string;
-  section_id: string;
-}
-
 const StudyMaterialRow = ({ material, theme }: { material: StudyMaterial; theme: string }) => (
   <div className={`grid md:grid-cols-6 gap-2 md:gap-3 items-start md:items-center text-xs sm:text-sm py-2 md:py-3 border-b md:border-b ${theme === 'dark' ? 'border-border' : 'border-gray-200'} last:border-b-0`}>
     <div className="hidden md:flex items-center">
       <FileText className="text-red-500" size={18} />
     </div>
-    <div className="flex items-start gap-2 md:flex-col md:gap-0">
+    <div className="flex items-start gap-2 md:flex-col md:gap-0 col-span-3">
       <FileText className="text-red-500 flex-shrink-0 md:hidden" size={16} />
       <div>
         <div className="text-xs text-gray-500 md:hidden font-semibold">Title</div>
-        <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} font-medium cursor-pointer hover:underline break-words`}>
-          {material.title}
-        </div>
+        <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} font-medium cursor-pointer hover:underline break-words`}>{material.title}</div>
       </div>
     </div>
-    <div className="flex items-start gap-2 md:flex-col md:gap-0">
-      <div className="text-xs text-gray-500 md:hidden font-semibold min-w-fit">Course</div>
-      <div className="flex flex-col md:gap-0.5">
-        <div className={`truncate`}>{material.subject_name}</div>
-        <div className="hidden md:block text-gray-500 text-xs">({material.subject_code})</div>
-      </div>
-    </div>
-    <div className="flex items-start gap-2 md:flex-col md:gap-0">
-      <div className="text-xs text-gray-500 md:hidden font-semibold">Semester</div>
-      <div className="">{material.semester || "N/A"}</div>
-    </div>
+    <div className="hidden md:block truncate">{material.batch || 'N/A'}</div>
+    <div className="hidden md:block truncate">{material.section || 'N/A'}</div>
     <div className="flex items-start gap-2 md:flex-col md:gap-0">
       <div className="text-xs text-gray-500 md:hidden font-semibold">Uploaded</div>
       <div className="">{material.uploaded_by}</div>
     </div>
     <div className="flex items-center justify-end md:justify-center">
-      <a href={material.file_url} download={material.title + ".pdf"} target="_blank" rel="noopener noreferrer">
+      <a href={material.file_url} download={material.title + '.pdf'} target="_blank" rel="noopener noreferrer">
         <Download className={`cursor-pointer text-gray-500 hover:text-gray-700 flex-shrink-0`} size={18} />
       </a>
     </div>
@@ -75,10 +62,12 @@ const StudyMaterialRow = ({ material, theme }: { material: StudyMaterial; theme:
 const StudyMaterialsFaculty = () => {
   const { theme } = useTheme();
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [assignments, setAssignments] = useState<FacultyAssignment[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<string>("All Batches");
   const [selectedSection, setSelectedSection] = useState<string>("All Sections");
   const [materials, setMaterials] = useState<StudyMaterial[]>([]);
+  const [uploadSections, setUploadSections] = useState<{ id: string; name: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadBatch, setUploadBatch] = useState<string>("");
@@ -90,16 +79,52 @@ const StudyMaterialsFaculty = () => {
   const [hasSearched, setHasSearched] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Load faculty's assigned batches
+  // Load batches using stable assessment endpoint (same as AssignAssessment)
   useEffect(() => {
-    const loadAssignments = async () => {
-      const resp = await getFacultyAssignments();
-      if (resp && resp.success && resp.data) {
-        setAssignments(resp.data);
+    const loadBatches = async () => {
+      try {
+        const res = await fetchWithTokenRefresh('/api/assessment/batches/');
+        if (!res.ok) {
+          setBatches([]);
+          return;
+        }
+        const json = await res.json();
+        const list = json.results?.batches || json.batches || json.results || json;
+        setBatches(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.error('Error loading batches', err);
+        setBatches([]);
       }
     };
-    loadAssignments();
+    loadBatches();
   }, []);
+
+  // Load students when a batch is selected (AssignAssessment behaviour)
+  useEffect(() => {
+    const batchId = selectedBatch === 'All Batches' ? '' : selectedBatch;
+    if (!batchId) {
+      setStudents([]);
+      return;
+    }
+    let mounted = true;
+    const fetchStudents = async () => {
+      try {
+        const res = await fetchWithTokenRefresh(`/api/faculty/students/?batch_id=${batchId}`);
+        if (!res.ok) {
+          if (mounted) setStudents([]);
+          return;
+        }
+        const json = await res.json();
+        const list = json.results?.data || json.data || json.results || json || [];
+        if (mounted) setStudents(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.error('Error fetching students', err);
+        if (mounted) setStudents([]);
+      }
+    };
+    fetchStudents();
+    return () => { mounted = false; };
+  }, [selectedBatch]);
 
   // Load sections when batch changes
   useEffect(() => {
@@ -120,16 +145,51 @@ const StudyMaterialsFaculty = () => {
     }
   }, [selectedBatch]);
 
+  // Load sections for upload modal when uploadBatch changes
+  useEffect(() => {
+    if (!uploadBatch) {
+      setUploadSections([]);
+      setUploadSection('');
+      return;
+    }
+    const load = async () => {
+      try {
+        const resp = await getSections(uploadBatch);
+        if (resp && resp.success) setUploadSections(resp.data || []);
+        else setUploadSections([]);
+      } catch (err) {
+        console.error('Error loading upload sections', err);
+        setUploadSections([]);
+      }
+      setUploadSection('');
+    };
+    load();
+  }, [uploadBatch]);
+
   const loadMaterials = async () => {
     setLoading(true);
     const batch_id = selectedBatch === 'All Batches' ? undefined : selectedBatch;
     const section_id = selectedSection === 'All Sections' ? undefined : selectedSection;
     const resp = await getStudyMaterials(batch_id, section_id, searchQuery || undefined);
-    if (resp && resp.success && Array.isArray(resp.data?.results || resp.data)) {
-      setMaterials(resp.data.results || resp.data || []);
-    } else if (resp && resp.success && Array.isArray(resp.data)) {
-      setMaterials(resp.data);
-    } else {
+    try {
+      const payload = (resp && resp.success) ? (resp.data?.results || resp.data || []) : (resp?.results || resp || []);
+      const list = Array.isArray(payload) ? payload : (Array.isArray(payload?.results) ? payload.results : []);
+      // Normalize each item: set subject_name to batch or null, and include batch/section
+      const normalized = list.map((it: any) => ({
+        id: it.id,
+        title: it.title,
+        // do not default subject to batch; use actual subject_name when present
+        subject_name: it.subject_name || null,
+        subject_code: it.subject_code || null,
+        semester: it.semester || (it.semester_display || ''),
+        uploaded_by: it.uploaded_by || it.uploaded_by_name || '',
+        file_url: it.file || it.file_url || it.file_url_full || '',
+        batch: it.batch || it.batch_name || null,
+        section: it.section || it.section_name || null,
+      }));
+      setMaterials(normalized);
+    } catch (e) {
+      console.error('Error normalizing materials', e, resp);
       setMaterials([]);
     }
     setHasSearched(true);
@@ -169,8 +229,8 @@ const StudyMaterialsFaculty = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All Batches">All Batches</SelectItem>
-                  {assignments.map((a) => (
-                    <SelectItem key={a.batch_id} value={a.batch_id.toString()}>{a.batch}</SelectItem>
+                  {batches.map((b) => (
+                    <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -205,11 +265,11 @@ const StudyMaterialsFaculty = () => {
           <div className="pt-4 border-t">
             <div className="hidden md:grid grid-cols-6 font-semibold text-xs sm:text-sm gap-2 mb-4 px-2">
               <div>Type</div>
-              <div>Title</div>
-              <div>Course</div>
-              <div>Semester</div>
+              <div className="col-span-3">Title</div>
+              <div>Batch</div>
+              <div>Section</div>
               <div>Uploaded By</div>
-              <div>Action</div>
+              
             </div>
             <div className="space-y-1">
               {loading ? (
@@ -243,8 +303,8 @@ const StudyMaterialsFaculty = () => {
                   <SelectValue placeholder="Select Batch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {assignments.map(a => (
-                    <SelectItem key={a.batch_id} value={a.batch_id.toString()}>{a.batch}</SelectItem>
+                  {batches.map(b => (
+                    <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -254,8 +314,8 @@ const StudyMaterialsFaculty = () => {
                   <SelectValue placeholder="Select Section (Optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Sections</SelectItem>
-                  {sections.map(s => (
+                  <SelectItem value="__none">All Sections</SelectItem>
+                  {uploadSections.map(s => (
                     <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -282,12 +342,21 @@ const StudyMaterialsFaculty = () => {
                   }
                   setUploading(true);
                   try {
+                    // derive semester_id and branch_id from the selected batch object when available
+                    const batchObj = batches.find((b: any) => String(b.id) === String(uploadBatch));
+                    const semester_id = batchObj?.semester ? String(batchObj.semester) : (batchObj?.semester_id ? String(batchObj.semester_id) : undefined);
+                    const branch_id = batchObj?.branch_id ? String(batchObj.branch_id) : (batchObj?.branch ? String(batchObj.branch) : undefined);
+
                     const resp = await uploadStudyMaterial({
                       title: uploadTitle,
                       batch_id: uploadBatch,
                       section_id: uploadSection || undefined,
                       file: uploadFile,
-                    });
+                      // pass through optional fields via cast
+                      ...(semester_id ? { semester_id } as any : {}),
+                      ...(branch_id ? { branch_id } as any : {}),
+                    } as any);
+
                     if (resp && resp.success) {
                       alert('Uploaded successfully');
                       setShowUploadModal(false);

@@ -54,6 +54,7 @@ interface Section {
   id: string;
   name: string;
   semester_id: string;
+  batch_id?: string | null;
 }
 
 interface GetSectionsResponse {
@@ -743,8 +744,9 @@ interface UploadStudyMaterialRequest {
   title: string;
   subject_name?: string;
   subject_code?: string;
-  semester_id: string;
-  branch_id: string;
+  semester_id?: string;
+  branch_id?: string;
+  batch_id: string;
   section_id?: string;
   file: File;
 }
@@ -756,6 +758,8 @@ interface StudyMaterial {
   subject_code: string;
   semester_id: string;
   branch_id: string;
+  batch?: string | null;
+  batch_id?: string | null;
   section_id?: string | null;
   section?: string | null;
   uploaded_by: string;
@@ -976,7 +980,7 @@ export const getSemesterBootstrap = async (
     };
     branches?: Branch[];
     semesters?: Array<{ id: string; number: number }>;
-    sections?: Array<{ id: string; name: string; semester_id: string | null }>;
+    sections?: Array<{ id: string; name: string; semester_id: string | null; batch_id?: string | null }>;
     subjects?: Array<{ id: string; name: string; subject_code: string; semester_id: string | null }>;
   };
 }> => {
@@ -1835,6 +1839,27 @@ export const enrollStaff = async (data: EnrollStaffRequest): Promise<EnrollStaff
   }
 };
 
+export const createMis = async (data: { first_name: string; last_name?: string; email: string; mobile_number?: string }) => {
+  try {
+    // Use the existing enroll-staff endpoint but force role=mis so backend creates MIS correctly
+    const payload = {
+      email: data.email,
+      first_name: data.first_name,
+      last_name: data.last_name || '',
+      phone: data.mobile_number || '',
+      role: 'mis'
+    };
+    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/enroll-staff/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await response.json();
+  } catch (error: unknown) {
+    return handleApiError(error, (error as any).response);
+  }
+};
+
 export const getProctors = async (branch_id: string): Promise<GetFacultiesResponse> => {
   try {
     if (!branch_id) throw new Error("Branch ID is required");
@@ -2196,15 +2221,16 @@ export const manageProfile = async (
 
 export const uploadStudyMaterial = async (data: UploadStudyMaterialRequest): Promise<UploadStudyMaterialResponse> => {
   try {
-    if (!data.branch_id || !data.semester_id || !data.title || !data.file) {
-      throw new Error("Branch ID, Semester ID, Title, and File are required");
+    if (!data.batch_id || !data.title || !data.file) {
+      throw new Error("Batch ID, Title, and File are required");
     }
     const formData = new FormData();
     formData.append("title", data.title);
     formData.append("subject_name", data.subject_name || "");
     formData.append("subject_code", data.subject_code || "");
-    formData.append("semester_id", data.semester_id);
-    formData.append("branch_id", data.branch_id);
+    if (data.semester_id) formData.append("semester_id", data.semester_id);
+    if (data.branch_id) formData.append("branch_id", data.branch_id);
+    formData.append("batch_id", data.batch_id);
     if (data.section_id) formData.append("section_id", data.section_id);
     formData.append("file", data.file);
     const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/study-materials/`, {
@@ -2221,12 +2247,14 @@ export const uploadStudyMaterial = async (data: UploadStudyMaterialRequest): Pro
 export const getStudyMaterials = async (
   branch_id?: string,
   semester_id?: string,
-  section_id?: string
+  section_id?: string,
+  batch_id?: string
 ): Promise<GetStudyMaterialsResponse> => {
   try {
     const params = new URLSearchParams();
     if (branch_id) params.append('branch_id', branch_id);
     if (semester_id) params.append('semester_id', semester_id);
+    if (batch_id) params.append('batch_id', batch_id);
     if (section_id) params.append('section_id', section_id);
     const qs = params.toString() ? `?${params.toString()}` : '';
     const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/study-materials/${qs}`, {

@@ -163,7 +163,6 @@ const EnrollUser = ({ setError, toast }: EnrollUserProps) => {
                   </SelectTrigger>
                   <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border border-border' : 'bg-white text-gray-900 border border-gray-300'}>
                     <SelectItem value="hod">Counselor</SelectItem>
-                    <SelectItem value="mis">MIS</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

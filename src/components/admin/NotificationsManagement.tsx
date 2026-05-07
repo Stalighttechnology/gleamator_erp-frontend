@@ -97,7 +97,7 @@ const NotificationsManagement = ({ setError, toast }: NotificationsManagementPro
       "All Users": "all",
       "Student": "student",
       "Teacher": "teacher",
-      "Head of Department": "hod",
+      "Counselor": "hod",
     };
     const backendRole = roleMap[targetRole] || targetRole;
 

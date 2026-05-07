@@ -16,9 +16,10 @@ import HODLeavesManagement from "../admin/HODLeavesManagement";
 import UsersManagement from "../admin/UsersManagement";
 import AdminProfile from "../admin/AdminProfile";
 import AdminQPApprovals from "../admin/AdminQPApprovals";
-import AdminApproval from "../assessment/AdminApproval";
+import AdminApproval from "../admin/AdminAssessmentApprovals";
 import LowAttendance from "../hod/LowAttendance";
 import AnnouncementManagement from "../admin/AnnouncementManagement";
+import ResultsPage from "../common/ResultsPage";
 import { useToast } from "../../hooks/use-toast";
 import { isPageAllowed } from "../../utils/planGating";
 import UpgradeRequired from "../common/UpgradeRequired";
@@ -185,6 +186,12 @@ const AdminDashboard = ({ user, setPage }: AdminDashboardProps) => {
         return (
           <div>
             <AdminApproval />
+          </div>
+        );
+      case "assessment/results":
+        return (
+          <div>
+            <ResultsPage />
           </div>
         );
       

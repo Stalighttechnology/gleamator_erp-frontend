@@ -82,7 +82,6 @@ const TakeAttendance = () => {
       try {
         const res = await fetchWithTokenRefresh(`/api/faculty/students/?batch_id=${selectedBatch}`);
         const json = await res.json();
-        console.log('Students API (TakeAttendance):', json);
         const studentList = json.results?.data || json.data || json.results || json || [];
         if (!mounted) return;
         setStudents(Array.isArray(studentList) ? studentList : []);

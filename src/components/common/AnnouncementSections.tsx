@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import useClientPagination from '@/hooks/useClientPagination';
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +113,9 @@ export const AnnouncementSections = ({
     ? (receivedAnnouncements || [])
     : (receivedAnnouncements || []).filter(a => !isExpired(a.expires_at));
 
+  const myPagination = useClientPagination(filteredMyAnnouncements, 8);
+  const receivedPagination = useClientPagination(filteredReceivedAnnouncements, 8);
+
   const totalUnread = (receivedAnnouncements || []).filter(
     (a) => !a.is_read && !isExpired(a.expires_at)
   ).length;
@@ -190,7 +195,7 @@ export const AnnouncementSections = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredMyAnnouncements.map((announcement) => {
+                  {myPagination.current.map((announcement) => {
                     const expired = isExpired(announcement.expires_at);
                     return (
                       <TableRow key={announcement.id} className={`${expired ? 'opacity-60' : ''} ${theme === 'dark' ? 'hover:bg-muted/50' : 'hover:bg-gray-50'}`}>
@@ -331,7 +336,7 @@ export const AnnouncementSections = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredReceivedAnnouncements.map((announcement) => {
+                  {receivedPagination.current.map((announcement) => {
                     const unread = announcement.is_read === false;
                     return (
                       <TableRow key={announcement.id} className={`${unread ? 'bg-primary/5 font-medium' : ''} ${theme === 'dark' ? 'hover:bg-muted/50' : 'hover:bg-gray-50'}`}>
@@ -384,6 +389,31 @@ export const AnnouncementSections = ({
                               Mark Read
                             </Button>
                           )}
+                          {/* Pagination controls */}
+                          <div className="px-4 py-3 flex items-center justify-end gap-2">
+                            {myPagination.showPagination && activeTab === 'my' && (
+                              <>
+                                <button className="p-1 rounded-md" onClick={myPagination.prev} disabled={myPagination.page === 1} aria-label="Previous">
+                                  <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <div className="text-sm text-muted-foreground">Page {myPagination.page} / {myPagination.totalPages}</div>
+                                <button className="p-1 rounded-md" onClick={myPagination.next} disabled={myPagination.page === myPagination.totalPages} aria-label="Next">
+                                  <ChevronRight className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                            {receivedPagination.showPagination && activeTab === 'received' && (
+                              <>
+                                <button className="p-1 rounded-md" onClick={receivedPagination.prev} disabled={receivedPagination.page === 1} aria-label="Previous">
+                                  <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <div className="text-sm text-muted-foreground">Page {receivedPagination.page} / {receivedPagination.totalPages}</div>
+                                <button className="p-1 rounded-md" onClick={receivedPagination.next} disabled={receivedPagination.page === receivedPagination.totalPages} aria-label="Next">
+                                  <ChevronRight className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                          </div>
                           {!unread && (
                             <Badge variant="outline" className="text-xs px-2 py-0.5 h-6 text-muted-foreground font-medium mx-auto">
                               Read

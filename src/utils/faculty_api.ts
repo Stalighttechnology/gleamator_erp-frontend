@@ -35,13 +35,25 @@ export const uploadStudyMaterial = async (data: UploadStudyMaterialRequest) => {
     const formData = new FormData();
     formData.append('title', data.title);
     formData.append('batch_id', data.batch_id);
+    // Include subject fields to match HOD endpoint payload expectations.
+    // Provide a safe default for subject_name so backend doesn't attempt to dereference a missing assignment.
+    formData.append('subject_name', (data as any).subject_name || "N/A");
+    formData.append('subject_code', (data as any).subject_code || "");
     if (data.section_id) formData.append('section_id', data.section_id);
+    if ((data as any).semester_id) formData.append('semester_id', (data as any).semester_id);
+    if ((data as any).branch_id) formData.append('branch_id', (data as any).branch_id);
     formData.append('file', data.file);
 
     const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/study-materials/`, {
       method: 'POST',
       body: formData,
     });
+    if (!response.ok) {
+      let text = '';
+      try { text = await response.text(); } catch (e) { text = String(e); }
+      console.error('uploadStudyMaterial: server error', response.status, text);
+      return { success: false, status: response.status, message: text };
+    }
     return await response.json();
   } catch (error: unknown) {
     return { success: false, message: (error as any).toString() };

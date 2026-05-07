@@ -176,7 +176,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Dashboard", page: "dashboard" },
       { name: "Branch Management", page: "branches" },
       { name: "Results", page: "assessment/results" },
-      { name: "Enroll Counselor/MIS", page: "enroll-user" },
+      { name: "Enroll Counselor", page: "enroll-user" },
       { name: "Batches", page: "batches" },
       { name: "Assessment Approvals", page: "assessment-approvals" },
       { name: "Student Attendance", page: "attendance" },
@@ -192,7 +192,6 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       // Main
       { name: "Dashboard", page: "dashboard" },
       { name: "Batch Assignment", page: "batches" },
-      { name: "Courses", page: "subjects" },      // Enrollment & Setup
       { name: "Faculty Assignments", page: "faculty-assignments" },
       { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
@@ -208,7 +207,6 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       // Main
       { name: "Dashboard", page: "dashboard" },
       { name: "Batch Assignment", page: "batches" },
-      { name: "Courses", page: "subjects" },
       { name: "Faculty Assignments", page: "faculty-assignments" },
       { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
