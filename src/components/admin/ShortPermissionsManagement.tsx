@@ -1,198 +1,187 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardHeader, CardContent, CardTitle } from "../ui/card";
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader } from "../ui/card";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
-import { Clock, Check, X, User, Calendar, Filter } from "lucide-react";
-import { useTheme } from "../../context/ThemeContext";
-import { useToast } from "../../hooks/use-toast";
-import { SkeletonTable } from "../ui/skeleton";
+import { SkeletonList } from "../ui/skeleton";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Textarea } from "../ui/textarea";
+import { getAdminShortPermissions, ShortPermissionItem, updateAdminShortPermission } from "@/utils/short_permission_api";
 
-interface PermissionRequest {
-  id: number;
-  user_name: string;
-  user_role: string;
-  type: "1hr" | "2hr";
-  reason: string;
-  date: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  submitted_at: string;
-}
+const statusClass: Record<string, string> = {
+  PENDING: "bg-yellow-100 text-yellow-700",
+  APPROVED: "bg-green-100 text-green-700",
+  REJECTED: "bg-red-100 text-red-700",
+};
 
-const ShortPermissionsManagement: React.FC<{ setError: any, toast: any }> = ({ setError, toast }) => {
-  const [requests, setRequests] = useState<PermissionRequest[]>([]);
+const ShortPermissionsManagement: React.FC<{ setError: any; toast: any }> = ({ setError, toast }) => {
+  const [items, setItems] = useState<ShortPermissionItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const { theme } = useTheme();
+  const [status, setStatus] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING");
+  const [role, setRole] = useState<"ALL" | "teacher" | "hod" | "mis">("ALL");
+  const [requestDate, setRequestDate] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrev, setHasPrev] = useState(false);
+  const [remarksOpen, setRemarksOpen] = useState(false);
+  const [remarks, setRemarks] = useState("");
+  const [actionStatus, setActionStatus] = useState<"APPROVED" | "REJECTED">("APPROVED");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [acting, setActing] = useState(false);
 
-  const fetchRequests = async () => {
+  const load = async () => {
     setLoading(true);
     try {
-      // Mock API call: get /api/short-permissions/
-      setTimeout(() => {
-        setRequests([
-          {
-            id: 1,
-            user_name: "John Counselor",
-            user_role: "Counselor",
-            type: "1hr",
-            reason: "Personal bank work during lunch break extend",
-            date: "2026-04-27",
-            status: "PENDING",
-            submitted_at: "2026-04-27T10:30:00Z"
-          },
-          {
-            id: 2,
-            user_name: "Sarah MIS",
-            user_role: "Counselor",
-            type: "2hr",
-            reason: "Hospital appointment for family member",
-            date: "2026-04-27",
-            status: "PENDING",
-            submitted_at: "2026-04-27T09:15:00Z"
-          }
-        ]);
-        setLoading(false);
-      }, 800);
-    } catch (err) {
-      setError("Failed to fetch requests.");
+      const res = await getAdminShortPermissions({ status, role, request_date: requestDate || undefined, page, page_size: 10 });
+      const payload = res?.results || res;
+      setItems(payload?.data || []);
+      const count = Number(res?.count || 0);
+      const pageSize = 10;
+      setTotalPages(Math.max(1, Math.ceil(count / pageSize)));
+      setHasNext(Boolean(res?.next));
+      setHasPrev(Boolean(res?.previous));
+    } catch (e: any) {
+      setError?.(e?.message || "Failed to load short permissions");
+      toast?.({ variant: "destructive", title: "Load failed", description: e?.message || "Failed to load short permissions" });
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    load();
+  }, [status, role, requestDate, page]);
 
-  const handleAction = async (id: number, status: "APPROVED" | "REJECTED") => {
-    // API Call: patch /api/short-permissions/{id}/
-    setRequests(prev => prev.map(req => req.id === id ? { ...req, status } : req));
-    toast({
-      title: `Request ${status.charAt(0) + status.slice(1).toLowerCase()}`,
-      description: `The permission request has been ${status.toLowerCase()} successfully.`
-    });
+  const act = async () => {
+    if (!selectedId) return;
+    setActing(true);
+    const res = await updateAdminShortPermission(selectedId, actionStatus, remarks);
+    if (res?.success) {
+      toast?.({ title: `Request ${actionStatus.toLowerCase()}`, description: "Attendance sync applied for approved requests." });
+      setRemarksOpen(false);
+      setRemarks("");
+      setSelectedId(null);
+      await load();
+      setActing(false);
+      return;
+    }
+    setError?.(res?.message || "Failed to update request");
+    toast?.({ variant: "destructive", title: "Update failed", description: res?.message || "Failed to update request" });
+    setActing(false);
   };
 
   return (
     <div className="space-y-6">
-      <Card className={theme === 'dark' ? 'bg-card border-border' : 'bg-white border-gray-200 shadow-sm'}>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div>
-            <CardTitle className="text-2xl font-bold flex items-center gap-2">
-              <Clock className="text-primary" />
-              Short Permission Approvals
-            </CardTitle>
-            <p className="text-muted-foreground">Manage 1hr/2hr permission requests from Counselor and MIS staff</p>
-          </div>
-          <Button variant="outline" size="icon">
-            <Filter className="w-4 h-4" />
-          </Button>
+      <Card>
+        <CardHeader>
+          <h2 className="text-2xl font-bold">Short Permissions</h2>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <select className="h-10 rounded-md border px-3" value={status} onChange={(e) => setStatus(e.target.value as any)}>
+              <option value="ALL">All Status</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+            <select className="h-10 rounded-md border px-3" value={role} onChange={(e) => setRole(e.target.value as any)}>
+              <option value="ALL">All Roles</option>
+              <option value="teacher">Faculty</option>
+              <option value="hod">HOD</option>
+              <option value="mis">MIS</option>
+            </select>
+            <Input type="date" value={requestDate} onChange={(e) => setRequestDate(e.target.value)} />
+            <Button onClick={() => { setPage(1); load(); }}>Refresh</Button>
+          </div>
+
           {loading ? (
-            <SkeletonTable rows={5} cols={5} />
-          ) : requests.length === 0 ? (
-            <div className="text-center py-20 border-2 border-dashed rounded-xl bg-muted/20">
-              <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-              <p className="text-muted-foreground font-medium">No pending requests found</p>
-            </div>
+            <SkeletonList items={5} />
+          ) : items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No requests found.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="py-4 px-4 font-semibold text-sm">Staff Member</th>
-                    <th className="py-4 px-4 font-semibold text-sm">Type</th>
-                    <th className="py-4 px-4 font-semibold text-sm">Reason</th>
-                    <th className="py-4 px-4 font-semibold text-sm">Submitted</th>
-                    <th className="py-4 px-4 font-semibold text-sm text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {requests.filter(r => r.status === 'PENDING').map((req) => (
-                    <tr key={req.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                            {req.user_name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{req.user_name}</p>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider">{req.user_role}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <Badge variant={req.type === '1hr' ? 'outline' : 'secondary'} className="font-bold">
-                          {req.type}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4">
-                        <p className="text-sm line-clamp-1 max-w-[200px]" title={req.reason}>
-                          {req.reason}
-                        </p>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex flex-col text-xs">
-                          <span className="flex items-center gap-1 font-medium">
-                            <Calendar className="w-3 h-3" /> {req.date}
-                          </span>
-                          <span className="opacity-70 mt-0.5">
-                            {new Date(req.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500 hover:text-white"
-                            onClick={() => handleAction(req.id, "APPROVED")}
+            <div className="space-y-2">
+              {items.map((r) => (
+                <div key={r.id} className="rounded-xl border p-3 hover:bg-muted/30 transition-colors">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                    <div className="md:col-span-2 font-medium">{r.user_name || "-"}</div>
+                    <div className="md:col-span-1 text-sm">{r.role || "-"}</div>
+                    <div className="md:col-span-3 text-sm">{r.request_date} | {r.from_time} - {r.to_time}</div>
+                    <div className="md:col-span-3 text-sm truncate" title={r.reason}>{r.reason}</div>
+                    <div className="md:col-span-1">
+                      <Badge className={statusClass[r.status] || "bg-gray-100 text-gray-700"}>{r.status}</Badge>
+                    </div>
+                    <div className="md:col-span-2 flex justify-end gap-2">
+                      {r.status === "PENDING" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => {
+                              setSelectedId(r.id);
+                              setActionStatus("APPROVED");
+                              setRemarks("");
+                              setRemarksOpen(true);
+                            }}
                           >
-                            <Check className="w-4 h-4 mr-1" /> Approve
+                            Approve
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500 hover:text-white"
-                            onClick={() => handleAction(req.id, "REJECTED")}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              setSelectedId(r.id);
+                              setActionStatus("REJECTED");
+                              setRemarks("");
+                              setRemarksOpen(true);
+                            }}
                           >
-                            <X className="w-4 h-4 mr-1" /> Reject
+                            Reject
                           </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{r.approved_at ? new Date(r.approved_at).toLocaleString() : "-"}</span>
+                      )}
+                    </div>
+                  </div>
+                  {r.remarks ? <p className="text-xs text-muted-foreground mt-2">Remarks: {r.remarks}</p> : null}
+                </div>
+              ))}
             </div>
           )}
+          <div className="flex items-center justify-end gap-2 pt-3">
+            <Button size="sm" variant="outline" disabled={!hasPrev || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+            <Button size="sm" variant="outline" disabled={!hasNext || loading} onClick={() => setPage((p) => p + 1)}>
+              Next
+            </Button>
+          </div>
         </CardContent>
       </Card>
-      
-      {/* Recently Processed */}
-      {requests.filter(r => r.status !== 'PENDING').length > 0 && (
-        <Card className="opacity-70">
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Recently Processed</CardTitle>
-          </CardHeader>
-          <CardContent>
-             <div className="space-y-3">
-               {requests.filter(r => r.status !== 'PENDING').map(req => (
-                 <div key={req.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
-                    <div className="flex items-center gap-3">
-                      <User className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{req.user_name}</span>
-                      <Badge variant="outline" className="text-[10px] h-4">{req.type}</Badge>
-                    </div>
-                    <Badge className={req.status === 'APPROVED' ? 'bg-green-500' : 'bg-red-500'}>
-                      {req.status}
-                    </Badge>
-                 </div>
-               ))}
-             </div>
-          </CardContent>
-        </Card>
-      )}
+      <Dialog open={remarksOpen} onOpenChange={setRemarksOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{actionStatus === "APPROVED" ? "Approve Request" : "Reject Request"}</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            placeholder="Add remarks (optional)"
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemarksOpen(false)} disabled={acting}>Cancel</Button>
+            <Button
+              variant={actionStatus === "REJECTED" ? "destructive" : "default"}
+              onClick={act}
+              disabled={acting}
+            >
+              {acting ? "Updating..." : actionStatus === "APPROVED" ? "Approve" : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

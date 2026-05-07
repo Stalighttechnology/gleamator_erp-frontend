@@ -28,7 +28,7 @@ import StudyMaterial from "../faculty/StudyMaterial";
 import { logoutUser, fetchWithTokenRefresh } from "../../utils/authService";
 import FacultyAnnouncementManagement from "../faculty/FacultyAnnouncementManagement";
 import { API_ENDPOINT } from "../../utils/config";
-import ShortPermissionRequest from "../hod/ShortPermissionRequest";
+import FacultyShortPermission from "../faculty/FacultyShortPermission";
 import { useTheme } from "../../context/ThemeContext";
 import { useProctorStudentsQuery } from "../../hooks/useApiQueries";
 import { isPageAllowed } from "../../utils/planGating";
@@ -236,7 +236,7 @@ const FacultyDashboard = ({ user, setPage }: FacultyDashboardProps) => {
       case "assessment/results":
         return <Suspense fallback={<div className="text-muted-foreground">Loading assessment results...</div>}><ResultsPage /></Suspense>;
       case "short-permission-request":
-        return <ShortPermissionRequest />;
+        return <FacultyShortPermission />;
       default:
         return <FacultyStats setActivePage={handlePageChange} />;
     }
