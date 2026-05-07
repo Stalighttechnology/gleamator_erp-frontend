@@ -33,45 +33,68 @@ interface Subject {
   section: string;
 }
 
-const StudyMaterialRow = ({ material, theme }: { material: StudyMaterial; theme: string }) => (
-  <div className={`grid md:grid-cols-6 gap-3 md:gap-4 items-start md:items-center text-xs sm:text-sm py-3 md:py-4 border-b ${theme === 'dark' ? 'border-border/50' : 'border-gray-200'} last:border-b-0 hover:bg-muted/30 transition-colors rounded-lg px-2`}>
-    <div className="hidden md:flex items-center justify-center">
-      <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/20">
-        <FileText className="text-red-500" size={20} />
-      </div>
-    </div>
-    <div className="flex items-start gap-3 md:flex-col md:gap-1 col-span-2">
-      <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/20 flex-shrink-0 md:hidden">
+const StudyMaterialRow = ({
+  material,
+  theme,
+}: {
+  material: StudyMaterial;
+  theme: string;
+}) => (
+  <div
+    className={`grid grid-cols-12 items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 mb-2 ${
+      theme === "dark"
+        ? "border-border bg-card hover:bg-muted/40"
+        : "border-gray-200 bg-white hover:bg-gray-50"
+    }`}
+  >
+    {/* File Icon */}
+    <div className="col-span-1 flex justify-center">
+      <div className="p-2 rounded-lg bg-red-100 dark:bg-red-950/30">
         <FileText className="text-red-500" size={18} />
       </div>
-      <div className="flex-1 min-w-0">
-        <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} font-semibold cursor-pointer hover:underline break-words line-clamp-2`}>
-          {material.title}
-        </div>
-        <div className="text-xs text-muted-foreground mt-0.5">
-          {material.subject_name || 'No Subject'}
-        </div>
+    </div>
+
+    {/* Title + Subject */}
+    <div className="col-span-4 min-w-0">
+      <div className="font-semibold text-sm truncate text-blue-600 dark:text-blue-400">
+        {material.title}
+      </div>
+
+      <div className="text-xs text-muted-foreground truncate mt-0.5">
+        {material.subject_name || "No Subject"}
       </div>
     </div>
-    <div className="hidden md:block">
-      <div className="font-medium truncate">{material.batch || 'N/A'}</div>
+
+    {/* Batch */}
+    <div className="col-span-2">
+      <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+        {material.batch || "N/A"}
+      </span>
     </div>
-    <div className="hidden md:block">
-      <div className="font-medium truncate">{material.section || 'N/A'}</div>
+
+    {/* Section */}
+    <div className="col-span-1">
+      <span className="text-sm font-medium">
+        {material.section || "-"}
+      </span>
     </div>
-    <div className="flex items-start gap-2 md:flex-col md:gap-1">
-      <div className="text-xs text-muted-foreground md:hidden font-semibold">Uploaded by</div>
-      <div className="font-medium">{material.uploaded_by}</div>
+
+    {/* Uploaded By */}
+    <div className="col-span-2">
+      <div className="text-sm font-medium truncate">
+        {material.uploaded_by || "Unknown"}
+      </div>
     </div>
-    <div className="flex items-center justify-end md:justify-center">
-      <a 
-        href={material.file_url} 
-        download={material.title + '.pdf'} 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-muted' : 'hover:bg-gray-100'}`}
+
+    {/* Actions */}
+    <div className="col-span-2 flex justify-end">
+      <a
+        href={material.file_url}
+        download
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors text-sm font-medium"
       >
-        <Download className="text-primary hover:text-primary/80 flex-shrink-0" size={20} />
+        <Download size={16} />
+        Download
       </a>
     </div>
   </div>
@@ -190,8 +213,18 @@ const StudyMaterialsFaculty = () => {
     const section_id = selectedSection === 'All Sections' ? undefined : selectedSection;
     const resp = await getStudyMaterials(batch_id, section_id, searchQuery || undefined);
     try {
-      const payload = (resp && resp.success) ? (resp.data?.results || resp.data || []) : (resp?.results || resp || []);
-      const list = Array.isArray(payload) ? payload : (Array.isArray(payload?.results) ? payload.results : []);
+      const list =
+        resp?.results?.success && Array.isArray(resp?.results?.data)
+          ? resp.results.data
+          : resp?.success && Array.isArray(resp?.data)
+            ? resp.data
+            : resp?.success && resp?.data?.results?.success && Array.isArray(resp?.data?.results?.data)
+              ? resp.data.results.data
+              : resp?.success && Array.isArray(resp?.data?.results)
+                ? resp.data.results
+                : Array.isArray(resp?.results)
+                  ? resp.results
+                  : [];
       // Normalize each item: set subject_name to batch or null, and include batch/section
       const normalized = list.map((it: any) => ({
         id: it.id,
@@ -284,15 +317,15 @@ const StudyMaterialsFaculty = () => {
 
           {/* Materials Table Section */}
           <div className="pt-4 border-t">
-            <div className="hidden md:grid grid-cols-6 font-semibold text-sm gap-4 mb-3 px-2 text-muted-foreground">
-              <div className="text-center">Type</div>
-              <div className="col-span-2">Title</div>
-              <div>Batch</div>
-              <div>Section</div>
-              <div>Uploaded By</div>
-              <div className="text-center">Actions</div>
+            <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b mb-3">
+              <div className="col-span-1 text-center">Type</div>
+              <div className="col-span-4">Title</div>
+              <div className="col-span-2">Batch</div>
+              <div className="col-span-1">Section</div>
+              <div className="col-span-2">Uploaded By</div>
+              <div className="col-span-2 text-right">Actions</div>
             </div>
-            <div className="space-y-0">
+            <div className="space-y-2">
               {loading ? (
                 <div className="py-8">
                   <SkeletonList items={5} />

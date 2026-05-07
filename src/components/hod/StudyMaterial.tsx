@@ -11,18 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
 import { Download, FileText, UploadCloud, X } from "lucide-react";
 import { uploadStudyMaterial, getStudyMaterials, getHODStudentBootstrap } from "../../utils/hod_api";
 import { useTheme } from "../../context/ThemeContext";
-import { SkeletonTable } from "../ui/skeleton";
+import { SkeletonList } from "../ui/skeleton";
 import { useToast } from "../ui/use-toast";
 
 // Interface for display study material
@@ -82,7 +74,7 @@ const useStudyMaterials = (
             section_id: m.section_id || null,
             uploaded_by: m.uploaded_by || '',
             uploaded_at: m.uploaded_at || '',
-            file_url: m.drive_web_view_link || m.file_url,
+            file_url: m.file_url || m.drive_web_view_link,
           }));
           setStudyMaterials(mapped);
         } else {
@@ -168,30 +160,52 @@ const useUploadModal = () => {
 
 // Row component for each study material
 const StudyMaterialRow = ({ material, theme }: { material: StudyMaterial; theme: string }) => (
-  <TableRow className={theme === 'dark' ? 'border-border' : 'border-gray-200'}>
-    <TableCell className="w-[50px]">
-      <FileText className="text-red-500" size={20} />
-    </TableCell>
-    <TableCell className="font-medium">
-      <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} cursor-pointer hover:underline truncate max-w-[150px] sm:max-w-[200px]`}>
+  <div
+    className={`grid grid-cols-12 items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 mb-2 ${
+      theme === "dark"
+        ? "border-border bg-card hover:bg-muted/40"
+        : "border-gray-200 bg-white hover:bg-gray-50"
+    }`}
+  >
+    <div className="col-span-1 flex justify-center">
+      <div className="p-2 rounded-lg bg-red-100 dark:bg-red-950/30">
+        <FileText className="text-red-500" size={18} />
+      </div>
+    </div>
+    <div className="col-span-4 min-w-0">
+      <div className="font-semibold text-sm truncate text-blue-600 dark:text-blue-400">
         {material.title}
       </div>
-    </TableCell>
-    <TableCell className="max-w-[100px] truncate">
-      {material.batch || "N/A"}
-    </TableCell>
-    <TableCell className="max-w-[100px] truncate">
-      {material.section || "N/A"}
-    </TableCell>
-    <TableCell className="max-w-[120px] truncate">
-      {material.uploaded_by}
-    </TableCell>
-    <TableCell className="text-right">
-      <a href={material.file_url} download={material.title + ".pdf"} target="_blank" rel="noopener noreferrer">
-        <Download className={`inline-block cursor-pointer ${theme === 'dark' ? 'text-muted-foreground hover:text-foreground' : 'text-gray-500 hover:text-gray-700'}`} size={20} />
+      <div className="text-xs text-muted-foreground truncate mt-0.5">
+        {material.subject_name || "No Subject"}
+      </div>
+    </div>
+    <div className="col-span-2">
+      <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+        {material.batch || "N/A"}
+      </span>
+    </div>
+    <div className="col-span-1">
+      <span className="text-sm font-medium">
+        {material.section || "-"}
+      </span>
+    </div>
+    <div className="col-span-2">
+      <div className="text-sm font-medium truncate">
+        {material.uploaded_by || "Unknown"}
+      </div>
+    </div>
+    <div className="col-span-2 flex justify-end">
+      <a
+        href={material.file_url}
+        download
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors text-sm font-medium"
+      >
+        <Download size={16} />
+        Download
       </a>
-    </TableCell>
-  </TableRow>
+    </div>
+  </div>
 );
 
 // Main component
@@ -412,40 +426,30 @@ const StudyMaterials = () => {
           </div>
 
           {/* Table Area */}
-          <div className="overflow-x-auto rounded-lg border">
-            <Table className="min-w-[850px]">
-              <TableHeader>
-                <TableRow className={theme === 'dark' ? 'border-border hover:bg-transparent' : 'border-gray-200 hover:bg-transparent'}>
-                  <TableHead className="w-[50px]">Type</TableHead>
-                  <TableHead>Title</TableHead>
-                  
-                  <TableHead>Batch</TableHead>
-                  <TableHead>Section</TableHead>
-                  
-                  <TableHead>Uploaded By</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="p-4">
-                      <SkeletonTable rows={10} cols={8} />
-                    </TableCell>
-                  </TableRow>
-                ) : filteredMaterials.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
-                      No study materials found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredMaterials.map((material) => (
-                    <StudyMaterialRow key={material.id} material={material} theme={theme} />
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          <div className="pt-4 border-t">
+            <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b mb-3">
+              <div className="col-span-1 text-center">Type</div>
+              <div className="col-span-4">Title</div>
+              <div className="col-span-2">Batch</div>
+              <div className="col-span-1">Section</div>
+              <div className="col-span-2">Uploaded By</div>
+              <div className="col-span-2 text-right">Actions</div>
+            </div>
+            <div className="space-y-2">
+              {loading ? (
+                <div className="py-8">
+                  <SkeletonList items={5} />
+                </div>
+              ) : filteredMaterials.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  No study materials found.
+                </div>
+              ) : (
+                filteredMaterials.map((material) => (
+                  <StudyMaterialRow key={material.id} material={material} theme={theme} />
+                ))
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

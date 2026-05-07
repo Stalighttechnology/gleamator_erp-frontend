@@ -183,6 +183,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Announcement Management", page: "announcement-management" },
       { name: "Leave Approvals", page: "hod-leaves" },
       { name: "Staff Attendance", page: "hod-attendance" },
+      { name: "Short Permission", page: "short-permissions" },
       { name: "Users", page: "users" },
       { name: "Attendance Locations", page: "campus-locations" },
       { name: "Profile", page: "profile" },

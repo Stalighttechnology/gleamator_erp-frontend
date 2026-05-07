@@ -28,24 +28,54 @@ interface StudyMaterial {
 }
 
 const StudyMaterialRow = ({ material, theme }: { material: StudyMaterial; theme: string }) => (
-  <div className={`grid grid-cols-3 md:grid-cols-8 gap-2 md:gap-2 items-start md:items-center text-xs md:text-sm py-3 md:py-2 px-3 md:px-0 md:border-b ${theme === 'dark' ? 'md:border-border' : 'md:border-gray-200'} last:border-b-0`}>
-    <div className="hidden md:flex items-center">
-      <FileText className="text-red-500" size={18} />
-    </div>
-    <div className="col-span-1">
-      <span className={`md:hidden text-xs font-bold mr-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>Title:</span>
-      <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} font-medium cursor-pointer hover:underline truncate`}>
-        {material.title}
+  <div
+    className={`grid grid-cols-12 items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 mb-2 ${
+      theme === "dark"
+        ? "border-border bg-card hover:bg-muted/40"
+        : "border-gray-200 bg-white hover:bg-gray-50"
+    }`}
+  >
+    <div className="col-span-1 flex justify-center">
+      <div className="p-2 rounded-lg bg-red-100 dark:bg-red-950/30">
+        <FileText className="text-red-500" size={18} />
       </div>
     </div>
-    
-    <div className="hidden md:block col-span-1 truncate">{material.batch || "N/A"}</div>
-    <div className="hidden md:block col-span-1 truncate">{material.section || "N/A"}</div>
-    <div className="hidden md:block col-span-1">{material.uploaded_by}</div>
+
+    <div className="col-span-4 min-w-0">
+      <div className="font-semibold text-sm truncate text-blue-600 dark:text-blue-400">
+        {material.title}
+      </div>
+      <div className="text-xs text-muted-foreground truncate mt-0.5">
+        {material.subject_name || "No Subject"}
+      </div>
+    </div>
+
+    <div className="col-span-2">
+      <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+        {material.batch || "N/A"}
+      </span>
+    </div>
+
     <div className="col-span-1">
-      <a href={material.file_url} download={material.title} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1">
-        <Download className={`cursor-pointer ${theme === 'dark' ? 'text-muted-foreground hover:text-foreground' : 'text-gray-500 hover:text-gray-700'}`} size={18} />
-        <span className="hidden sm:inline">Download</span>
+      <span className="text-sm font-medium">
+        {material.section || "-"}
+      </span>
+    </div>
+
+    <div className="col-span-2">
+      <div className="text-sm font-medium truncate">
+        {material.uploaded_by || "Unknown"}
+      </div>
+    </div>
+
+    <div className="col-span-2 flex justify-end">
+      <a
+        href={material.file_url}
+        download
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors text-sm font-medium"
+      >
+        <Download size={16} />
+        Download
       </a>
     </div>
   </div>
@@ -112,15 +142,15 @@ const StudyMaterialsStudent = () => {
 
           {/* Materials Table Section */}
           <div className="pt-4 border-t">
-            <div className="hidden md:grid grid-cols-8 font-semibold text-xs sm:text-sm gap-2 mb-4 px-2">
-              <div>Type</div>
-              <div>Title</div>
-              <div>Batch</div>
-              <div>Section</div>
-              <div>Uploaded By</div>
-              <div>Action</div>
+            <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b mb-3">
+              <div className="col-span-1 text-center">Type</div>
+              <div className="col-span-4">Title</div>
+              <div className="col-span-2">Batch</div>
+              <div className="col-span-1">Section</div>
+              <div className="col-span-2">Uploaded By</div>
+              <div className="col-span-2 text-right">Actions</div>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               {loading ? (
                 <SkeletonList items={5} />
               ) : !hasSearched ? (
