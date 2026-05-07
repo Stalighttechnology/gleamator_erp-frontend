@@ -74,6 +74,7 @@ export const AdminOverview: React.FC = () => {
     completed: students.filter((s) => s.status === 'completed').length,
     notCompleted: students.filter((s) => s.status === 'pending').length,
     feePending: students.filter((s) => s.fee_status === 'pending').length,
+    feeHalfPaid: students.filter((s) => s.fee_status === 'half_paid').length,
   };
 
   const completionRate =
@@ -93,7 +94,7 @@ export const AdminOverview: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm font-medium text-slate-600">Total Students</p>
@@ -124,6 +125,13 @@ export const AdminOverview: React.FC = () => {
               <span className="text-2xl">⚠</span>
             </div>
             <p className="text-3xl font-bold text-red-600">{stats.feePending}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-slate-600">Half Paid</p>
+              <span className="text-2xl">◐</span>
+            </div>
+            <p className="text-3xl font-bold text-amber-600">{stats.feeHalfPaid}</p>
           </div>
         </div>
 
@@ -291,11 +299,15 @@ export const AdminOverview: React.FC = () => {
                           className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
                             student.fee_status === 'paid'
                               ? 'bg-green-100 text-green-700'
+                              : student.fee_status === 'half_paid'
+                                ? 'bg-amber-100 text-amber-700'
                               : 'bg-red-100 text-red-700'
                           }`}
                         >
                           {student.fee_status === 'paid'
                             ? '✓ Paid'
+                            : student.fee_status === 'half_paid'
+                              ? '◐ Half Paid'
                             : '⚠ Pending'}
                         </span>
                       </td>

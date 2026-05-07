@@ -25,6 +25,7 @@ import { isPageAllowed } from "../../utils/planGating";
 import UpgradeRequired from "../common/UpgradeRequired";
 import ShortPermissionsManagement from "../admin/ShortPermissionsManagement";
 import ScanSearch from "../common/ScanSearch";
+import AdminOverview from "../admin/AdminEnquiryOverview";
 
 import {
   Users,
@@ -206,6 +207,12 @@ const AdminDashboard = ({ user, setPage }: AdminDashboardProps) => {
         return (
           <div>
             <ShortPermissionsManagement setError={setError} toast={toast} />
+          </div>
+        );
+      case "enquiry-overview":
+        return (
+          <div>
+            <AdminOverview />
           </div>
         );
       case "scan-search":

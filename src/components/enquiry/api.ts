@@ -1,53 +1,59 @@
-// api.ts
 import { ApiResponse } from './types';
-
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+import { API_ENDPOINT } from '@/utils/config';
+import { fetchWithTokenRefresh } from '@/utils/authService';
 
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  const token = localStorage.getItem('auth_token');
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const response = await fetchWithTokenRefresh(`${API_ENDPOINT}${endpoint}`, {
     ...options,
-    headers,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
   });
 
+  const contentType = response.headers.get('content-type') || '';
+  const payload = contentType.includes('application/json')
+    ? await response.json()
+    : null;
+
   if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`);
+    const message = payload?.message || payload?.detail || `API Error: ${response.status}`;
+    throw new Error(message);
   }
 
-  return response.json();
+  // DRF list responses are plain arrays; keep component contract as { success, data }.
+  if (Array.isArray(payload)) {
+    return { success: true, data: payload as T };
+  }
+
+  return payload as ApiResponse<T>;
 }
 
 export const api = {
-  // Enquiry endpoints
-  getEnquiries: () => request<any[]>('/api/enquiry/enquiries/'),
+  getEnquiries: () => request<any[]>('/enquiry/enquiries/'),
   createEnquiry: (data: any) =>
-    request<any>('/api/enquiry/enquiries/', {
+    request<any>('/enquiry/enquiries/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   deleteEnquiry: (id: number) =>
-    request<any>(`/api/enquiry/enquiries/${id}/delete/`, { method: 'DELETE' }),
+    request<any>(`/enquiry/enquiries/${id}/`, { method: 'DELETE' }),
   convertEnquiry: (id: number) =>
-    request<any>(`/api/enquiry/enquiries/${id}/convert/`, { method: 'POST' }),
-
-  // Progress endpoints
+    request<any>(`/enquiry/enquiries/${id}/convert/`, { method: 'POST' }),
   getProgress: (params?: Record<string, string>) => {
-    const query = new URLSearchParams(params).toString();
-    return request<any[]>(`/api/enquiry/progress/?${query}`);
+    const query = params ? new URLSearchParams(params).toString() : '';
+    const suffix = query ? `?${query}` : '';
+    return request<any[]>(`/enquiry/progress/${suffix}`);
   },
   toggleCompletion: (id: number) =>
-    request<any>(`/api/enquiry/progress/${id}/toggle/`, { method: 'POST' }),
-  getStudentProgress: () => request<any>('/api/enquiry/progress/me/'),
+    request<any>(`/enquiry/progress/${id}/toggle/`, { method: 'POST' }),
+  updateProgress: (id: number, data: Record<string, unknown>) =>
+    request<any>(`/enquiry/progress/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  getStudentProgress: () => request<any>('/enquiry/progress/me/'),
 };

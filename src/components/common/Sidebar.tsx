@@ -148,6 +148,10 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       "student-hostel-details": <Home size={20} />,
       "short-permission-request": <Clock size={20} />,
       "short-permissions": <UserCheck size={20} />,
+      "enquiry-overview": <ClipboardList size={20} />,
+      "enquiry-page": <ClipboardList size={20} />,
+      "enquiry-completion": <BarChart2 size={20} />,
+      "enquiry-student-status": <UserCheck size={20} />,
     };
     return iconMap[page] || <LayoutDashboard size={20} />;
   };
@@ -184,6 +188,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Leave Approvals", page: "hod-leaves" },
       { name: "Staff Attendance", page: "hod-attendance" },
       { name: "Short Permission", page: "short-permissions" },
+      { name: "Enquiry Dashboard", page: "enquiry-overview" },
       { name: "Users", page: "users" },
       { name: "Attendance Locations", page: "campus-locations" },
       { name: "Profile", page: "profile" },
@@ -201,6 +206,8 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leaves", page: "apply-leaves" },
       { name: "Short Permission Request", page: "short-permission-request" },
+      { name: "Enquiries", page: "enquiry-page" },
+      { name: "Completion", page: "enquiry-completion" },
       { name: "Profile", page: "hod-profile" },
     ],
 
@@ -216,6 +223,8 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "My Attendance", page: "my-attendance" },
       { name: "Apply Leaves", page: "apply-leaves" },
       { name: "Short Permission Request", page: "short-permission-request" },
+      { name: "Enquiries", page: "enquiry-page" },
+      { name: "Completion", page: "enquiry-completion" },
       { name: "Profile", page: "hod-profile" },
     ],
 

@@ -32,6 +32,9 @@ import MisShortPermission from "../hod/MisShortPermission";
 import BatchManagement from "../admin/BatchManagement";
 import ScanSearch from "../common/ScanSearch";
 import EnrollmentManagement from "../hod/EnrollmentManagement";
+import EnquiryPage from "../hod/HodEnquiryPage";
+import CompletionPage from "../hod/HodEnquiryCompletionPage";
+import StudentStatus from "../hod/HodEnquiryStudentStatusPage";
 import { HODBootstrapProvider } from "../../context/HODBootstrapContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useToast } from "../../hooks/use-toast";
@@ -152,6 +155,9 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'study-materials': 'study-materials',
       'hod-profile': 'hod-profile',
       'short-permission-request': 'short-permission-request',
+      'enquiry-page': 'enquiry-page',
+      'enquiry-completion': 'enquiry-completion',
+      'enquiry-student-status': 'enquiry-student-status',
       'batches': 'batches',
       // Accept explicit hod-announcement-management segment as-is
       'hod-announcement-management': 'hod-announcement-management'
@@ -224,6 +230,9 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
       'study-materials': '/hod/study-materials',
       'hod-profile': '/hod/hod-profile',
       'short-permission-request': '/hod/short-permission-request',
+      'enquiry-page': '/hod/enquiry-page',
+      'enquiry-completion': '/hod/enquiry-completion',
+      'enquiry-student-status': '/hod/enquiry-student-status',
       // Allow the announcement menu value used in the sidebar to map to the announcements page
       'hod-announcement-management': '/hod/hod-announcement-management',
       'batches': '/hod/batches'
@@ -309,6 +318,12 @@ const HODDashboard = ({ user, setPage }: HODDashboardProps) => {
         return <HodProfile user={user} setError={setError} />;
       case "short-permission-request":
         return user.role === "mis" ? <MisShortPermission /> : <HodShortPermission />;
+      case "enquiry-page":
+        return <EnquiryPage />;
+      case "enquiry-completion":
+        return <CompletionPage />;
+      case "enquiry-student-status":
+        return <StudentStatus />;
       case "batches":
         return <BatchManagement setError={setError} toast={toast} />;
       default:

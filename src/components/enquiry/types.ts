@@ -6,7 +6,7 @@ export interface Enquiry {
   course: string;
   branch?: string;
   batch?: string;
-  fee_status: 'paid' | 'pending';
+  fee_status: 'paid' | 'half_paid' | 'pending';
   notes?: string;
   is_converted: boolean;
   created_at: string;
@@ -21,7 +21,7 @@ export interface StudentProgress {
   branch?: string;
   batch?: string;
   status: 'completed' | 'pending';
-  fee_status: 'paid' | 'pending';
+  fee_status: 'paid' | 'half_paid' | 'pending';
   updated_at: string;
   updated_by?: string;
 }
