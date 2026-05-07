@@ -82,6 +82,8 @@ interface TimetableEntry {
   id: string;
   faculty: { id: string; first_name: string; last_name: string };
   subject: { id: string; name: string };
+  batch?: string;
+  section?: string;
   day: string;
   start_time: string;
   end_time: string;

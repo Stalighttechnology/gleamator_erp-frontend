@@ -255,6 +255,7 @@ export interface TimetableEntry {
   start_time: string;
   end_time: string;
   subject: string;
+  batch?: string;
   section: string;
   semester: number;
   branch: string;

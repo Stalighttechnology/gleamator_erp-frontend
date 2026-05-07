@@ -44,6 +44,7 @@ const StudentTimetable = () => {
   // Generate table data for the grid
   interface DayEntry {
     subject: string;
+    faculty: string;
     room: string;
   }
 
@@ -61,8 +62,10 @@ const StudentTimetable = () => {
   const createDayEntry = (entry: TimetableEntry | undefined): DayEntry | null => {
     if (!entry) return null;
     const subjectStr = typeof entry.subject === 'string' ? entry.subject : (entry.subject?.name || 'Unknown');
+    const facultyStr = entry.faculty ? `${entry.faculty.first_name || ''} ${entry.faculty.last_name || ''}`.trim() : "";
     return {
       subject: subjectStr,
+      faculty: facultyStr,
       room: entry.room,
     };
   };
@@ -190,6 +193,9 @@ const StudentTimetable = () => {
                             <div className={styles.cellContent}>
                               <div className={`${styles.subject} ${subjectColor}`}>
                                 {entry.subject}
+                              </div>
+                              <div className={`${styles.room} ${roomColor}`}>
+                                {entry.faculty || "Faculty TBD"}
                               </div>
                               <div className={`${styles.room} ${roomColor}`}>
                                 {entry.room}

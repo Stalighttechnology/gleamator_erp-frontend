@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Skeleton, SkeletonTable } from "../ui/skeleton";
-import { DownloadIcon, EditIcon, User } from "lucide-react";
+import { DownloadIcon, EditIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useToast } from "../ui/use-toast";
-import { getSemesters, manageSections, manageSubjects, manageFaculties, manageTimetable, manageProfile, manageFacultyAssignments, getBranches, getHODTimetableBootstrap, getHODTimetableSemesterData } from "../../utils/hod_api";
+import { getBatches, getHODTimetableBootstrap, getHODTimetableSemesterData, manageFaculties, manageTimetable } from "../../utils/hod_api";
 import { useTheme } from "../../context/ThemeContext";
 
 // Interfaces
@@ -20,6 +20,7 @@ interface Section {
   id: string;
   name: string;
   semester_id: number | string; // Allow both types
+  batch_id?: string | null;
 }
 
 interface Subject {
@@ -54,6 +55,8 @@ interface TimetableEntry {
 interface ClassDetails {
   subject: string;
   professor: string;
+  faculty_id?: string;
+  batch_id?: string;
   room: string;
   start_time: string;
   end_time: string;
@@ -66,12 +69,14 @@ interface ManageTimetableRequest {
   action: "GET" | "create" | "update" | "delete" | "bulk_create";
   timetable_id?: string;
   assignment_id?: string;
+  faculty_id?: string;
   day?: string;
   start_time?: string;
   end_time?: string;
   room?: string;
-  semester_id: string;
-  section_id: string;
+  semester_id?: string;
+  batch_id?: string;
+  section_id?: string;
   branch_id: string;
 }
 
@@ -95,6 +100,7 @@ interface SectionData {
   id: string;
   name: string;
   semester_id: number;
+  batch_id?: string | null;
 }
 
 interface SubjectData {
@@ -120,6 +126,7 @@ interface FacultyAssignmentData {
   subject_id: string;
   section: string;
   section_id: string;
+  batch_id?: string | null;
   semester: number;
   semester_id: string;
 }
@@ -144,6 +151,7 @@ interface HODTimetableBootstrapResponse {
     branch_id: string;
     branch: string;
   };
+  batches?: Array<{ id: string; name: string }>;
   semesters: SemesterData[];
 }
 
@@ -158,11 +166,12 @@ interface EditModalProps {
   onSave: (newClassDetails: ClassDetails) => void;
   onCancel: () => void;
   onDelete?: (timetableId?: string) => void;
-  subjects: Subject[];
+  faculties: Faculty[];
   facultyAssignments: FacultyAssignmentData[];
-  semesterId: string;
   sectionId: string;
   branchId: string;
+  batchName: string;
+  sectionName: string;
 }
 
 // Define error type for catch blocks
@@ -181,11 +190,13 @@ function isErrorWithMessage(error: unknown): error is ErrorWithMessage {
 }
 
 // Edit Modal Component
-const EditModal = ({ classDetails, onSave, onCancel, onDelete, subjects, facultyAssignments, semesterId, sectionId, branchId }: EditModalProps) => {
+const EditModal = ({ classDetails, onSave, onCancel, onDelete, faculties, facultyAssignments, sectionId, branchId, batchName, sectionName }: EditModalProps) => {
   const { theme } = useTheme();
   const [newClassDetails, setNewClassDetails] = useState({
     subject: classDetails.subject || "",
     professor: classDetails.professor || "",
+    faculty_id: classDetails.faculty_id || "",
+    assignment_id: classDetails.assignment_id || "",
     room: classDetails.room || "",
     start_time: classDetails.start_time || "",
     end_time: classDetails.end_time || "",
@@ -193,44 +204,34 @@ const EditModal = ({ classDetails, onSave, onCancel, onDelete, subjects, faculty
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
+  const sectionAssignments = facultyAssignments.filter(
+    (a: FacultyAssignmentData) => a.section_id === sectionId && String(a.batch_id || "") === String(classDetails.batch_id || "")
+  );
+  const selectableFacultyIds = new Set(sectionAssignments.map((a) => a.faculty_id));
+  const selectableFaculties = faculties.filter((f) => selectableFacultyIds.has(f.id));
+
   useEffect(() => {
-    const fetchFacultyAssignment = async () => {
-      if (!newClassDetails.subject || !semesterId || !sectionId) {
-        setNewClassDetails((prev) => ({ ...prev, professor: "" }));
-        return;
-      }
-
-      setIsLoadingAssignments(true);
-      try {
-        const subject = subjects.find((s: Subject) => s.name === newClassDetails.subject);
-        if (!subject) {
-          setNewClassDetails((prev) => ({ ...prev, professor: "" }));
-          return;
-        }
-
-        // Use faculty assignments from props instead of API call
-        const assignment = facultyAssignments.find(
-          (a: FacultyAssignmentData) => a.subject_id === subject.id && a.semester_id === semesterId && a.section_id === sectionId
-        );
-
-        if (assignment) {
-          setNewClassDetails((prev) => ({
-            ...prev,
-            professor: assignment.faculty_name,
-          }));
-        } else {
-          setNewClassDetails((prev) => ({ ...prev, professor: "" }));
-        }
-      } catch (err) {
-        console.error("Error finding faculty assignment:", err);
-        setNewClassDetails((prev) => ({ ...prev, professor: "" }));
-      } finally {
-        setIsLoadingAssignments(false);
-      }
-    };
-
-    fetchFacultyAssignment();
-  }, [newClassDetails.subject, semesterId, sectionId, subjects, facultyAssignments]);
+    if (!sectionId) {
+      setNewClassDetails((prev) => ({ ...prev, professor: "", faculty_id: "", assignment_id: "" }));
+      return;
+    }
+    setIsLoadingAssignments(true);
+    const currentAssignment = sectionAssignments.find((a) => a.id === newClassDetails.assignment_id);
+    const fallbackAssignment = sectionAssignments[0];
+    const chosen = currentAssignment || fallbackAssignment;
+    if (chosen) {
+      setNewClassDetails((prev) => ({
+        ...prev,
+        subject: chosen.subject,
+        faculty_id: chosen.faculty_id,
+        professor: chosen.faculty_name,
+        assignment_id: chosen.id,
+      }));
+    } else {
+      setNewClassDetails((prev) => ({ ...prev, professor: "", faculty_id: "", assignment_id: "" }));
+    }
+    setIsLoadingAssignments(false);
+  }, [sectionId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -261,48 +262,56 @@ const EditModal = ({ classDetails, onSave, onCancel, onDelete, subjects, faculty
         </h2>
 
         <div className="mb-4">
-          <label className={`block ${theme === 'dark' ? 'text-foreground' : 'text-gray-700'}`}>Course:</label>
-          <Select value={newClassDetails.subject} onValueChange={(value) => handleSelectChange("subject", value)}>
+          <label className={`block ${theme === 'dark' ? 'text-foreground' : 'text-gray-700'}`}>Batch:</label>
+          <input
+            type="text"
+            value={batchName}
+            readOnly
+            className={`w-full p-2 border rounded ${theme === 'dark' ? 'bg-muted cursor-not-allowed text-foreground' : 'bg-gray-100 cursor-not-allowed text-gray-900'}`}
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className={`block ${theme === 'dark' ? 'text-foreground' : 'text-gray-700'}`}>Section:</label>
+          <input
+            type="text"
+            value={sectionName}
+            readOnly
+            className={`w-full p-2 border rounded ${theme === 'dark' ? 'bg-muted cursor-not-allowed text-foreground' : 'bg-gray-100 cursor-not-allowed text-gray-900'}`}
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-foreground/70' : 'text-gray-600'}`}>Faculty:</label>
+          <Select
+            value={newClassDetails.faculty_id}
+            onValueChange={(facultyId) => {
+              const chosen = sectionAssignments.find((a) => a.faculty_id === facultyId);
+              const fac = faculties.find((f) => f.id === facultyId);
+              setNewClassDetails((prev) => ({
+                ...prev,
+                subject: chosen?.subject || prev.subject,
+                faculty_id: facultyId,
+                professor: fac ? `${fac.first_name} ${fac.last_name}`.trim() : "",
+                assignment_id: chosen ? chosen.id : "",
+              }));
+            }}
+            disabled={sectionAssignments.length === 0}
+          >
             <SelectTrigger className={`w-full p-2 border rounded ${theme === 'dark' ? 'text-foreground bg-card border-border' : 'text-gray-900 bg-white border-gray-300'}`}>
-              <SelectValue placeholder="Select Course" />
+              <SelectValue placeholder="Select Faculty" />
             </SelectTrigger>
             <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-              {subjects.map((subject: Subject) => (
-                <SelectItem key={subject.id} value={subject.name} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
-                  {subject.name}
+              {selectableFaculties.map((f) => (
+                <SelectItem key={f.id} value={f.id} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
+                  {`${f.first_name} ${f.last_name}`.trim() || f.username}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="mb-4">
-          <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-foreground/70' : 'text-gray-600'}`}>Professor:</label>
-          <div className={`w-full p-3 border rounded-lg flex items-center gap-3 transition-all duration-200 ${theme === 'dark' ? 'bg-muted/50 text-foreground border-border' : 'bg-gray-50 text-gray-900 border-gray-200'}`}>
-            <User className={`w-4 h-4 ${theme === 'dark' ? 'text-primary' : 'text-primary'}`} />
-            <span className="font-medium">
-              {isLoadingAssignments ? (
-                <Skeleton className="h-4 w-32" />
-              ) : (
-                newClassDetails.professor || <span className="text-destructive/70 italic">No professor assigned</span>
-              )}
-            </span>
-          </div>
-          {!isLoadingAssignments && !newClassDetails.professor && newClassDetails.subject && (
-            <p className="text-xs text-destructive mt-1">Please assign a faculty to this subject in Faculty Assignments.</p>
+          {!isLoadingAssignments && !newClassDetails.assignment_id && (
+            <p className="text-xs text-destructive mt-1">No faculty assignment exists for selected batch/section.</p>
           )}
-        </div>
-
-        <div className="mb-4">
-          <label className={`block ${theme === 'dark' ? 'text-foreground' : 'text-gray-700'}`}>Room:</label>
-          <input
-            type="text"
-            name="room"
-            value={newClassDetails.room}
-            onChange={handleChange}
-            className={`w-full p-2 border rounded ${theme === 'dark' ? 'text-foreground bg-card border-border placeholder-muted-foreground' : 'text-gray-900 bg-white border-gray-300 placeholder-gray-500'}`}
-            placeholder="e.g., R103"
-          />
         </div>
 
         <div className="mb-4">
@@ -354,7 +363,12 @@ const EditModal = ({ classDetails, onSave, onCancel, onDelete, subjects, faculty
             <Button
               variant="outline"
               onClick={() => {
-                onSave({ ...newClassDetails, day: classDetails.day || "" });
+                onSave({
+                  ...newClassDetails,
+                  day: classDetails.day || "",
+                  assignment_id: newClassDetails.assignment_id,
+                  faculty_id: newClassDetails.faculty_id,
+                });
               }}
               className={theme === 'dark' ? 'text-foreground bg-card border-border hover:bg-accent' : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-100'}
             >
@@ -396,13 +410,16 @@ const Timetable = () => {
   const [state, setState] = useState({
     branchId: "" as string,
     branchName: "" as string,
+    batchId: "" as string,
     semesterId: "" as string,
     sectionId: "" as string,
     isEditing: false as boolean,
     selectedClass: null as ClassDetails | null,
     semesters: [] as Semester[],
+    batches: [] as Array<{ id: string; name: string }>,
     sections: [] as Section[],
     subjects: [] as Subject[],
+    faculties: [] as Faculty[],
     facultyAssignments: [] as Array<{
       id: string;
       faculty: string;
@@ -412,6 +429,7 @@ const Timetable = () => {
       subject_id: string;
       section: string;
       section_id: string;
+      batch_id?: string | null;
       semester: number;
       semester_id: string;
     }>,
@@ -429,6 +447,7 @@ const Timetable = () => {
       subject_id: string;
       section: string;
       section_id: string;
+      batch_id?: string | null;
       semester: number;
       semester_id: string;
     }>>,
@@ -463,16 +482,24 @@ const Timetable = () => {
           throw new Error(boot.message || "Failed to bootstrap timetable");
         }
 
-        // Manually map the data instead of using strict typing
+        let batches = boot.data.batches || [];
+        if (!batches.length) {
+          const batchFallback = await getBatches();
+          batches = (batchFallback?.data?.batches || []).map((b: any) => ({ id: String(b.id), name: b.name }));
+        }
+
         updateState({
           branchId: boot.data.profile.branch_id,
           branchName: boot.data.profile.branch,
+          batches,
+          batchId: batches.length > 0 ? String(batches[0].id) : "",
           semesters: boot.data.semesters.map((s: any) => ({
             id: s.id.toString(),
             number: s.number,
           })) || [],
           sections: [],
           subjects: [],
+          faculties: [],
           facultyAssignments: [],
         });
       } catch (err) {
@@ -490,25 +517,42 @@ const Timetable = () => {
     fetchProfileAndSemesters();
   }, [toast]);
 
-  // Fetch sections, subjects, and faculty assignments when semester changes
+  useEffect(() => {
+    const fetchFaculties = async () => {
+      if (!state.branchId) return;
+      try {
+        const res = await manageFaculties({ branch_id: state.branchId }, "GET");
+        if (res.success && Array.isArray(res.data)) {
+          updateState({ faculties: res.data.map((f: any) => ({ id: String(f.id), username: f.username, first_name: f.first_name, last_name: f.last_name })) });
+        } else {
+          updateState({ faculties: [] });
+        }
+      } catch {
+        updateState({ faculties: [] });
+      }
+    };
+    fetchFaculties();
+  }, [state.branchId]);
+
+  // Fetch sections, subjects, and faculty assignments when batch changes
   useEffect(() => {
     const fetchSemesterData = async () => {
-      if (!state.semesterId) {
+      if (!state.batchId) {
         updateState({ sections: [], subjects: [], facultyAssignments: [], sectionId: "" });
         return;
       }
 
       // Check if we have everything in cache
-      const hasCachedSections = !!state.sectionsCache[state.semesterId];
-      const hasCachedSubjects = !!state.subjectsCache[state.semesterId];
-      const hasCachedAssignments = !!state.facultyAssignmentsCache[state.semesterId];
+      const hasCachedSections = !!state.sectionsCache[state.batchId];
+      const hasCachedSubjects = !!state.subjectsCache[state.batchId];
+      const hasCachedAssignments = !!state.facultyAssignmentsCache[state.batchId];
 
       if (hasCachedSections && hasCachedSubjects && hasCachedAssignments) {
-        const cachedSections = state.sectionsCache[state.semesterId];
+        const cachedSections = state.sectionsCache[state.batchId];
         updateState({
           sections: cachedSections,
-          subjects: state.subjectsCache[state.semesterId],
-          facultyAssignments: state.facultyAssignmentsCache[state.semesterId],
+          subjects: state.subjectsCache[state.batchId],
+          facultyAssignments: state.facultyAssignmentsCache[state.batchId],
           sectionId: cachedSections.length > 0 ? cachedSections[0].id : "",
         });
         return;
@@ -516,16 +560,16 @@ const Timetable = () => {
 
       updateState({ loading: true });
       try {
-        const semesterData = await getHODTimetableSemesterData(state.semesterId);
+        const semesterData = await getHODTimetableSemesterData({ batch_id: state.batchId });
         if (semesterData.success && semesterData.data) {
           const sections = semesterData.data.sections || [];
           const subjects = semesterData.data.subjects || [];
           const assignments = semesterData.data.faculty_assignments || [];
 
           // Update caches
-          const newSectionsCache = { ...state.sectionsCache, [state.semesterId]: sections };
-          const newSubjectsCache = { ...state.subjectsCache, [state.semesterId]: subjects };
-          const newAssignmentsCache = { ...state.facultyAssignmentsCache, [state.semesterId]: assignments };
+          const newSectionsCache = { ...state.sectionsCache, [state.batchId]: sections };
+          const newSubjectsCache = { ...state.subjectsCache, [state.batchId]: subjects };
+          const newAssignmentsCache = { ...state.facultyAssignmentsCache, [state.batchId]: assignments };
 
           updateState({
             sections,
@@ -534,7 +578,7 @@ const Timetable = () => {
             sectionsCache: newSectionsCache,
             subjectsCache: newSubjectsCache,
             facultyAssignmentsCache: newAssignmentsCache,
-            sectionId: "",
+            sectionId: sections.length > 0 ? String(sections[0].id) : "",
             loading: false
           });
         } else {
@@ -548,14 +592,14 @@ const Timetable = () => {
     };
 
     fetchSemesterData();
-  }, [state.semesterId, state.branchId]);
+  }, [state.batchId, state.branchId]);
 
 
 
   // Fetch timetable when section changes
   useEffect(() => {
     const fetchTimetable = async () => {
-      if (!state.branchId || !state.semesterId || !state.sectionId) {
+      if (!state.branchId || !state.batchId || !state.sectionId) {
         updateState({ timetable: [] });
         return;
       }
@@ -565,7 +609,8 @@ const Timetable = () => {
         const timetableResponse = await manageTimetable({
           action: "GET" as const,
           branch_id: state.branchId,
-          semester_id: state.semesterId,
+          batch_id: state.batchId,
+          semester_id: state.sections.find((s) => s.id === state.sectionId)?.semester_id?.toString(),
           section_id: state.sectionId,
         });
         if (timetableResponse.success && timetableResponse.data) {
@@ -605,11 +650,12 @@ const Timetable = () => {
     };
 
     fetchTimetable();
-  }, [state.branchId, state.semesterId, state.sectionId, toast]);
+  }, [state.branchId, state.batchId, state.sectionId, toast]);
 
   // Generate table data for the grid
   const getTableData = () => {
     const timetable = Array.isArray(state.timetable) ? state.timetable : [];
+    const selectedBatchName = state.batches.find((b) => b.id === state.batchId)?.name || "Batch";
     const tableData = timeSlots.map(({ start, end }) => {
       const row: Record<string, string> = { time: `${start}-${end}` };
       days.forEach((day) => {
@@ -617,7 +663,7 @@ const Timetable = () => {
           (e) => e.start_time === start && e.end_time === end && e.day === day
         );
         row[day.toLowerCase()] = entry
-          ? `${entry.faculty_assignment.subject}\n${entry.faculty_assignment.faculty}\n${entry.room}`
+          ? `${selectedBatchName}\n${entry.faculty_assignment.faculty}`
           : "";
       });
       return row;
@@ -627,8 +673,8 @@ const Timetable = () => {
   };
 
   const handleEdit = () => {
-    if (!state.semesterId || !state.sectionId) {
-      toast({ variant: "destructive", title: "Error", description: "Please select a semester and section to edit" });
+    if (!state.batchId || !state.sectionId) {
+      toast({ variant: "destructive", title: "Error", description: "Please select a batch and section to edit" });
       return;
     }
     updateState({ isEditing: !state.isEditing });
@@ -641,10 +687,13 @@ const Timetable = () => {
       (e) => e.start_time === start_time && e.end_time === end_time && e.day === day.toUpperCase()
     );
     if (entry) {
+      const selectedAssignment = state.facultyAssignments.find((a) => a.id === entry.faculty_assignment.id);
       updateState({
         selectedClass: {
           subject: entry.faculty_assignment.subject,
           professor: entry.faculty_assignment.faculty,
+          faculty_id: selectedAssignment?.faculty_id,
+          batch_id: state.batchId,
           room: entry.room,
           start_time: entry.start_time,
           end_time: entry.end_time,
@@ -658,6 +707,7 @@ const Timetable = () => {
         selectedClass: {
           subject: "",
           professor: "",
+          batch_id: state.batchId,
           room: "",
           start_time,
           end_time,
@@ -669,35 +719,27 @@ const Timetable = () => {
 
   const handleSaveClass = async (newClassDetails: ClassDetails) => {
     try {
-      if (!state.semesterId || !state.sectionId) {
-        throw new Error("Semester and section must be selected");
+      if (!state.batchId || !state.sectionId) {
+        throw new Error("Batch and section must be selected");
       }
 
-      const subject = state.subjects.find((s) => s.name === newClassDetails.subject);
-      if (!subject) {
-        throw new Error("Invalid subject selected");
+      const assignmentId = newClassDetails.assignment_id || state.selectedClass?.assignment_id;
+      if (!assignmentId) {
+        throw new Error("Please select a valid faculty mapped to this batch and section");
       }
-
-      const assignment = state.facultyAssignments.find(
-        (a) => a.subject_id === subject.id && a.semester_id === state.semesterId && a.section_id === state.sectionId
-      );
-
-      if (!assignment) {
-        throw new Error(`No faculty assigned to "${subject.name}" for this semester and section. Please assign a faculty first.`);
-      }
-
-      const assignmentId = assignment.id;
 
       const timetableRequest: ManageTimetableRequest = {
         action: state.selectedClass?.timetable_id ? "update" : "create",
         timetable_id: state.selectedClass?.timetable_id,
         assignment_id: assignmentId,
+        faculty_id: newClassDetails.faculty_id,
         day: state.selectedClass!.day,
         start_time: newClassDetails.start_time,
         end_time: newClassDetails.end_time,
         room: newClassDetails.room,
         branch_id: state.branchId,
-        semester_id: state.semesterId,
+        batch_id: state.batchId,
+        semester_id: state.sections.find((s) => s.id === state.sectionId)?.semester_id?.toString(),
         section_id: state.sectionId,
       };
 
@@ -794,14 +836,14 @@ const Timetable = () => {
     doc.setFontSize(16);
 
     const branchName = state.branchName || "Branch";
-    const semesterNumber =
-      state.semesters.find((s) => s.id === state.semesterId)?.number || "Semester";
+    const batchName =
+      state.batches.find((b) => b.id === state.batchId)?.name || "Batch";
     const sectionName =
       state.sections.find((s) => s.id === state.sectionId)?.name || "Section";
 
     const title =
-      state.semesterId && state.sectionId && state.branchId
-        ? `${branchName} - ${semesterNumber} Semester - Section ${sectionName} Timetable`
+      state.batchId && state.sectionId && state.branchId
+        ? `${branchName} - ${batchName} - Section ${sectionName} Timetable`
         : "Timetable";
 
     doc.text(title, 10, 15);
@@ -833,9 +875,10 @@ const Timetable = () => {
       },
     });
 
-    // ✅ Save as (branch-semester-section).pdf
+    // Save as (branch-batch-section).pdf
     const safeBranch = branchName.replace(/\s+/g, "_");
-    doc.save(`${safeBranch}-${semesterNumber}-${sectionName}.pdf`);
+    const safeBatch = batchName.replace(/\s+/g, "_");
+    doc.save(`${safeBranch}-${safeBatch}-${sectionName}.pdf`);
   };
 
 
@@ -882,18 +925,18 @@ const Timetable = () => {
               <div className="flex flex-col sm:flex-row md:flex-row gap-2 sm:gap-4 w-full md:flex-1 md:items-center md:flex-nowrap">
                 <div className="w-full sm:w-auto md:flex-none">
                   <Select
-                    value={state.semesterId}
+                    value={state.batchId}
                     onValueChange={(value) =>
-                      updateState({ semesterId: value, sectionId: "", timetable: [] })
+                      updateState({ batchId: value, sectionId: "", timetable: [] })
                     }
                   >
                     <SelectTrigger className="w-full sm:w-40 md:w-48 bg-card text-foreground border-border">
-                      <SelectValue placeholder="Select Semester" />
+                      <SelectValue placeholder="Select Batch" />
                     </SelectTrigger>
                     <SelectContent className="bg-card text-foreground border-border">
-                      {state.semesters.map((semester) => (
-                        <SelectItem key={semester.id} value={semester.id} className="text-foreground">
-                          {semester.number} Semester
+                      {state.batches.map((batch) => (
+                        <SelectItem key={batch.id} value={batch.id} className="text-foreground">
+                          {batch.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -903,7 +946,7 @@ const Timetable = () => {
                   <Select
                     value={state.sectionId}
                     onValueChange={(value) => updateState({ sectionId: value, timetable: [] })}
-                    disabled={!state.semesterId}
+                    disabled={!state.batchId}
                   >
                     <SelectTrigger className="w-full sm:w-40 md:w-48 bg-card text-foreground border-border">
                       <SelectValue placeholder="Select Section" />
@@ -919,10 +962,10 @@ const Timetable = () => {
                 </div>
               </div>
               <div className="text-sm text-muted-foreground mt-2 md:mt-0 md:ml-4 md:whitespace-nowrap md:flex-none">
-                {state.semesterId && state.sectionId
-                  ? `${state.semesters.find((s) => s.id === state.semesterId)?.number} Semester - Section ${state.sections.find((s) => s.id === state.sectionId)?.name
+                {state.batchId && state.sectionId
+                  ? `${state.batches.find((b) => b.id === state.batchId)?.name} - Section ${state.sections.find((s) => s.id === state.sectionId)?.name
                   }`
-                  : "Select Semester and Section"}
+                  : "Select Batch and Section"}
               </div>
             </div>
 
@@ -977,11 +1020,12 @@ const Timetable = () => {
           onSave={handleSaveClass}
           onCancel={handleCancelEdit}
           onDelete={handleDeleteClass}
-          subjects={state.subjects}
+          faculties={state.faculties}
           facultyAssignments={state.facultyAssignments}
-          semesterId={state.semesterId}
           sectionId={state.sectionId}
           branchId={state.branchId}
+          batchName={state.batches.find((b) => b.id === state.batchId)?.name || "Batch"}
+          sectionName={state.sections.find((s) => s.id === state.sectionId)?.name || "Section"}
         />
       )}
     </div>

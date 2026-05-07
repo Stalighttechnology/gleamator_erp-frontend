@@ -199,6 +199,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Dashboard", page: "dashboard" },
       { name: "Batch Assignment", page: "batches" },
       { name: "Faculty Assignments", page: "faculty-assignments" },
+      { name: "Timetable", page: "timetable" },
       { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
       { name: "Study Material", page: "study-materials" },
@@ -216,6 +217,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
       { name: "Dashboard", page: "dashboard" },
       { name: "Batch Assignment", page: "batches" },
       { name: "Faculty Assignments", page: "faculty-assignments" },
+      { name: "Timetable", page: "timetable" },
       { name: "Enrollment & Role Management", page: "enrollment-management" },
       { name: "Bulk Students Enrollment", page: "bulk-upload" },
       { name: "Study Material", page: "study-materials" },
@@ -231,6 +233,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
     faculty: [
       // Main
       { name: "Dashboard", page: "dashboard" },
+      { name: "My Timetable", page: "timetable" },
       { name: "Take Attendance", page: "take-attendance" },
       { name: "Attendance Records", page: "attendance-records" },
       { name: "My Attendance", page: "faculty-attendance" },
@@ -249,7 +252,7 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
     student: [
       // Main
       { name: "Dashboard", page: "dashboard" },
-      { name: "Timetable", page: "timetable" },
+      { name: "Class Timetable", page: "timetable" },
       { name: "Attendance", page: "attendance" },
       { name: "Study Materials", page: "student-study-material" },
       { name: "Take Test", page: "assessment/test" },

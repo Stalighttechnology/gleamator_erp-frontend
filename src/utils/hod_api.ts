@@ -352,12 +352,14 @@ interface ManageTimetableRequest {
   action: "create" | "update" | "delete" | "bulk_create" | "GET";
   timetable_id?: string;
   assignment_id?: string;
+  faculty_id?: string;
   day?: string;
   start_time?: string;
   end_time?: string;
   room?: string;
-  semester_id: string;
-  section_id: string;
+  semester_id?: string;
+  batch_id?: string;
+  section_id?: string;
   branch_id: string;
   file?: File;
 }
@@ -1433,12 +1435,12 @@ export const manageSections = async (
   }
 };
 
-// Combined semester data: sections + subjects + faculty assignments
-export const getHODTimetableSemesterData = async (semester_id: string): Promise<{
+// Combined semester/batch data: sections + subjects + faculty assignments
+export const getHODTimetableSemesterData = async (params: { semester_id?: string; batch_id?: string }): Promise<{
   success: boolean;
   message?: string;
   data?: {
-    sections: Array<{ id: string; name: string; semester_id: string }>;
+    sections: Array<{ id: string; name: string; semester_id: string | null; batch_id?: string | null }>;
     subjects: Array<{ id: string; name: string; subject_code: string; semester_id: string }>;
     faculty_assignments: Array<{
       id: string;
@@ -1449,14 +1451,18 @@ export const getHODTimetableSemesterData = async (semester_id: string): Promise<
       subject_id: string;
       section: string;
       section_id: string;
+      batch_id?: string | null;
       semester: number;
       semester_id: string;
     }>;
   };
 }> => {
   try {
-    if (!semester_id) throw new Error("Semester ID is required");
-    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/timetable-semester-data/?semester_id=${semester_id}`, {
+    if (!params?.semester_id && !params?.batch_id) throw new Error("Semester ID or Batch ID is required");
+    const query = new URLSearchParams();
+    if (params.semester_id) query.append("semester_id", params.semester_id);
+    if (params.batch_id) query.append("batch_id", params.batch_id);
+    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/timetable-semester-data/?${query.toString()}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
 
@@ -1741,6 +1747,7 @@ export const getHODTimetableBootstrap = async (): Promise<{
   message?: string;
   data?: {
     profile: { branch_id: string; branch: string };
+    batches?: Array<{ id: string; name: string }>;
     semesters: Array<{ id: string; number: number }>;
   };
 }> => {
@@ -1921,6 +1928,7 @@ export const manageTimetable = async (data: ManageTimetableRequest): Promise<Man
     if (!data.branch_id) throw new Error("Branch ID is required");
     if (data.action === "GET") {
       const params = new URLSearchParams({ branch_id: data.branch_id });
+      if (data.batch_id) params.append("batch_id", data.batch_id);
       if (data.semester_id) params.append("semester_id", data.semester_id);
       if (data.section_id) params.append("section_id", data.section_id);
       const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/hod/timetable/?${params.toString()}`, {
@@ -1931,22 +1939,23 @@ export const manageTimetable = async (data: ManageTimetableRequest): Promise<Man
       return await response.json();
     }
 
-    if ((data.action === "create" || data.action === "update") && (!data.semester_id || !data.section_id)) {
-      throw new Error("Semester ID and Section ID are required for create/update action");
+    if ((data.action === "create" || data.action === "update") && !data.section_id) {
+      throw new Error("Section ID is required for create/update action");
     }
 
     const headers: HeadersInit = {};
     let body: FormData | string;
 
     if (data.action === "bulk_create") {
-      if (!data.semester_id || !data.section_id || !data.file) {
-        throw new Error("Semester ID, Section ID, and File are required for bulk_create action");
+      if ((!data.semester_id && !data.batch_id) || !data.section_id || !data.file) {
+        throw new Error("Batch/Semester ID, Section ID, and File are required for bulk_create action");
       }
       const formData = new FormData();
       formData.append("action", data.action);
       formData.append("branch_id", data.branch_id);
-      formData.append("semester_id", data.semester_id);
-      formData.append("section_id", data.section_id);
+      if (data.semester_id) formData.append("semester_id", data.semester_id);
+      if (data.batch_id) formData.append("batch_id", data.batch_id);
+      if (data.section_id) formData.append("section_id", data.section_id);
       if (data.room) formData.append("room", data.room);
       formData.append("file", data.file);
       body = formData;

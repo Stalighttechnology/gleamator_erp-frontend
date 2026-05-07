@@ -15,9 +15,10 @@ interface TimetableProps {
 interface TimetableSlot {
   time: string;
   subject: string;
-  faculty: string;
+  classInfo: string;
   room: string;
   section: string;
+  batch?: string;
   semester: number;
   branch: string;
 }
@@ -71,10 +72,10 @@ const Timetable = ({ role }: TimetableProps) => {
                 return {
                   time: `${entry.start_time}-${entry.end_time}`,
                   subject: entry.subject,
-                  // Show only semester and section as requested
-                  faculty: `Sem ${entry.semester}, Sec ${entry.section}`,
+                  classInfo: `${entry.batch || "Batch"} - Sec ${entry.section}`,
                   room: entry.room,
                   section: entry.section,
+                  batch: entry.batch,
                   semester: entry.semester,
                   branch: entry.branch
                 };
@@ -177,7 +178,7 @@ const Timetable = ({ role }: TimetableProps) => {
                         {slot ? (
                           <>
                             <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>{slot.subject}</strong><br />
-                            <span className={`text-xs ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>{slot.faculty}</span><br />
+                            <span className={`text-xs ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>{slot.classInfo}</span><br />
                             <span className={`text-xs ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Room {slot.room}</span>
                           </>
                         ) : (
