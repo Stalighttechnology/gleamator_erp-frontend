@@ -23,6 +23,11 @@ export const getAssignedSubjectsGrouped = async (): Promise<{ success: boolean; 
 export interface UploadStudyMaterialRequest {
   title: string;
   batch_id: string;
+  subject_id?: string;
+  subject_name?: string;
+  subject_code?: string;
+  semester_id?: string;
+  branch_id?: string;
   section_id?: string;
   file: File;
 }
@@ -35,13 +40,12 @@ export const uploadStudyMaterial = async (data: UploadStudyMaterialRequest) => {
     const formData = new FormData();
     formData.append('title', data.title);
     formData.append('batch_id', data.batch_id);
-    // Include subject fields to match HOD endpoint payload expectations.
-    // Provide a safe default for subject_name so backend doesn't attempt to dereference a missing assignment.
-    formData.append('subject_name', (data as any).subject_name || "N/A");
-    formData.append('subject_code', (data as any).subject_code || "");
-    if (data.section_id) formData.append('section_id', data.section_id);
-    if ((data as any).semester_id) formData.append('semester_id', (data as any).semester_id);
-    if ((data as any).branch_id) formData.append('branch_id', (data as any).branch_id);
+    if (data.subject_id) formData.append('subject_id', data.subject_id);
+    if (data.subject_name) formData.append('subject_name', data.subject_name);
+    if (data.subject_code) formData.append('subject_code', data.subject_code);
+    if (data.section_id && data.section_id !== "__none") formData.append('section_id', data.section_id);
+    if (data.semester_id) formData.append('semester_id', data.semester_id);
+    if (data.branch_id) formData.append('branch_id', data.branch_id);
     formData.append('file', data.file);
 
     const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/study-materials/`, {

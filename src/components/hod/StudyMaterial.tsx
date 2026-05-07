@@ -418,10 +418,10 @@ const StudyMaterials = () => {
                 <TableRow className={theme === 'dark' ? 'border-border hover:bg-transparent' : 'border-gray-200 hover:bg-transparent'}>
                   <TableHead className="w-[50px]">Type</TableHead>
                   <TableHead>Title</TableHead>
-                  <TableHead>Course</TableHead>
+                  
                   <TableHead>Batch</TableHead>
                   <TableHead>Section</TableHead>
-                  <TableHead>Sem</TableHead>
+                  
                   <TableHead>Uploaded By</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>

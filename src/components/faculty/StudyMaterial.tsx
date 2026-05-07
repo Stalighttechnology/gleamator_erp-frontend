@@ -34,26 +34,44 @@ interface Subject {
 }
 
 const StudyMaterialRow = ({ material, theme }: { material: StudyMaterial; theme: string }) => (
-  <div className={`grid md:grid-cols-6 gap-2 md:gap-3 items-start md:items-center text-xs sm:text-sm py-2 md:py-3 border-b md:border-b ${theme === 'dark' ? 'border-border' : 'border-gray-200'} last:border-b-0`}>
-    <div className="hidden md:flex items-center">
-      <FileText className="text-red-500" size={18} />
-    </div>
-    <div className="flex items-start gap-2 md:flex-col md:gap-0 col-span-3">
-      <FileText className="text-red-500 flex-shrink-0 md:hidden" size={16} />
-      <div>
-        <div className="text-xs text-gray-500 md:hidden font-semibold">Title</div>
-        <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} font-medium cursor-pointer hover:underline break-words`}>{material.title}</div>
+  <div className={`grid md:grid-cols-6 gap-3 md:gap-4 items-start md:items-center text-xs sm:text-sm py-3 md:py-4 border-b ${theme === 'dark' ? 'border-border/50' : 'border-gray-200'} last:border-b-0 hover:bg-muted/30 transition-colors rounded-lg px-2`}>
+    <div className="hidden md:flex items-center justify-center">
+      <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/20">
+        <FileText className="text-red-500" size={20} />
       </div>
     </div>
-    <div className="hidden md:block truncate">{material.batch || 'N/A'}</div>
-    <div className="hidden md:block truncate">{material.section || 'N/A'}</div>
-    <div className="flex items-start gap-2 md:flex-col md:gap-0">
-      <div className="text-xs text-gray-500 md:hidden font-semibold">Uploaded</div>
-      <div className="">{material.uploaded_by}</div>
+    <div className="flex items-start gap-3 md:flex-col md:gap-1 col-span-2">
+      <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/20 flex-shrink-0 md:hidden">
+        <FileText className="text-red-500" size={18} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} font-semibold cursor-pointer hover:underline break-words line-clamp-2`}>
+          {material.title}
+        </div>
+        <div className="text-xs text-muted-foreground mt-0.5">
+          {material.subject_name || 'No Subject'}
+        </div>
+      </div>
+    </div>
+    <div className="hidden md:block">
+      <div className="font-medium truncate">{material.batch || 'N/A'}</div>
+    </div>
+    <div className="hidden md:block">
+      <div className="font-medium truncate">{material.section || 'N/A'}</div>
+    </div>
+    <div className="flex items-start gap-2 md:flex-col md:gap-1">
+      <div className="text-xs text-muted-foreground md:hidden font-semibold">Uploaded by</div>
+      <div className="font-medium">{material.uploaded_by}</div>
     </div>
     <div className="flex items-center justify-end md:justify-center">
-      <a href={material.file_url} download={material.title + '.pdf'} target="_blank" rel="noopener noreferrer">
-        <Download className={`cursor-pointer text-gray-500 hover:text-gray-700 flex-shrink-0`} size={18} />
+      <a 
+        href={material.file_url} 
+        download={material.title + '.pdf'} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-muted' : 'hover:bg-gray-100'}`}
+      >
+        <Download className="text-primary hover:text-primary/80 flex-shrink-0" size={20} />
       </a>
     </div>
   </div>
@@ -206,25 +224,28 @@ const StudyMaterialsFaculty = () => {
   return (
     <div className={`w-full ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
       <Card className={`${theme === 'dark' ? 'bg-card border-border' : 'bg-white border-gray-200'}`}>
-        <CardHeader className="p-3 sm:p-4 lg:p-6 border-b">
-          <div className="flex flex-row justify-between items-center gap-2 sm:gap-3">
+        <CardHeader className="p-4 sm:p-5 lg:p-6 border-b">
+          <div className="flex flex-row justify-between items-center gap-3">
             <div>
-              <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">Study Materials</h1>
-              <p className={`text-xs sm:text-sm mt-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Study Materials</h1>
+              <p className={`text-xs sm:text-sm mt-1.5 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>
                 View and upload course-related study materials for your assigned subjects.
               </p>
             </div>
-            <button onClick={() => setShowUploadModal(true)} className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-1 bg-primary text-white hover:bg-primary/90 whitespace-nowrap`}>
-              <UploadCloud size={16} /> Upload
+            <button 
+              onClick={() => setShowUploadModal(true)} 
+              className="px-4 sm:px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 bg-primary text-white hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap"
+            >
+              <UploadCloud size={18} /> Upload
             </button>
           </div>
         </CardHeader>
-        <CardContent className="p-3 sm:p-4 lg:p-6 space-y-6">
+        <CardContent className="p-4 sm:p-5 lg:p-6 space-y-6">
           {/* Filters & Search */}
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               <Select value={selectedBatch} onValueChange={(value) => setSelectedBatch(value)}>
-                <SelectTrigger className={theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}>
+                <SelectTrigger className={`h-11 ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}>
                   <SelectValue placeholder="Select Batch" />
                 </SelectTrigger>
                 <SelectContent>
@@ -240,7 +261,7 @@ const StudyMaterialsFaculty = () => {
                 onValueChange={(value) => setSelectedSection(value)}
                 disabled={sections.length === 0}
               >
-                <SelectTrigger className={`${sections.length === 0 ? 'opacity-50 cursor-not-allowed' : ''} ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}>
+                <SelectTrigger className={`h-11 ${sections.length === 0 ? 'opacity-50 cursor-not-allowed' : ''} ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}>
                   <SelectValue placeholder="All Sections" />
                 </SelectTrigger>
                 <SelectContent>
@@ -256,30 +277,36 @@ const StudyMaterialsFaculty = () => {
                 placeholder="Search materials..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}
+                className={`w-full h-11 px-4 border rounded-lg text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground placeholder:text-muted-foreground' : 'border-gray-300 bg-white text-gray-900 placeholder:text-gray-500'}`}
               />
             </div>
           </div>
 
           {/* Materials Table Section */}
           <div className="pt-4 border-t">
-            <div className="hidden md:grid grid-cols-6 font-semibold text-xs sm:text-sm gap-2 mb-4 px-2">
-              <div>Type</div>
-              <div className="col-span-3">Title</div>
+            <div className="hidden md:grid grid-cols-6 font-semibold text-sm gap-4 mb-3 px-2 text-muted-foreground">
+              <div className="text-center">Type</div>
+              <div className="col-span-2">Title</div>
               <div>Batch</div>
               <div>Section</div>
               <div>Uploaded By</div>
-              
+              <div className="text-center">Actions</div>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-0">
               {loading ? (
-                <div className="py-4">
+                <div className="py-8">
                   <SkeletonList items={5} />
                 </div>
               ) : !hasSearched ? (
-                <div className="text-center py-10 text-xs sm:text-sm text-gray-500 italic">Select a batch to view study materials.</div>
+                <div className="text-center py-16 text-sm text-muted-foreground">
+                  <FileText className="mx-auto mb-3 opacity-30" size={48} />
+                  Select a batch to view study materials.
+                </div>
               ) : materials.length === 0 ? (
-                <div className="text-center py-10 text-xs sm:text-sm text-gray-500">No study materials found for the selected criteria.</div>
+                <div className="text-center py-16 text-sm text-muted-foreground">
+                  <FileText className="mx-auto mb-3 opacity-30" size={48} />
+                  No study materials found for the selected criteria.
+                </div>
               ) : (
                 materials.map((m: StudyMaterial) => <StudyMaterialRow key={m.id} material={m} theme={theme} />)
               )}
@@ -289,17 +316,20 @@ const StudyMaterialsFaculty = () => {
       </Card>
 
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className={`p-4 sm:p-6 rounded-lg shadow-lg max-w-[95vw] sm:max-w-[90vw] md:max-w-[85vw] lg:max-w-md w-full ${theme === 'dark' ? 'bg-card text-foreground' : 'bg-white text-gray-900'}`}>
-            <div className="flex justify-between items-center mb-4 sm:mb-6">
-              <h2 className="text-base sm:text-lg font-semibold">Upload Study Material</h2>
-              <button onClick={() => setShowUploadModal(false)} className="text-gray-500 hover:text-gray-700">
-                <X size={20} />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`p-6 rounded-xl shadow-2xl max-w-md w-full ${theme === 'dark' ? 'bg-card text-foreground' : 'bg-white text-gray-900'}`}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Upload Study Material</h2>
+              <button 
+                onClick={() => setShowUploadModal(false)} 
+                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted"
+              >
+                <X size={22} />
               </button>
             </div>
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-4">
               <Select value={uploadBatch} onValueChange={setUploadBatch}>
-                <SelectTrigger className={theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}>
+                <SelectTrigger className={`h-11 ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}>
                   <SelectValue placeholder="Select Batch" />
                 </SelectTrigger>
                 <SelectContent>
@@ -310,7 +340,7 @@ const StudyMaterialsFaculty = () => {
               </Select>
 
               <Select value={uploadSection} onValueChange={setUploadSection}>
-                <SelectTrigger className={theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}>
+                <SelectTrigger className={`h-11 ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}>
                   <SelectValue placeholder="Select Section (Optional)" />
                 </SelectTrigger>
                 <SelectContent>
@@ -326,13 +356,13 @@ const StudyMaterialsFaculty = () => {
                 placeholder="Title"
                 value={uploadTitle}
                 onChange={(e) => setUploadTitle(e.target.value)}
-                className={`w-full px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}
+                className={`w-full h-11 px-4 border rounded-lg text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground placeholder:text-muted-foreground' : 'border-gray-300 bg-white text-gray-900 placeholder:text-gray-500'}`}
               />
               <input
                 type="file"
                 accept=".pdf,.doc,.docx,.ppt,.pptx"
                 onChange={(e) => setUploadFile(e.target.files ? e.target.files[0] : null)}
-                className={`w-full px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}
+                className={`w-full h-11 px-4 border rounded-lg text-sm file:mr-4 file:py-1.5 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90 ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}
               />
               <button
                 onClick={async () => {
@@ -364,8 +394,8 @@ const StudyMaterialsFaculty = () => {
                       setUploadSection('');
                       setUploadTitle('');
                       setUploadFile(null);
-                      // Reload materials
-                      loadMaterials();
+                      // Reload materials immediately after successful upload
+                      await loadMaterials();
                     } else {
                       alert(resp?.message || 'Upload failed');
                     }
@@ -377,7 +407,7 @@ const StudyMaterialsFaculty = () => {
                   }
                 }}
                 disabled={uploading}
-                className={`w-full px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-bold text-white ${uploading ? 'bg-gray-500' : 'bg-primary hover:bg-primary/90'}`}
+                className={`w-full h-11 px-4 rounded-lg text-sm font-semibold text-white transition-colors ${uploading ? 'bg-gray-500 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'}`}
               >
                 {uploading ? 'Uploading...' : 'Upload'}
               </button>

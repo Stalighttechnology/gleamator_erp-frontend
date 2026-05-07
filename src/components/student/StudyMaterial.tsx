@@ -38,13 +38,9 @@ const StudyMaterialRow = ({ material, theme }: { material: StudyMaterial; theme:
         {material.title}
       </div>
     </div>
-    <div className="col-span-1">
-      <span className={`md:hidden text-xs font-bold mr-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>Course:</span>
-      <div className={`truncate`}>{material.subject_name}</div>
-    </div>
+    
     <div className="hidden md:block col-span-1 truncate">{material.batch || "N/A"}</div>
     <div className="hidden md:block col-span-1 truncate">{material.section || "N/A"}</div>
-    <div className="hidden md:block col-span-1">{material.semester || "N/A"}</div>
     <div className="hidden md:block col-span-1">{material.uploaded_by}</div>
     <div className="col-span-1">
       <a href={material.file_url} download={material.title} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1">
@@ -107,7 +103,7 @@ const StudyMaterialsStudent = () => {
 
             <input
               type="text"
-              placeholder="Search by title, course name, course code, semester, or uploaded by..."
+              placeholder="Search by title or uploaded by..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`w-full px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm ${theme === 'dark' ? 'border-border bg-background text-foreground' : 'border-gray-300 bg-white text-gray-900'}`}
@@ -119,10 +115,8 @@ const StudyMaterialsStudent = () => {
             <div className="hidden md:grid grid-cols-8 font-semibold text-xs sm:text-sm gap-2 mb-4 px-2">
               <div>Type</div>
               <div>Title</div>
-              <div>Course</div>
               <div>Batch</div>
               <div>Section</div>
-              <div>Sem</div>
               <div>Uploaded By</div>
               <div>Action</div>
             </div>
