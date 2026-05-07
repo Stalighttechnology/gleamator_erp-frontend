@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchWithTokenRefresh } from "@/utils/authService";
@@ -21,7 +21,10 @@ const getResultStatus = (item: any) => {
 
 const ResultsPage = () => {
   const { toast } = useToast();
-  const [results, setResults] = useState<any[]>([]);
+
+  // Raw results from API (unfiltered)
+  const [rawResults, setRawResults] = useState<any[]>([]);
+
   const [batches, setBatches] = useState<any[]>([]);
   const [filter, setFilter] = useState({ batch: 'ALL' });
   const [assessments, setAssessments] = useState<any[]>([]);
@@ -30,6 +33,20 @@ const ResultsPage = () => {
   const [selectedSection, setSelectedSection] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
   const [hasAttemptedFilter, setHasAttemptedFilter] = useState<string>('ALL');
+
+  // ── FIX 1: derive filtered list from rawResults + hasAttemptedFilter ──
+  // This reacts instantly to status filter changes without re-fetching.
+  const results = useMemo(() => {
+    if (hasAttemptedFilter === 'ATTENDED') {
+      return rawResults.filter(r => r.completion_status === 'completed');
+    }
+    if (hasAttemptedFilter === 'NOT_ATTENDED') {
+      return rawResults.filter(r => r.completion_status === 'incomplete');
+    }
+    return rawResults;
+  }, [rawResults, hasAttemptedFilter]);
+
+  // ── FIX 2: pagination now uses the derived `results`, 10 per page ──
   const pagination = useClientPagination(results, 10);
 
   // Load initial data
@@ -40,8 +57,7 @@ const ResultsPage = () => {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch batches
+
       const batchesRes = await fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/batches/`);
       if (batchesRes.ok) {
         const b = await batchesRes.json();
@@ -49,7 +65,6 @@ const ResultsPage = () => {
         setBatches(Array.isArray(list) ? list : []);
       }
 
-      // Fetch assessments
       const assessmentsRes = await fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/assessments/?status=all`);
       if (assessmentsRes.ok) {
         const a = await assessmentsRes.json();
@@ -71,7 +86,7 @@ const ResultsPage = () => {
       setSelectedSection('ALL');
       return;
     }
-    
+
     let mounted = true;
     const load = async () => {
       try {
@@ -90,29 +105,27 @@ const ResultsPage = () => {
   }, [filter.batch]);
 
   // Auto-fetch results when assessment, batch, or section changes
+  // NOTE: hasAttemptedFilter is intentionally NOT a dependency here —
+  // filtering is handled in the useMemo above without a re-fetch.
   useEffect(() => {
     if (!selectedAssessment || selectedAssessment === 'NONE') {
-      setResults([]);
+      setRawResults([]);
       return;
     }
-    
     if (!filter.batch || filter.batch === 'ALL') {
-      setResults([]);
+      setRawResults([]);
       return;
     }
-
     loadResultsForSelection();
   }, [selectedAssessment, filter.batch, selectedSection]);
 
-  // Fetch results for selected assessment + batch + section
   const loadResultsForSelection = async () => {
     if (!selectedAssessment || selectedAssessment === 'NONE') {
-      setResults([]);
+      setRawResults([]);
       return;
     }
-    
     if (!filter.batch || filter.batch === 'ALL') {
-      setResults([]);
+      setRawResults([]);
       return;
     }
 
@@ -124,10 +137,7 @@ const ResultsPage = () => {
       if (selectedSection && selectedSection !== 'ALL') params.append('section_id', selectedSection);
       const qs = params.toString() ? `?${params.toString()}` : '';
 
-      // Try common endpoints and normalize response shapes
-      const tryUrls = [
-        `${API_ENDPOINT}/assessment/results/${qs}`,
-      ];
+      const tryUrls = [`${API_ENDPOINT}/assessment/results/${qs}`];
 
       let data: any = null;
       for (const url of tryUrls.filter(Boolean)) {
@@ -143,15 +153,19 @@ const ResultsPage = () => {
       }
 
       const list = Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
-      
-      // Normalize result items to have student name, usn, score, percentage, passed, submitted_at
+
+      // Normalize — no status filtering here; that's done in useMemo
       const normalized = (list || []).map((it: any) => ({
         id: it.id || it.attempt_id || it.pk,
         student_name: getStudentName(it),
         usn: it.student?.usn || it.usn || it.user?.username || it.user?.usn || '',
         score: it.score ?? it.marks_obtained ?? it.mark ?? 0,
         total: it.total_marks ?? it.total ?? it.max_mark ?? it.total_questions ?? 0,
-        percentage: it.percentage ?? (typeof (it.score ?? it.marks_obtained) === 'number' && (it.total_marks ?? it.total) ? Math.round(((it.score ?? it.marks_obtained) / (it.total_marks ?? it.total)) * 1000) / 10 : undefined),
+        percentage: it.percentage ?? (
+          typeof (it.score ?? it.marks_obtained) === 'number' && (it.total_marks ?? it.total)
+            ? Math.round(((it.score ?? it.marks_obtained) / (it.total_marks ?? it.total)) * 1000) / 10
+            : undefined
+        ),
         passed: it.passed ?? (it.percentage ? (it.percentage >= (it.passing_percentage ?? 0)) : undefined),
         section: it.section_name || it.section?.name || it.section || '',
         completion_status: it.completion_status || (it.submitted_at ? 'completed' : 'incomplete'),
@@ -160,20 +174,10 @@ const ResultsPage = () => {
         attempt_status: it.attempt_status || (it.submitted_at ? 'completed' : 'not_attempted'),
       }));
 
-      // Filter by attempted status if selected
-      let filtered = normalized;
-      if (hasAttemptedFilter !== 'ALL') {
-        filtered = normalized.filter(r => {
-          if (hasAttemptedFilter === 'ATTENDED') return r.completion_status === 'completed';
-          if (hasAttemptedFilter === 'NOT_ATTENDED') return r.completion_status === 'incomplete';
-          return true;
-        });
-      }
-
-      setResults(filtered);
+      setRawResults(normalized);
     } catch (e) {
       console.error('Error loading results', e);
-      setResults([]);
+      setRawResults([]);
     } finally {
       setLoading(false);
     }
@@ -185,7 +189,7 @@ const ResultsPage = () => {
     return 'bg-gray-100 text-gray-700';
   };
 
-  if (loading && results.length === 0) {
+  if (loading && rawResults.length === 0) {
     return (
       <div className="space-y-6">
         <div>
@@ -193,9 +197,7 @@ const ResultsPage = () => {
           <p className="text-sm text-muted-foreground">View assessment completion by batch and section.</p>
         </div>
         <Card>
-          <CardHeader>
-            <CardTitle>Results</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Results</CardTitle></CardHeader>
           <CardContent>
             <div className="flex items-center justify-center py-12">
               <div className="text-muted-foreground">Loading...</div>
@@ -212,11 +214,9 @@ const ResultsPage = () => {
         <h1 className="text-2xl font-bold tracking-tight">Assessment Results</h1>
         <p className="text-sm text-muted-foreground">View assessment completion by batch and section.</p>
       </div>
-      
+
       <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
@@ -227,7 +227,7 @@ const ResultsPage = () => {
               }}>
                 <SelectTrigger><SelectValue placeholder="Select Batch" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={String('ALL')}>All Batches</SelectItem>
+                  <SelectItem value="ALL">All Batches</SelectItem>
                   {batches.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -235,10 +235,16 @@ const ResultsPage = () => {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Section</label>
-              <Select value={selectedSection} onValueChange={(v) => setSelectedSection(v)} disabled={!filter.batch || filter.batch === 'ALL'}>
-                <SelectTrigger className={!filter.batch || filter.batch === 'ALL' ? 'opacity-50 cursor-not-allowed' : ''}><SelectValue placeholder="Select Section" /></SelectTrigger>
+              <Select
+                value={selectedSection}
+                onValueChange={(v) => setSelectedSection(v)}
+                disabled={!filter.batch || filter.batch === 'ALL'}
+              >
+                <SelectTrigger className={!filter.batch || filter.batch === 'ALL' ? 'opacity-50 cursor-not-allowed' : ''}>
+                  <SelectValue placeholder="Select Section" />
+                </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={String('ALL')}>All Sections</SelectItem>
+                  <SelectItem value="ALL">All Sections</SelectItem>
                   {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -249,7 +255,7 @@ const ResultsPage = () => {
               <Select value={selectedAssessment} onValueChange={(v) => setSelectedAssessment(v)}>
                 <SelectTrigger><SelectValue placeholder="Select Assessment" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={String('NONE')}>-- Select Assessment --</SelectItem>
+                  <SelectItem value="NONE">-- Select Assessment --</SelectItem>
                   {assessments.map(a => <SelectItem key={a.id} value={String(a.id)}>{a.title || a.name || a.assessment || `Test ${a.id}`}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -260,9 +266,9 @@ const ResultsPage = () => {
               <Select value={hasAttemptedFilter} onValueChange={(v) => setHasAttemptedFilter(v)}>
                 <SelectTrigger><SelectValue placeholder="All Students" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={String('ALL')}>All Students</SelectItem>
-                  <SelectItem value={String('ATTENDED')}>Attended Only</SelectItem>
-                  <SelectItem value={String('NOT_ATTENDED')}>Not Attended Only</SelectItem>
+                  <SelectItem value="ALL">All Students</SelectItem>
+                  <SelectItem value="ATTENDED">Attended Only</SelectItem>
+                  <SelectItem value="NOT_ATTENDED">Not Attended Only</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -271,9 +277,7 @@ const ResultsPage = () => {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Results</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Results</CardTitle></CardHeader>
         <CardContent>
           {!selectedAssessment || selectedAssessment === 'NONE' ? (
             <div className="text-center py-12 text-muted-foreground">
@@ -315,9 +319,15 @@ const ResultsPage = () => {
                         <td className="p-3 text-gray-900 font-medium">{r.student_name}</td>
                         <td className="p-3 text-gray-700">{r.usn || '-'}</td>
                         <td className="p-3 text-gray-700">{r.section || '-'}</td>
-                        <td className="p-3 text-gray-900 text-right font-medium">{r.result_status === 'Attended' ? r.score : '-'}</td>
+                        <td className="p-3 text-gray-900 text-right font-medium">
+                          {r.result_status === 'Attended' ? r.score : '-'}
+                        </td>
                         <td className="p-3 text-gray-900 text-right">{r.total || '-'}</td>
-                        <td className="p-3 text-gray-900 text-right font-medium">{r.result_status === 'Attended' && r.percentage !== undefined && r.percentage !== null ? `${r.percentage}%` : '-'}</td>
+                        <td className="p-3 text-gray-900 text-right font-medium">
+                          {r.result_status === 'Attended' && r.percentage !== undefined && r.percentage !== null
+                            ? `${r.percentage}%`
+                            : '-'}
+                        </td>
                         <td className="p-3">
                           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeColor(r.result_status)}`}>
                             {r.result_status}
@@ -332,7 +342,11 @@ const ResultsPage = () => {
                             <span className="text-gray-400 text-xs">-</span>
                           )}
                         </td>
-                        <td className="p-3 text-sm text-gray-600">{r.submitted_at ? new Date(r.submitted_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
+                        <td className="p-3 text-sm text-gray-600">
+                          {r.submitted_at
+                            ? new Date(r.submitted_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
+                            : '-'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -342,22 +356,28 @@ const ResultsPage = () => {
               {pagination.showPagination && (
                 <div className="flex items-center justify-between mt-6 pt-4 border-t">
                   <div className="text-sm text-gray-600">
-                    Showing <span className="font-semibold">{(pagination.page - 1) * 10 + 1}</span> to <span className="font-semibold">{Math.min(pagination.page * 10, results.length)}</span> of <span className="font-semibold">{results.length}</span> results
+                    Showing{' '}
+                    <span className="font-semibold">{(pagination.page - 1) * 10 + 1}</span>
+                    {' '}to{' '}
+                    <span className="font-semibold">{Math.min(pagination.page * 10, results.length)}</span>
+                    {' '}of{' '}
+                    <span className="font-semibold">{results.length}</span> results
                   </div>
                   <div className="flex items-center gap-2">
-                    <button 
-                      onClick={pagination.prev} 
-                      disabled={pagination.page === 1} 
+                    <button
+                      onClick={pagination.prev}
+                      disabled={pagination.page === 1}
                       className="px-3 py-2 rounded-md border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                     >
                       Previous
                     </button>
                     <div className="text-sm text-gray-600 px-3 py-2">
-                      Page <span className="font-semibold">{pagination.page}</span> of <span className="font-semibold">{pagination.totalPages}</span>
+                      Page <span className="font-semibold">{pagination.page}</span> of{' '}
+                      <span className="font-semibold">{pagination.totalPages}</span>
                     </div>
-                    <button 
-                      onClick={pagination.next} 
-                      disabled={pagination.page === pagination.totalPages} 
+                    <button
+                      onClick={pagination.next}
+                      disabled={pagination.page === pagination.totalPages}
                       className="px-3 py-2 rounded-md border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                     >
                       Next
