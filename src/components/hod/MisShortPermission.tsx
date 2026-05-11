@@ -1,7 +1,7 @@
 import ShortPermissionRequestBase from "../common/ShortPermissionRequestBase";
 
 const MisShortPermission = () => {
-  return <ShortPermissionRequestBase title="MIS Short Permission Request" />;
+  return <ShortPermissionRequestBase title="Short Permission Request" />;
 };
 
 export default MisShortPermission;

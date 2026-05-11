@@ -1,7 +1,7 @@
 import ShortPermissionRequestBase from "../common/ShortPermissionRequestBase";
 
 const HodShortPermission = () => {
-  return <ShortPermissionRequestBase title="HOD Short Permission Request" />;
+  return <ShortPermissionRequestBase title="Short Permission Request" />;
 };
 
 export default HodShortPermission;

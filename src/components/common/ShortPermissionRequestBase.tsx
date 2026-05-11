@@ -57,7 +57,12 @@ const ShortPermissionRequestBase = ({ title }: { title: string }) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Input type="date" value={requestDate} onChange={(e) => setRequestDate(e.target.value)} />
+            <Input
+              type="date"
+              value={requestDate}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setRequestDate(e.target.value)}
+            />
             <Input type="time" value={fromTime} onChange={(e) => setFromTime(e.target.value)} />
             <Input type="time" value={toTime} onChange={(e) => setToTime(e.target.value)} />
           </div>
