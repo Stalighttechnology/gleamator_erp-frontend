@@ -302,7 +302,7 @@ const AssignAssessment = () => {
                 <SelectContent>
                   {batches.map((batch) => (
                     <SelectItem key={batch.id} value={String(batch.id)}>
-                      {batch.name} - {batch.branch} (Sem {batch.semester})
+                      {batch.name} - {batch.branch}
                     </SelectItem>
                   ))}
                 </SelectContent>

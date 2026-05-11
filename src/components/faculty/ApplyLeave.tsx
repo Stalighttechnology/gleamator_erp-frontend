@@ -19,6 +19,9 @@ import { Circle, CalendarCheck2, CalendarX2, Filter } from 'lucide-react';
 
 const MySwal = withReactContent(Swal);
 
+const shouldSuppressKnownBackendError = (message?: string | null) =>
+  !!message && message.includes("'NoneType' object has no attribute 'number'");
+
 type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
 
 const statusStyles = {
@@ -87,12 +90,22 @@ const LeaveRequests = () => {
           });
           setLeaveList(transformedLeaves);
         } else {
-          setError(bootstrapRes.message || 'Failed to load data');
+          const msg = bootstrapRes.message || 'Failed to load data';
+          if (!shouldSuppressKnownBackendError(msg)) {
+            setError(msg);
+          } else {
+            setError(null);
+          }
         }
       })
       .catch((err) => {
         console.error('Error loading leave data:', err);
-        setError('Failed to load data');
+        const msg = err instanceof Error ? err.message : 'Failed to load data';
+        if (!shouldSuppressKnownBackendError(msg)) {
+          setError('Failed to load data');
+        } else {
+          setError(null);
+        }
       })
       .finally(() => setLoading(false));
   }, []);

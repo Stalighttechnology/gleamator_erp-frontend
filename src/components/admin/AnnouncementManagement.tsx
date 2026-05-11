@@ -46,6 +46,7 @@ import {
   Announcement,
   CreateAnnouncementRequest,
 } from "@/utils/announcements_api";
+import { getBranchesWithHODs, manageBranches } from "@/utils/admin_api";
 import AnnouncementSections from "@/components/common/AnnouncementSections";
 
 const AdminAnnouncementManagement = () => {
@@ -55,6 +56,7 @@ const AdminAnnouncementManagement = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [branches, setBranches] = useState<Array<{ id: number; name: string }>>([]);
   const { theme } = useTheme();
   const MySwal = withReactContent(Swal);
 
@@ -100,6 +102,32 @@ const AdminAnnouncementManagement = () => {
 
   useEffect(() => {
     loadAnnouncements();
+    (async () => {
+      const normalizeBranches = (payload: any): Array<{ id: number; name: string }> => {
+        if (!payload) return [];
+        const resultLayer = payload?.results ?? payload;
+        const source =
+          resultLayer?.branches ??
+          payload?.branches ??
+          (Array.isArray(resultLayer) ? resultLayer : []);
+        if (!Array.isArray(source)) return [];
+        return source
+          .map((b: any) => ({ id: Number(b?.id), name: String(b?.name || "") }))
+          .filter((b: any) => Number.isFinite(b.id) && b.name);
+      };
+
+      const res = await manageBranches({ page: 1, page_size: 500 }, undefined, "GET");
+      let list = normalizeBranches(res);
+
+      if (list.length === 0) {
+        const fallback = await getBranchesWithHODs({ page: 1, page_size: 500 });
+        list = normalizeBranches(fallback);
+      }
+
+      if (list.length > 0) {
+        setBranches(list);
+      }
+    })();
   }, []);
 
   const handleCreateOrUpdate = async () => {
@@ -110,6 +138,10 @@ const AdminAnnouncementManagement = () => {
 
     if (formData.target_roles.length === 0) {
       await showSwal({ title: 'Please select at least one target role', icon: 'warning' });
+      return;
+    }
+    if (!formData.is_global && !formData.branch) {
+      await showSwal({ title: 'Please select a branch', icon: 'warning' });
       return;
     }
 
@@ -347,7 +379,7 @@ const AdminAnnouncementManagement = () => {
 
                     <div className="space-y-2">
                       <Label>Scope</Label>
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-2">
                           <Checkbox
                             id="is_global"
@@ -363,6 +395,28 @@ const AdminAnnouncementManagement = () => {
                             Global (All branches)
                           </Label>
                         </div>
+                        {!formData.is_global && (
+                          <div className="space-y-2">
+                            <Label htmlFor="branch">Select Branch *</Label>
+                            <Select
+                              value={formData.branch ? String(formData.branch) : ""}
+                              onValueChange={(value) =>
+                                setFormData({ ...formData, branch: Number(value) })
+                              }
+                            >
+                              <SelectTrigger id="branch">
+                                <SelectValue placeholder="Choose a branch" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {branches.map((b) => (
+                                  <SelectItem key={b.id} value={String(b.id)}>
+                                    {b.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
                     </div>
 

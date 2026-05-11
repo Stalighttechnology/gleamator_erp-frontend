@@ -156,7 +156,7 @@ const AttendanceRecords = () => {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <SkeletonTable rows={5} columns={8} />
+            <SkeletonTable rows={5} columns={6} />
           ) : error ? (
             <div className={`p-4 ${theme === 'dark' ? 'text-destructive' : 'text-red-600'}`}>{error}</div>
           ) : records.length === 0 ? (
@@ -170,9 +170,7 @@ const AttendanceRecords = () => {
                   <TableHeader className={theme === 'dark' ? 'bg-muted' : 'bg-gray-100'}>
                     <TableRow>
                       <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Date</TableHead>
-                      <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Subject</TableHead>
                       <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Batch</TableHead>
-                      <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Section</TableHead>
                       <TableHead className={`hidden lg:table-cell text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Present</TableHead>
                       <TableHead className={`hidden lg:table-cell text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Absent</TableHead>
                       <TableHead className={`text-xs md:text-xs lg:text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Attendance</TableHead>
@@ -184,9 +182,7 @@ const AttendanceRecords = () => {
                     {records.map((record) => (
                       <TableRow key={record.id} className={theme === 'dark' ? 'hover:bg-muted' : 'hover:bg-gray-50'}>
                         <TableCell className="text-xs md:text-xs lg:text-sm">{record.date}</TableCell>
-                        <TableCell className="text-xs md:text-xs lg:text-sm">{record.subject}</TableCell>
                         <TableCell className="text-xs md:text-xs lg:text-sm">{record.batch}</TableCell>
-                        <TableCell className="text-xs md:text-xs lg:text-sm">{record.section}</TableCell>
                         <TableCell className={`hidden lg:table-cell text-xs md:text-xs lg:text-sm font-semibold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>{record.summary.present_count}</TableCell>
                         <TableCell className={`hidden lg:table-cell text-xs md:text-xs lg:text-sm font-semibold ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>{record.summary.absent_count}</TableCell>
                         <TableCell className="text-xs md:text-xs lg:text-sm font-semibold">{record.summary.present_percentage}%</TableCell>
@@ -220,12 +216,8 @@ const AttendanceRecords = () => {
                                       <p className="text-sm font-semibold">{selectedRecord.date}</p>
                                     </div>
                                     <div className="space-y-1">
-                                      <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Subject</p>
-                                      <p className="text-sm font-semibold truncate" title={selectedRecord.subject}>{selectedRecord.subject}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Class</p>
-                                      <p className="text-sm font-semibold">Batch: {selectedRecord.batch}, Section: {selectedRecord.section}</p>
+                                      <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Batch</p>
+                                      <p className="text-sm font-semibold">{selectedRecord.batch}</p>
                                     </div>
                                     <div className="space-y-1">
                                       <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Percentage</p>
