@@ -60,6 +60,9 @@ const StudentTest = () => {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ score: number; percentage: number; passed: boolean } | null>(null);
 
+  // ⚠️ Hook MUST be here — before any conditional early returns — to satisfy Rules of Hooks
+  const assignmentsPagination = useClientPagination(assignments, 10);
+
   useEffect(() => { fetchAvailableAssignments(); }, []);
 
   useEffect(() => {
@@ -244,8 +247,6 @@ const StudentTest = () => {
     );
   }
 
-  const assignmentsPagination = useClientPagination(assignments, 10);
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -266,9 +267,12 @@ const StudentTest = () => {
           ) : (
             <>
               <div className="space-y-4">
-                {assignmentsPagination.current.map((assignment) => (
-                  <Card key={assignment.id} className="border-2 hover:border-primary transition-colors"><CardContent className="pt-6"><div className="flex items-start justify-between gap-4"><div className="flex-1 space-y-3"><div><h3 className="font-bold text-lg mb-1">{assignment.assessment?.title || "-"}</h3><div className="text-sm text-muted-foreground">Available until {assignment.end_time ? new Date(assignment.end_time).toLocaleString() : "-"}</div></div><div className="flex flex-wrap gap-2"><Badge variant="outline" className="flex items-center gap-1"><Award size={14} />{displayValue(assignment.assessment?.total_questions)} Questions</Badge><Badge variant="outline" className="flex items-center gap-1"><Clock size={14} />{displayValue(assignment.assessment?.duration_minutes)} minutes</Badge><Badge variant="outline">Pass: {displayValue(assignment.assessment?.passing_percentage)}%</Badge></div></div><Button onClick={() => startAttempt(assignment)} disabled={attemptedAssessmentIds.includes(assignment.assessment?.id ?? -1)}>{attemptedAssessmentIds.includes(assignment.assessment?.id ?? -1) ? 'Already Attempted' : 'Start Assessment'}</Button></div></CardContent></Card>
-                ))}
+                {assignmentsPagination.current.map((assignment) => {
+                  const isCompleted = attemptedAssessmentIds.includes(assignment.assessment?.id ?? -1);
+                  return (
+                  <Card key={assignment.id} className="border-2 hover:border-primary transition-colors"><CardContent className="pt-6"><div className="flex items-start justify-between gap-4"><div className="flex-1 space-y-3"><div><h3 className="font-bold text-lg mb-1">{assignment.assessment?.title || "-"}</h3><div className="text-sm text-muted-foreground">Available until {assignment.end_time ? new Date(assignment.end_time).toLocaleString() : "-"}</div></div><div className="flex flex-wrap gap-2"><Badge variant="outline" className="flex items-center gap-1"><Award size={14} />{displayValue(assignment.assessment?.total_questions)} Questions</Badge><Badge variant="outline" className="flex items-center gap-1"><Clock size={14} />{displayValue(assignment.assessment?.duration_minutes)} minutes</Badge><Badge variant="outline">Pass: {displayValue(assignment.assessment?.passing_percentage)}%</Badge></div></div>{isCompleted ? (<Button disabled className="bg-green-600 hover:bg-green-600 text-white opacity-90 flex items-center gap-2"><CheckCircle size={16} />Completed</Button>) : (<Button onClick={() => startAttempt(assignment)}>Take Test</Button>)}</div></CardContent></Card>
+                  );
+                })}
               </div>
 
               {assignmentsPagination.showPagination && (

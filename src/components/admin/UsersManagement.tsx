@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import * as Select from "@radix-ui/react-select";
-import { ChevronDownIcon, CheckIcon, Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
+import { ChevronDownIcon, CheckIcon, Pencil1Icon, TrashIcon, DownloadIcon } from "@radix-ui/react-icons";
 import { Search } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -71,6 +71,118 @@ const roleMap = {
   "Counselor": "hod",   // renamed
   "MIS": "mis",         // new role
 };
+
+// ── CSV Export helpers ────────────────────────────────────────────────────────
+
+const escapeCSV = (val: any): string => {
+  if (val === null || val === undefined) return "";
+  const s = String(val).trim();
+  return s.includes(",") || s.includes('"') || s.includes("\n")
+    ? `"${s.replace(/"/g, '""')}"`
+    : s;
+};
+
+const normalizeRoleLabel = (role: string): string =>
+  ({ student: "Student", teacher: "Faculty", hod: "Counselor", mis: "MIS", admin: "Admin" }[role] ?? role);
+
+const getCSVConfig = (roleFilter: string) => {
+  switch (roleFilter) {
+    case "Student":
+      return {
+        headers: ["Sl.No", "USN", "First Name", "Last Name", "Email", "Phone Number", "Branch"],
+        row: (u: any, idx: number) => [
+          idx,
+          u.extra?.usn || "N/A",
+          u.name.split(" ")[0] || "",
+          u.name.split(" ").slice(1).join(" ") || "",
+          u.email,
+          u.extra?.phone || "N/A",
+          u.extra?.branch || "N/A",
+        ],
+      };
+    case "Faculty":
+      return {
+        headers: ["Sl.No", "First Name", "Last Name", "Email", "Phone Number", "Assigned Branches"],
+        row: (u: any, idx: number) => [
+          idx,
+          u.name.split(" ")[0] || "",
+          u.name.split(" ").slice(1).join(" ") || "",
+          u.email,
+          u.extra?.phone || "N/A",
+          Array.isArray(u.extra?.branches) ? u.extra.branches.join("; ") : u.extra?.branches || "N/A",
+        ],
+      };
+    case "Counselor":
+    case "MIS":
+      return {
+        headers: ["Sl.No", "First Name", "Last Name", "Email", "Phone Number", "Branch"],
+        row: (u: any, idx: number) => [
+          idx,
+          u.name.split(" ")[0] || "",
+          u.name.split(" ").slice(1).join(" ") || "",
+          u.email,
+          u.extra?.phone || "N/A",
+          u.extra?.branch || "N/A",
+        ],
+      };
+    case "Admin":
+      return {
+        headers: ["Sl.No", "Username", "Email", "Phone Number", "First Name", "Last Name"],
+        row: (u: any, idx: number) => [
+          idx,
+          u.username || "N/A",
+          u.email,
+          u.extra?.phone || "N/A",
+          u.name.split(" ")[0] || "",
+          u.name.split(" ").slice(1).join(" ") || "",
+        ],
+      };
+    default: // All
+      return {
+        headers: ["Sl.No", "Username", "Email", "Role", "First Name", "Last Name", "Phone Number", "Branch", "Assigned Branches", "USN"],
+        row: (u: any, idx: number) => [
+          idx,
+          u.username || "N/A",
+          u.email,
+          normalizeRoleLabel(u.role),
+          u.name.split(" ")[0] || "",
+          u.name.split(" ").slice(1).join(" ") || "",
+          u.extra?.phone || "N/A",
+          u.extra?.branch || "N/A",
+          Array.isArray(u.extra?.branches) ? u.extra.branches.join("; ") : u.extra?.branches || "N/A",
+          u.extra?.usn || "N/A",
+        ],
+      };
+  }
+};
+
+const handleExportCSV = (users: User[], roleFilter: string, toast: any): void => {
+  if (!users || users.length === 0) {
+    toast({ variant: "destructive", title: "No Data", description: "No users available to export" });
+    return;
+  }
+  try {
+    const { headers, row } = getCSVConfig(roleFilter);
+    const lines = [headers.map(escapeCSV).join(",")];
+    users.forEach((u, idx) => lines.push(row(u, idx + 1).map(escapeCSV).join(",")));
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+    a.href = url;
+    a.download = `users-export-${roleFilter.toLowerCase()}-${dateStr}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported", description: `${users.length} user(s) exported to CSV` });
+  } catch (err) {
+    toast({ variant: "destructive", title: "Export Failed", description: "Could not generate CSV" });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
   const [users, setUsers] = useState<User[]>([]);
@@ -160,8 +272,14 @@ const transformedUsers = Array.isArray(usersData)
         role: user.role || "N/A",
         status: user.is_active ? "Active" : "Inactive",
         username: user.username || "",
+        extra: {
+          usn: user.extra?.usn || "",
+          branch: user.extra?.branch || "",
+          branches: user.extra?.branches || [],
+          phone: user.extra?.phone || "",
+        },
       }))
-      .filter((user: any) => allowedRoles.includes(user.role)) // 🔥 ADD THIS
+      .filter((user: any) => allowedRoles.includes(user.role))
   : [];
           
           setUsers(transformedUsers);
@@ -448,27 +566,46 @@ const filteredUsers = Array.isArray(users) ? users : [];
             </div>
 
             {/* Search */}
-            <div className="w-full md:w-auto flex flex-col">
-              <label className={`filter-label mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Search</label>
-              <div className="search-wrapper flex gap-2">
-                <Input
-                  placeholder="Search name or email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={handleSearchKeyPress}
-                  className={`search-input w-full md:w-52 rounded ${theme === 'dark' 
-                    ? 'bg-card border border-border text-foreground px-2 py-1' 
-                    : 'bg-white border border-gray-300 text-gray-900 px-2 py-1'}`}
-                />
+            <div className="w-full md:w-auto flex flex-col gap-3">
+              <div className="flex flex-col">
+                <label className={`filter-label mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Search</label>
+                <div className="search-wrapper flex gap-2">
+                  <Input
+                    placeholder="Search name or email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={handleSearchKeyPress}
+                    className={`search-input w-full md:w-52 rounded ${theme === 'dark' 
+                      ? 'bg-card border border-border text-foreground px-2 py-1' 
+                      : 'bg-white border border-gray-300 text-gray-900 px-2 py-1'}`}
+                  />
+                  <Button
+                    onClick={performSearch}
+                    variant="outline"
+                    size="sm"
+                    className={theme === 'dark' 
+                      ? 'bg-card border border-border text-foreground hover:bg-accent' 
+                      : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              {/* Export CSV */}
+              <div className="flex flex-col">
+                <label className={`filter-label mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Export</label>
                 <Button
-                  onClick={performSearch}
-                  variant="outline"
+                  onClick={() => handleExportCSV(filteredUsers, roleFilter, toast)}
+                  disabled={filteredUsers.length === 0 || loading}
                   size="sm"
-                  className={theme === 'dark' 
-                    ? 'bg-card border border-border text-foreground hover:bg-accent' 
-                    : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}
+                  className={`flex items-center gap-2 ${
+                    theme === 'dark'
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  <Search className="h-4 w-4" />
+                  <DownloadIcon className="h-4 w-4" />
+                  Export CSV
                 </Button>
               </div>
             </div>
