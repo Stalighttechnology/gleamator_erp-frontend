@@ -51,6 +51,7 @@ const COEApplyLeave = () => {
   const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   // Fetch leave history on mount
   useEffect(() => {
@@ -71,8 +72,8 @@ const COEApplyLeave = () => {
         // Transform backend data to match component structure
         const transformedLeaves: LeaveRequestDisplay[] = leaveData.map((leave: any) => {
           const mappedStatus = (leave.status === 'PENDING' ? 'Pending' :
-                              leave.status === 'APPROVED' ? 'Approved' :
-                              leave.status === 'REJECTED' ? 'Rejected' : 'Pending') as 'Pending' | 'Approved' | 'Rejected';
+            leave.status === 'APPROVED' ? 'Approved' :
+              leave.status === 'REJECTED' ? 'Rejected' : 'Pending') as 'Pending' | 'Approved' | 'Rejected';
 
           return {
             id: leave.id,
@@ -164,7 +165,7 @@ const COEApplyLeave = () => {
           end_date: format(dateRange.to, "yyyy-MM-dd"),
           reason: reason.trim(),
           status: 'Pending',
-          applied_on: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}, ${now.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`,
+          applied_on: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}, ${now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}`,
         };
         setLeaveList(prev => [newLeave, ...prev]);
       } else {
@@ -342,9 +343,8 @@ const COEApplyLeave = () => {
           <CardHeader className="flex flex-row items-center justify-between p-2 sm:p-4 lg:p-6 gap-1 sm:gap-2 min-h-fit">
             {/* Title */}
             <CardTitle
-              className={`text-sm sm:text-base lg:text-lg font-semibold flex-1 min-w-0 truncate ${
-                theme === 'dark' ? 'text-foreground' : 'text-gray-900'
-              }`}
+              className={`text-sm sm:text-base lg:text-lg font-semibold flex-1 min-w-0 truncate ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'
+                }`}
             >
               Leave Requests
             </CardTitle>
@@ -363,13 +363,12 @@ const COEApplyLeave = () => {
                   </Button>
                 </PopoverTrigger>
 
-                <PopoverContent className={`w-40 sm:w-48 p-2 sm:p-3 lg:p-4 ${
-                  theme === 'dark'
+                <PopoverContent className={`w-40 sm:w-48 p-2 sm:p-3 lg:p-4 ${theme === 'dark'
                     ? 'bg-card text-foreground border-border'
                     : 'bg-white text-gray-900 border-gray-200'
-                }`}>
+                  }`}>
                   <div className="space-y-2">
-                    
+
                     {(['All', 'Pending', 'Approved', 'Rejected'] as const).map((status) => (
                       <button
                         key={status}
@@ -377,15 +376,14 @@ const COEApplyLeave = () => {
                           setFilterStatus(status);
                           setFilterOpen(false);
                         }}
-                        className={`w-full text-left px-2 py-1 rounded text-xs sm:text-sm hover:bg-accent transition-colors ${
-                          filterStatus === status
+                        className={`w-full text-left px-2 py-1 rounded text-xs sm:text-sm hover:bg-accent transition-colors ${filterStatus === status
                             ? theme === 'dark'
                               ? 'bg-accent text-accent-foreground'
                               : 'bg-gray-100 text-gray-900'
                             : theme === 'dark'
-                            ? 'text-foreground'
-                            : 'text-gray-700'
-                        }`}
+                              ? 'text-foreground'
+                              : 'text-gray-700'
+                          }`}
                       >
                         {status}
                       </button>

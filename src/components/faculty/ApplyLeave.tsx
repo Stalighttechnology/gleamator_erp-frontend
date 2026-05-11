@@ -56,6 +56,7 @@ const LeaveRequests = () => {
   const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   // Fetch leave history on mount
   useEffect(() => {

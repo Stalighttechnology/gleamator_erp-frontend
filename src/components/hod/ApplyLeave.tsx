@@ -103,6 +103,7 @@ const ApplyLeave = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
 
   // Fetch profile and leaves data using combined endpoint

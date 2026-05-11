@@ -317,6 +317,9 @@ export const AdminOverview: React.FC = () => {
                     <th className="px-6 py-3 text-left font-semibold text-slate-900">
                       Fee Status
                     </th>
+                    <th className="px-6 py-3 text-left font-semibold text-slate-900">
+                      Follow-up Note
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -364,6 +367,9 @@ export const AdminOverview: React.FC = () => {
                               ? '◐ Half Paid'
                             : '⚠ Pending'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={student.followup_note}>
+                        {student.followup_note || '-'}
                       </td>
                     </tr>
                   ))}

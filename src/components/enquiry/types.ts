@@ -24,6 +24,7 @@ export interface StudentProgress {
   fee_status: 'paid' | 'half_paid' | 'pending';
   updated_at: string;
   updated_by?: string;
+  followup_note?: string;
 }
 
 export type UserRole = 'mis' | 'counselor' | 'admin' | 'student';

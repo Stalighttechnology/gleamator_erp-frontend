@@ -43,6 +43,7 @@ const ApplyLeaveAdmin = () => {
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const [selectedLeave, setSelectedLeave] = useState<AdminLeave | null>(null);
   const [showReasonDialog, setShowReasonDialog] = useState(false);
 
@@ -274,13 +275,12 @@ const ApplyLeaveAdmin = () => {
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <span
-                          className={`text-xs font-medium px-2 py-0.5 rounded-full border-none ${
-                            leave.status === 'APPROVED'
+                          className={`text-xs font-medium px-2 py-0.5 rounded-full border-none ${leave.status === 'APPROVED'
                               ? 'text-green-700 bg-green-100'
                               : leave.status === 'REJECTED'
-                              ? 'text-red-700 bg-red-100'
-                              : 'text-yellow-700 bg-yellow-100'
-                          }`}
+                                ? 'text-red-700 bg-red-100'
+                                : 'text-yellow-700 bg-yellow-100'
+                            }`}
                         >
                           {leave.status.charAt(0) + leave.status.slice(1).toLowerCase()}
                         </span>

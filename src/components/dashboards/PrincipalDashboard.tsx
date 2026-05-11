@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import DashboardLayout from "../common/DashboardLayout";
+import ApplyLeave from "../hod/ApplyLeave";
+import AdminOverview from "../admin/AdminEnquiryOverview";
 import ShortPermissionsManagement from "../hod/ShortPermissionsManagement";
 import { logoutUser } from "../../utils/authService";
 import { useTheme } from "../../context/ThemeContext";
@@ -32,6 +34,8 @@ const PrincipalDashboard = ({ user, setPage }: PrincipalDashboardProps) => {
     
     const pathMap: { [key: string]: string } = {
       'dashboard': 'dashboard',
+      'apply-leaves': 'apply-leaves',
+      'enquiry-overview': 'enquiry-overview',
       'short-permissions': 'short-permissions',
       'profile': 'profile'
     };
@@ -54,6 +58,8 @@ const PrincipalDashboard = ({ user, setPage }: PrincipalDashboardProps) => {
     
     const pathMap: { [key: string]: string } = {
       'dashboard': '/principal/dashboard',
+      'apply-leaves': '/principal/apply-leaves',
+      'enquiry-overview': '/principal/enquiry-overview',
       'short-permissions': '/principal/short-permissions',
       'profile': '/principal/profile'
     };
@@ -82,6 +88,10 @@ const PrincipalDashboard = ({ user, setPage }: PrincipalDashboardProps) => {
             </div>
           </div>
         );
+      case "apply-leaves":
+        return <ApplyLeave />;
+      case "enquiry-overview":
+        return <AdminOverview />;
       case "short-permissions":
         return <ShortPermissionsManagement setError={setError} />;
       case "profile":

@@ -15,6 +15,9 @@ export const CompletionPage: React.FC = () => {
   const [selectedBatch, setSelectedBatch] = useState('');
   const [modalMode, setModalMode] = useState<'complete' | 'edit'>('complete');
   const [saving, setSaving] = useState(false);
+  const [followupNote, setFollowupNote] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'pending'>('all');
+  const [feeFilter, setFeeFilter] = useState<'all' | 'paid' | 'half_paid' | 'pending'>('all');
 
   useEffect(() => {
     loadProgress();
@@ -41,6 +44,7 @@ export const CompletionPage: React.FC = () => {
     setSelectedCourse(student.course || '');
     setSelectedBranch(student.branch || '');
     setSelectedBatch(student.batch || '');
+    setFollowupNote(student.followup_note || '');
   };
 
   const handleToggleCompletion = async (student: StudentProgress) => {
@@ -73,6 +77,7 @@ export const CompletionPage: React.FC = () => {
         course: selectedCourse,
         branch: selectedBranch || null,
         batch: selectedBatch || null,
+        followup_note: followupNote,
       });
       if (response.success) {
         setSuccess('Completion and details updated successfully');
@@ -97,6 +102,7 @@ export const CompletionPage: React.FC = () => {
         course: selectedCourse,
         branch: selectedBranch || null,
         batch: selectedBatch || null,
+        followup_note: followupNote,
       });
       if (response.success) {
         setSuccess('Student details updated successfully');
@@ -162,6 +168,35 @@ export const CompletionPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Filters */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-slate-700">Status:</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            >
+              <option value="all">All Status</option>
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-slate-700">Fees Status:</label>
+            <select
+              value={feeFilter}
+              onChange={(e) => setFeeFilter(e.target.value as any)}
+              className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            >
+              <option value="all">All Fee Status</option>
+              <option value="paid">Paid</option>
+              <option value="half_paid">Half Paid</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+        </div>
+
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-200">
             <h2 className="text-xl font-bold text-slate-900">Student Progress</h2>
@@ -182,11 +217,15 @@ export const CompletionPage: React.FC = () => {
                     <th className="px-6 py-3 text-left font-semibold text-slate-900">Batch</th>
                     <th className="px-6 py-3 text-left font-semibold text-slate-900">Status</th>
                     <th className="px-6 py-3 text-left font-semibold text-slate-900">Fee Status</th>
+                    <th className="px-6 py-3 text-left font-semibold text-slate-900">Follow-up Note</th>
                     <th className="px-6 py-3 text-left font-semibold text-slate-900">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {students.map((student) => (
+                  {students
+                    .filter((s) => statusFilter === 'all' || s.status === statusFilter)
+                    .filter((s) => feeFilter === 'all' || s.fee_status === feeFilter)
+                    .map((student) => (
                     <tr key={student.id} className="hover:bg-slate-50 transition">
                       <td className="px-6 py-4 font-medium text-slate-900">{student.student_name}</td>
                       <td className="px-6 py-4 text-slate-600">{student.course}</td>
@@ -201,6 +240,9 @@ export const CompletionPage: React.FC = () => {
                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getFeeColor(student.fee_status)}`}>
                           {student.fee_status === 'paid' ? '✓ Paid' : student.fee_status === 'half_paid' ? '◐ Half Paid' : '⚠ Pending'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={student.followup_note}>
+                        {student.followup_note || '-'}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
@@ -252,11 +294,19 @@ export const CompletionPage: React.FC = () => {
             <input value={selectedBatch} onChange={(e) => setSelectedBatch(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-300 mb-3" />
 
             <label className="block text-sm font-medium text-slate-700 mb-2">Fee Status</label>
-            <select value={selectedFeeStatus} onChange={(e) => setSelectedFeeStatus(e.target.value as 'pending' | 'half_paid' | 'paid')} className="w-full px-4 py-2 rounded-lg border border-slate-300">
+            <select value={selectedFeeStatus} onChange={(e) => setSelectedFeeStatus(e.target.value as 'pending' | 'half_paid' | 'paid')} className="w-full px-4 py-2 rounded-lg border border-slate-300 mb-3">
               <option value="pending">Pending</option>
               <option value="half_paid">Half Paid</option>
               <option value="paid">Paid</option>
             </select>
+
+            <label className="block text-sm font-medium text-slate-700 mb-2">Follow-up Note</label>
+            <textarea
+              value={followupNote}
+              onChange={(e) => setFollowupNote(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 mb-3 h-20 resize-none"
+              placeholder="Enter follow-up details..."
+            />
 
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => setSelectedStudent(null)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700" disabled={saving}>Cancel</button>

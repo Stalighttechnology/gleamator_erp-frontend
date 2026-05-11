@@ -86,7 +86,7 @@ const Navbar = ({ role, user, onNotificationClick, setPage, showHamburger = fals
 
   const getRoleLabel = (currentRole?: string) => {
     if (!currentRole) return "User";
-    if (currentRole === "admin" || currentRole === "principal") return "Centre Manager";
+    if (currentRole === "admin" || currentRole === "principal") return "Center Manager";
     if (currentRole === "hod") return "Counselor";
     return currentRole.replace("_", " ");
   };

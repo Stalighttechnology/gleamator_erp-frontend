@@ -305,6 +305,8 @@ const Sidebar = ({ role, setPage, activePage, logout, collapsed, toggleCollapse 
     ],
     principal: [
       { name: "Dashboard", page: "dashboard" },
+      { name: "Apply Leaves", page: "apply-leaves" },
+      { name: "Enquiry Dashboard", page: "enquiry-overview" },
       { name: "Short Permission Approvals", page: "short-permissions" },
       { name: "Profile", page: "profile" },
     ],

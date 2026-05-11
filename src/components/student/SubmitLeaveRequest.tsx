@@ -68,6 +68,7 @@ const SubmitLeaveRequest = () => {
   const { theme } = useTheme();
   const leaveRequestMutation = useStudentLeaveRequestMutation();
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const { toast } = useToast();
 
   // Leave status state
@@ -335,60 +336,60 @@ const SubmitLeaveRequest = () => {
               </div>
             ) : (
               <>
-              <Table>
-                <TableHeader>
-                  <TableRow className={theme === 'dark' ? 'border-border' : 'border-gray-200'}>
-                    <TableHead className={`font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Title</TableHead>
-                    <TableHead className={`font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Period</TableHead>
-                    <TableHead className={`font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Reason</TableHead>
-                    <TableHead className={`font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leavesPagination.current.map((item) => (
-                    <TableRow key={item.id} className={theme === 'dark' ? 'border-border hover:bg-accent/50' : 'border-gray-200 hover:bg-gray-50'}>
-                      <TableCell className={`font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
-                        {item.title && item.title.trim() && item.title !== 'N/A' ? item.title : 'Untitled'}
-                      </TableCell>
-                      <TableCell className={`text-sm mobile-table-cell mobile-period-cell ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>
-                        {format(parseISO(item.start_date), 'MMM dd')} - {format(parseISO(item.end_date), 'MMM dd, yyyy')}
-                      </TableCell>
-                      <TableCell className={`text-sm ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setViewReason(item.reason)}
-                          className={`h-8 px-2 ${theme === 'dark' ? 'text-muted-foreground hover:text-foreground' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                          <Eye className="w-3 h-3 mr-1" />
-                          View
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`text-xs font-medium px-2 py-0.5 rounded-full border-none flex items-center gap-2 w-fit ${getStatusStyles(theme, item.status).bg} ${getStatusStyles(theme, item.status).color}`}
-                        >
-                          <div className="flex items-center gap-1">
-                            {getStatusStyles(theme, item.status).icon}
-                            {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
-                          </div>
-                        </Badge>
-                      </TableCell>
+                <Table>
+                  <TableHeader>
+                    <TableRow className={theme === 'dark' ? 'border-border' : 'border-gray-200'}>
+                      <TableHead className={`font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Title</TableHead>
+                      <TableHead className={`font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Period</TableHead>
+                      <TableHead className={`font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Reason</TableHead>
+                      <TableHead className={`font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {leavesPagination.showPagination && (
-                <div className="p-3 flex items-center justify-end gap-2">
-                  <button onClick={leavesPagination.prev} disabled={leavesPagination.page === 1} className="p-1 rounded-md border">
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <div className="text-sm text-muted-foreground">{leavesPagination.page} / {leavesPagination.totalPages}</div>
-                  <button onClick={leavesPagination.next} disabled={leavesPagination.page === leavesPagination.totalPages} className="p-1 rounded-md border">
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+                  </TableHeader>
+                  <TableBody>
+                    {leavesPagination.current.map((item) => (
+                      <TableRow key={item.id} className={theme === 'dark' ? 'border-border hover:bg-accent/50' : 'border-gray-200 hover:bg-gray-50'}>
+                        <TableCell className={`font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
+                          {item.title && item.title.trim() && item.title !== 'N/A' ? item.title : 'Untitled'}
+                        </TableCell>
+                        <TableCell className={`text-sm mobile-table-cell mobile-period-cell ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>
+                          {format(parseISO(item.start_date), 'MMM dd')} - {format(parseISO(item.end_date), 'MMM dd, yyyy')}
+                        </TableCell>
+                        <TableCell className={`text-sm ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setViewReason(item.reason)}
+                            className={`h-8 px-2 ${theme === 'dark' ? 'text-muted-foreground hover:text-foreground' : 'text-gray-500 hover:text-gray-700'}`}
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            View
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={`text-xs font-medium px-2 py-0.5 rounded-full border-none flex items-center gap-2 w-fit ${getStatusStyles(theme, item.status).bg} ${getStatusStyles(theme, item.status).color}`}
+                          >
+                            <div className="flex items-center gap-1">
+                              {getStatusStyles(theme, item.status).icon}
+                              {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
+                            </div>
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {leavesPagination.showPagination && (
+                  <div className="p-3 flex items-center justify-end gap-2">
+                    <button onClick={leavesPagination.prev} disabled={leavesPagination.page === 1} className="p-1 rounded-md border">
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div className="text-sm text-muted-foreground">{leavesPagination.page} / {leavesPagination.totalPages}</div>
+                    <button onClick={leavesPagination.next} disabled={leavesPagination.page === leavesPagination.totalPages} className="p-1 rounded-md border">
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </CardContent>
