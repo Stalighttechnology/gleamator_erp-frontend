@@ -42,7 +42,7 @@ const exportAdminOverviewPDF = async (filteredStudents: StudentProgress[], filte
       s.fee_status === 'paid' ? 'Paid' : s.fee_status === 'half_paid' ? 'Half Paid' : 'Pending',
     ]),
     styles: { fontSize: 8 },
-    headStyles: { fillColor: [16, 185, 129] },
+    headStyles: { fillColor: [147, 51, 234] },
   });
 
   doc.save('student-overview.pdf');
@@ -132,7 +132,7 @@ export const AdminOverview: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold text-black dark:text-white mb-2">
             Center Performance Dashboard
           </h1>
           <p className="text-slate-600">Monitor all student activity</p>

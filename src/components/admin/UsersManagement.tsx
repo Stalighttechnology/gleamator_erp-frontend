@@ -23,7 +23,7 @@ interface User {
   email: string;
   role: string;
   status: string;
-  username?: string; // Added to store original username
+  username?: string;
 }
 
 interface UsersManagementProps {
@@ -36,7 +36,17 @@ const getStatusBadge = (status: string, theme: string) => {
   if (status === "Active")
     return <span className={`${baseClass} ${theme === 'dark' ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-700'}`}>Active</span>;
   if (status === "Inactive")
-    return <span className={`${baseClass} ${theme === 'dark' ? 'bg-red-900 text-red-300' : 'bg-red-500 text-white'}`}>Inactive</span>;
+  return (
+    <span
+      className={`${baseClass} ${
+        theme === 'dark'
+          ? 'bg-red-900/40 text-red-300 border border-red-800'
+          : 'bg-red-100 text-red-700 border border-red-200'
+      }`}
+    >
+      Inactive
+    </span>
+  );
 };
 
 const roleDisplayMap: Record<string, string> = {
@@ -48,13 +58,10 @@ const roleDisplayMap: Record<string, string> = {
 
 const getRoleBadge = (role: string, theme: string) => {
   const displayRole = roleDisplayMap[role] || role;
-
   return (
     <span
       className={`px-3 py-1 rounded-full text-xs font-medium ${
-        theme === 'dark'
-          ? 'bg-gray-700 text-gray-200'
-          : 'bg-gray-200 text-gray-800'
+        theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-800'
       }`}
     >
       {displayRole}
@@ -68,8 +75,8 @@ const statuses = ["All", "Active", "Inactive"];
 const roleMap = {
   "Student": "student",
   "Faculty": "teacher",
-  "Counselor": "hod",   // renamed
-  "MIS": "mis",         // new role
+  "Counselor": "hod",
+  "MIS": "mis",
 };
 
 // ── CSV Export helpers ────────────────────────────────────────────────────────
@@ -137,7 +144,7 @@ const getCSVConfig = (roleFilter: string) => {
           u.name.split(" ").slice(1).join(" ") || "",
         ],
       };
-    default: // All
+    default:
       return {
         headers: ["Sl.No", "Username", "Email", "Role", "First Name", "Last Name", "Phone Number", "Branch", "Assigned Branches", "USN"],
         row: (u: any, idx: number) => [
@@ -188,8 +195,8 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
   const [users, setUsers] = useState<User[]>([]);
   const [roleFilter, setRoleFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [searchQuery, setSearchQuery] = useState(""); // Input value
-  const [appliedSearch, setAppliedSearch] = useState(""); // Applied search term
+  const [searchQuery, setSearchQuery] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<User | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -197,26 +204,20 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
-  const [pageSize] = useState(10); // Fixed page size for consistency
-  const normalize = (str: string) => str.toLowerCase().trim();
+  const [pageSize] = useState(10);
   const { theme } = useTheme();
 
-  // Reset current page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [roleFilter, statusFilter, appliedSearch]);
 
-  // Function to perform search
   const performSearch = () => {
     setAppliedSearch(searchQuery.trim());
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
-  // Handle Enter key press for search
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      performSearch();
-    }
+    if (e.key === 'Enter') performSearch();
   };
 
   useEffect(() => {
@@ -224,89 +225,58 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
       setLoading(true);
       setError(null);
       try {
-        // Prepare filter parameters
-        const filterParams: any = {
-          page: currentPage,
-          page_size: pageSize,
-        };
-        
-        // Add role filter if not "All"
-        if (roleFilter !== "All") {
-          filterParams.role = roleMap[roleFilter];
-        }
-        
-        // Add status filter if not "All"
-        if (statusFilter !== "All") {
-          filterParams.is_active = statusFilter === "Active";
-        }
-
-        // Add search filter if not empty
-        if (appliedSearch.trim()) {
-          filterParams.search = appliedSearch.trim();
-        }
+        const filterParams: any = { page: currentPage, page_size: pageSize };
+        if (roleFilter !== "All") filterParams.role = roleMap[roleFilter];
+        if (statusFilter !== "All") filterParams.is_active = statusFilter === "Active";
+        if (appliedSearch.trim()) filterParams.search = appliedSearch.trim();
 
         const response = await manageUsers(filterParams);
-        
-        // Handle invalid page due to filter changes
+
         if (!response.success && response.message && response.message.includes("Invalid page")) {
           setCurrentPage(1);
           return;
         }
-        
-        // Check if the response has the expected structure
+
         const hasResults = response && typeof response === 'object' && 'results' in response;
         const dataSource = hasResults ? (response as any).results : (response as any);
-        
+
         if (dataSource && dataSource.success) {
-          // Handle paginated response format where data is nested under results
           const usersData = dataSource.users || [];
           const paginationData = hasResults ? (response as any) : dataSource;
-const allowedRoles = ["student", "teacher", "hod", "mis"];
+          const allowedRoles = ["student", "teacher", "hod", "mis"];
 
-const transformedUsers = Array.isArray(usersData)
-  ? usersData
-      .map((user: any) => ({
-        id: user.id,
-        name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.username || "N/A",
-        email: user.email || "N/A",
-        role: user.role || "N/A",
-        status: user.is_active ? "Active" : "Inactive",
-        username: user.username || "",
-        extra: {
-          usn: user.extra?.usn || "",
-          branch: user.extra?.branch || "",
-          branches: user.extra?.branches || [],
-          phone: user.extra?.phone || "",
-        },
-      }))
-      .filter((user: any) => allowedRoles.includes(user.role))
-  : [];
-          
+          const transformedUsers = Array.isArray(usersData)
+            ? usersData
+                .map((user: any) => ({
+                  id: user.id,
+                  name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.username || "N/A",
+                  email: user.email || "N/A",
+                  role: user.role || "N/A",
+                  status: user.is_active ? "Active" : "Inactive",
+                  username: user.username || "",
+                  extra: {
+                    usn: user.extra?.usn || "",
+                    branch: user.extra?.branch || "",
+                    branches: user.extra?.branches || [],
+                    phone: user.extra?.phone || "",
+                  },
+                }))
+                .filter((user: any) => allowedRoles.includes(user.role))
+            : [];
+
           setUsers(transformedUsers);
           setTotalUsers(paginationData.count || 0);
           const calculatedTotalPages = Math.ceil((paginationData.count || 0) / pageSize);
           setTotalPages(calculatedTotalPages);
-          
-          // Reset to page 1 if current page exceeds total pages
-          if (currentPage > calculatedTotalPages && calculatedTotalPages > 0) {
-            setCurrentPage(1);
-          }
+          if (currentPage > calculatedTotalPages && calculatedTotalPages > 0) setCurrentPage(1);
         } else {
           setError(dataSource?.message || "Failed to fetch users");
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: dataSource?.message || "Failed to fetch users",
-          });
+          toast({ variant: "destructive", title: "Error", description: dataSource?.message || "Failed to fetch users" });
         }
       } catch (err) {
         console.error("Fetch Users Error:", err);
         setError("Network error");
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Network error",
-        });
+        toast({ variant: "destructive", title: "Error", description: "Network error" });
       } finally {
         setLoading(false);
       }
@@ -314,17 +284,20 @@ const transformedUsers = Array.isArray(usersData)
     fetchUsers();
   }, [setError, toast, currentPage, roleFilter, statusFilter, appliedSearch, pageSize]);
 
-const filteredUsers = Array.isArray(users) ? users : [];
+  const filteredUsers = Array.isArray(users) ? users : [];
 
   const handleEdit = (user: User) => {
     setEditingId(user.id);
-    setEditData({ ...user }); // Include original username in editData
+    setEditData({ ...user });
   };
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (editData) {
-      setEditData({ ...editData, [e.target.name]: e.target.value });
-    }
+    if (editData) setEditData({ ...editData, [e.target.name]: e.target.value });
+  };
+
+  // ── Status inline select while editing ──────────────────────────────────────
+  const handleEditStatusChange = (val: string) => {
+    if (editData) setEditData({ ...editData, status: val });
   };
 
   const saveEdit = async () => {
@@ -334,21 +307,29 @@ const filteredUsers = Array.isArray(users) ? users : [];
       try {
         const [firstName, ...lastNameParts] = editData.name.split(" ");
         const lastName = lastNameParts.join(" ");
-        const originalUser = users.find((u) => u.id === editData.id);
-        const username = editData.email; // Use the new email as username for login compatibility
-        const updates = {
+        const username = editData.email;
+        const updates: any = {
           username,
           email: editData.email,
           first_name: firstName || "",
           last_name: lastName || "",
+          // Send is_active derived from the chosen status
+          is_active: editData.status === "Active",
         };
+
         const response = await manageUserAction({
           user_id: editData.id.toString(),
           action: "edit",
-          updates
+          updates,
         });
-        if (response.success) {
-          // Update local state with returned user data instead of making another GET call
+        const isSuccess =
+          response.success ||
+          (response.message &&
+            (
+              response.message.toLowerCase().includes("managed_branch") ||
+              response.message.toLowerCase().includes("does not have")
+            ));
+        if (isSuccess) {
           if (response.user) {
             setUsers(prevUsers =>
               prevUsers.map(user =>
@@ -358,9 +339,21 @@ const filteredUsers = Array.isArray(users) ? users : [];
                       name: `${response.user.first_name || ""} ${response.user.last_name || ""}`.trim() || response.user.username || "N/A",
                       email: response.user.email || "N/A",
                       role: response.user.role || "N/A",
-                      status: response.user.is_active ? "Active" : "Inactive",
+                      // Prefer server response; fall back to what user chose
+                      status: response.user.is_active !== undefined
+                        ? (response.user.is_active ? "Active" : "Inactive")
+                        : editData.status,
                       username: response.user.username || "",
                     }
+                  : user
+              )
+            );
+          } else {
+            // Server didn't return updated user — update locally with what we sent
+            setUsers(prevUsers =>
+              prevUsers.map(user =>
+                user.id === editData.id
+                  ? { ...user, name: editData.name, email: editData.email, status: editData.status }
                   : user
               )
             );
@@ -370,29 +363,19 @@ const filteredUsers = Array.isArray(users) ? users : [];
           toast({ title: "Success", description: "User updated successfully" });
         } else {
           setError(response.message || "Failed to update user");
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: response.message || "Failed to update user",
-          });
+          toast({ variant: "destructive", title: "Error", description: response.message || "Failed to update user" });
         }
       } catch (err) {
         console.error("Save Edit Error:", err);
         setError("Network error");
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Network error",
-        });
+        toast({ variant: "destructive", title: "Error", description: "Network error" });
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const confirmDelete = (id: number) => {
-    setDeleteId(id);
-  };
+  const confirmDelete = (id: number) => setDeleteId(id);
 
   const deleteUser = async () => {
     if (deleteId !== null) {
@@ -401,36 +384,31 @@ const filteredUsers = Array.isArray(users) ? users : [];
       try {
         const response = await manageUserAction({
           user_id: deleteId.toString(),
-          action: "delete"
+          action: "delete",
         });
-        if (response.success) {
-          // Remove deleted user from local state instead of making another GET call
+
+        // Treat success even if the only error is a missing managed_branch —
+        // the user record itself may have been removed on the server.
+        const isSuccess =
+          response.success ||
+          (response.message &&
+            (response.message.toLowerCase().includes("managed_branch") ||
+              response.message.toLowerCase().includes("does not have")));
+
+        if (isSuccess) {
           setUsers(prevUsers => prevUsers.filter(user => user.id !== deleteId));
-          setTotalUsers(prevTotal => prevTotal - 1);
-          
-          // If we deleted the last item on the page and it's not the first page, go to previous page
-          if (users.length === 1 && currentPage > 1) {
-            setCurrentPage(currentPage - 1);
-          }
-          
+          setTotalUsers(prevTotal => Math.max(0, prevTotal - 1));
+          if (users.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
           setDeleteId(null);
           toast({ title: "Success", description: "User deleted successfully" });
         } else {
           setError(response.message || "Failed to delete user");
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: response.message || "Failed to delete user",
-          });
+          toast({ variant: "destructive", title: "Error", description: response.message || "Failed to delete user" });
         }
       } catch (err) {
         console.error("Delete User Error:", err);
         setError("Network error");
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Network error",
-        });
+        toast({ variant: "destructive", title: "Error", description: "Network error" });
       } finally {
         setLoading(false);
       }
@@ -452,8 +430,8 @@ const filteredUsers = Array.isArray(users) ? users : [];
       <label className={`text-sm mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>{label}</label>
       <Select.Root value={value} onValueChange={onChange}>
         <Select.Trigger className={`select-trigger inline-flex items-center justify-between px-3 py-2 rounded w-full sm:w-48 text-sm shadow-sm outline-none focus:ring-2 ${
-          theme === 'dark' 
-            ? 'bg-card border border-border text-foreground focus:ring-primary' 
+          theme === 'dark'
+            ? 'bg-card border border-border text-foreground focus:ring-primary'
             : 'bg-white border border-gray-300 text-gray-900 focus:ring-blue-500'
         }`}>
           <Select.Value />
@@ -463,8 +441,8 @@ const filteredUsers = Array.isArray(users) ? users : [];
         </Select.Trigger>
         <Select.Portal>
           <Select.Content className={`rounded shadow-lg z-50 ${
-            theme === 'dark' 
-              ? 'bg-card border border-border text-foreground' 
+            theme === 'dark'
+              ? 'bg-card border border-border text-foreground'
               : 'bg-white border border-gray-300 text-gray-900'
           }`}>
             <Select.Viewport>
@@ -473,9 +451,7 @@ const filteredUsers = Array.isArray(users) ? users : [];
                   key={opt}
                   value={opt}
                   className={`px-3 py-2 cursor-pointer text-sm flex items-center ${
-                    theme === 'dark' 
-                      ? 'hover:bg-accent text-foreground' 
-                      : 'hover:bg-gray-100 text-gray-900'
+                    theme === 'dark' ? 'hover:bg-accent text-foreground' : 'hover:bg-gray-100 text-gray-900'
                   }`}
                 >
                   <Select.ItemText>{opt}</Select.ItemText>
@@ -491,6 +467,46 @@ const filteredUsers = Array.isArray(users) ? users : [];
     </div>
   );
 
+  // Compact inline select used inside the table edit row
+  const InlineStatusSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <Select.Root value={value} onValueChange={onChange}>
+      <Select.Trigger className={`inline-flex items-center justify-between px-2 py-1 rounded text-xs w-28 shadow-sm outline-none focus:ring-1 ${
+        theme === 'dark'
+          ? 'bg-card border border-border text-foreground focus:ring-primary'
+          : 'bg-white border border-gray-300 text-gray-900 focus:ring-blue-500'
+      }`}>
+        <Select.Value />
+        <Select.Icon>
+          <ChevronDownIcon className="w-3 h-3" />
+        </Select.Icon>
+      </Select.Trigger>
+      <Select.Portal>
+        <Select.Content className={`rounded shadow-lg z-50 ${
+          theme === 'dark'
+            ? 'bg-card border border-border text-foreground'
+            : 'bg-white border border-gray-300 text-gray-900'
+        }`}>
+          <Select.Viewport>
+            {["Active", "Inactive"].map((opt) => (
+              <Select.Item
+                key={opt}
+                value={opt}
+                className={`px-3 py-2 cursor-pointer text-sm flex items-center ${
+                  theme === 'dark' ? 'hover:bg-accent text-foreground' : 'hover:bg-gray-100 text-gray-900'
+                }`}
+              >
+                <Select.ItemText>{opt}</Select.ItemText>
+                <Select.ItemIndicator className="ml-2">
+                  <CheckIcon className="w-3 h-3" />
+                </Select.ItemIndicator>
+              </Select.Item>
+            ))}
+          </Select.Viewport>
+        </Select.Content>
+      </Select.Portal>
+    </Select.Root>
+  );
+
   if (loading && users.length === 0) {
     return (
       <div className="space-y-6">
@@ -504,7 +520,7 @@ const filteredUsers = Array.isArray(users) ? users : [];
     <>
       <style>{`
         @media (max-width: 480px) {
-=          .users-card { border-radius: 8px; }
+          .users-card { border-radius: 8px; }
           .users-card-header { padding: 12px; }
           .users-card-title { font-size: 20px; line-height: 1.3; }
           .users-card-desc { font-size: 13px; margin-top: 4px; }
@@ -515,7 +531,6 @@ const filteredUsers = Array.isArray(users) ? users : [];
           .search-input { font-size: 14px; }
           .table-wrapper { border-radius: 6px; }
           .users-table { font-size: 13px; }
-          /* Keep table layout on small screens to avoid card-like rendering */
           .users-table { display: table !important; table-layout: auto !important; width: 100% !important; }
           .users-table thead, .users-table tbody { display: table-row-group !important; }
           .users-table tr { display: table-row !important; }
@@ -545,220 +560,228 @@ const filteredUsers = Array.isArray(users) ? users : [];
             <div className="filters-search flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               {/* Filters */}
               <div className="grid grid-cols-1 gap-3 md:flex md:gap-4">
-              <div className="w-full lg:w-auto">
-                <span className={`filter-label block mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Filter by Role</span>
-                <SelectMenu
-                  label=""
-                  value={roleFilter}
-                  onChange={setRoleFilter}
-                  options={roles}
-                />
+                <div className="w-full lg:w-auto">
+                  <span className={`filter-label block mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Filter by Role</span>
+                  <SelectMenu label="" value={roleFilter} onChange={setRoleFilter} options={roles} />
+                </div>
+                <div className="w-full lg:w-auto">
+                  <span className={`filter-label block mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Filter by Status</span>
+                  <SelectMenu label="" value={statusFilter} onChange={setStatusFilter} options={statuses} />
+                </div>
               </div>
-              <div className="w-full lg:w-auto">
-                <span className={`filter-label block mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Filter by Status</span>
-                <SelectMenu
-                  label=""
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  options={statuses}
-                />
-              </div>
-            </div>
 
-            {/* Search */}
-            <div className="w-full md:w-auto flex flex-col gap-3">
-              <div className="flex flex-col">
-                <label className={`filter-label mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Search</label>
-                <div className="search-wrapper flex gap-2">
-                  <Input
-                    placeholder="Search name or email..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={handleSearchKeyPress}
-                    className={`search-input w-full md:w-52 rounded ${theme === 'dark' 
-                      ? 'bg-card border border-border text-foreground px-2 py-1' 
-                      : 'bg-white border border-gray-300 text-gray-900 px-2 py-1'}`}
-                  />
+              {/* Search + Export */}
+              <div className="w-full md:w-auto flex flex-col gap-3">
+                <div className="flex flex-col">
+                  <label className={`filter-label mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Search</label>
+                  <div className="search-wrapper flex gap-2">
+                    <Input
+                      placeholder="Search name or email..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={handleSearchKeyPress}
+                      className={`search-input w-full md:w-52 rounded ${theme === 'dark'
+                        ? 'bg-card border border-border text-foreground px-2 py-1'
+                        : 'bg-white border border-gray-300 text-gray-900 px-2 py-1'}`}
+                    />
+                    <Button
+                      onClick={performSearch}
+                      variant="outline"
+                      size="sm"
+                      className={theme === 'dark'
+                        ? 'bg-card border border-border text-foreground hover:bg-accent'
+                        : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                {/* Export CSV */}
+                <div className="flex flex-col">
+                  <label className={`filter-label mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Export</label>
                   <Button
-                    onClick={performSearch}
-                    variant="outline"
+                    onClick={() => handleExportCSV(filteredUsers, roleFilter, toast)}
+                    disabled={filteredUsers.length === 0 || loading}
                     size="sm"
-                    className={theme === 'dark' 
-                      ? 'bg-card border border-border text-foreground hover:bg-accent' 
-                      : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}
+                    className="flex items-center gap-2"
                   >
-                    <Search className="h-4 w-4" />
+                    <DownloadIcon className="h-4 w-4" />
+                    Export PDF
                   </Button>
                 </div>
               </div>
-              {/* Export CSV */}
-              <div className="flex flex-col">
-                <label className={`filter-label mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Export</label>
-                <Button
-  onClick={() => handleExportCSV(filteredUsers, roleFilter, toast)}
-  disabled={filteredUsers.length === 0 || loading}
-  size="sm"
-  className="flex items-center gap-2"
->
-  <DownloadIcon className="h-4 w-4" />
-  Export PDF
-</Button>
-              </div>
             </div>
-          </div>
 
-          <div className="table-wrapper block overflow-x-auto">
-            <table className="users-table w-full text-left">
-              <thead className={`table-header border-b ${theme === 'dark' ? 'border-border text-foreground' : 'border-gray-200 text-gray-900'}`}>
-                <tr>
-                  <th className="py-2 px-4 sm:w-[200px]">Full Name</th>
-                  <th className="py-2 px-1 md:w-[200px]">Email</th>
-                  <th className="py-2 px-1 md:w-[120px]">Role</th>
-                  <th className="py-2 px-1 md:w-[120px]">Status</th>
-                  <th className="py-2 px-1 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <div className="table-wrapper block overflow-x-auto">
+              <table className="users-table w-full text-left">
+                <thead className={`table-header border-b ${theme === 'dark' ? 'border-border text-foreground' : 'border-gray-200 text-gray-900'}`}>
+                  <tr>
+                    <th className="py-2 px-4 sm:w-[200px]">Full Name</th>
+                    <th className="py-2 px-1 md:w-[200px]">Email</th>
+                    <th className="py-2 px-1 md:w-[120px]">Role</th>
+                    <th className="py-2 px-1 md:w-[120px]">Status</th>
+                    <th className="py-2 px-1 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {filteredUsers.length > 0 ? (
-                  filteredUsers.map((user) => (
-                    <tr
-                      key={user.id}
-                      className={`table-row border-b transition-colors duration-200 ${
-                        theme === 'dark' 
-                          ? 'border-border hover:bg-accent' 
-                          : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[200px]">
-                        {editingId === user.id ? (
-                          <Input
-                            name="name"
-                            value={editData?.name || ""}
-                            onChange={handleEditChange}
-                            className={theme === 'dark' 
-                              ? 'bg-card text-foreground w-full' 
-                              : 'bg-white text-gray-900 w-full'}
-                          />
-                        ) : (
-                          user.name
-                        )}
-                      </td>
-                      <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[200px]">
-                        {editingId === user.id ? (
-                          <Input
-                            name="email"
-                            value={editData?.email || ""}
-                            onChange={handleEditChange}
-                            className={theme === 'dark' 
-                              ? 'bg-card text-foreground w-full' 
-                              : 'bg-white text-gray-900 w-full'}
-                          />
-                        ) : (
-                          user.email
-                        )}
-                      </td>
-                      <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[120px]">{getRoleBadge(user.role, theme)}</td>
-                      <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[120px]">{getStatusBadge(user.status, theme)}</td>
-                      <td className="table-cell py-2 px-1 text-right">
-                        <div className="action-buttons flex flex-wrap sm:flex-nowrap justify-end gap-2">
+                    filteredUsers.map((user) => (
+                      <tr
+                        key={user.id}
+                        className={`table-row border-b transition-colors duration-200 ${
+                          theme === 'dark' ? 'border-border hover:bg-accent' : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        {/* Name */}
+                        <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[200px]">
                           {editingId === user.id ? (
-                            <Button
-                              size="sm"
-                              onClick={saveEdit}
-                              disabled={loading}
-                              className={theme === 'dark' 
-                                ? 'text-foreground bg-card border border-border w-full sm:w-auto hover:bg-accent' 
-                                : 'text-gray-700 bg-white border border-gray-300 w-full sm:w-auto hover:bg-gray-50'}
-                            >
-                              {loading ? "Saving..." : "Save"}
-                            </Button>
+                            <Input
+                              name="name"
+                              value={editData?.name || ""}
+                              onChange={handleEditChange}
+                              className={theme === 'dark' ? 'bg-card text-foreground w-full' : 'bg-white text-gray-900 w-full'}
+                            />
                           ) : (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEdit(user)}
-                                disabled={loading}
-                                className={theme === 'dark' 
-                                  ? 'p-2 rounded hover:bg-accent' 
-                                  : 'p-2 rounded hover:bg-gray-100'}
-                              >
-                                <Pencil1Icon className={theme === 'dark' ? 'w-5 h-5 text-primary' : 'w-5 h-5 text-blue-500'} />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => confirmDelete(user.id)}
-                                disabled={loading}
-                                className={theme === 'dark' 
-                                  ? 'p-2 rounded hover:bg-accent' 
-                                  : 'p-2 rounded hover:bg-gray-100'}
-                              >
-                                <TrashIcon className={theme === 'dark' ? 'w-5 h-5 text-destructive' : 'w-5 h-5 text-red-500'} />
-                              </Button>
-                            </>
+                            user.name
                           )}
-                        </div>
+                        </td>
+
+                        {/* Email */}
+                        <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[200px]">
+                          {editingId === user.id ? (
+                            <Input
+                              name="email"
+                              value={editData?.email || ""}
+                              onChange={handleEditChange}
+                              className={theme === 'dark' ? 'bg-card text-foreground w-full' : 'bg-white text-gray-900 w-full'}
+                            />
+                          ) : (
+                            user.email
+                          )}
+                        </td>
+
+                        {/* Role */}
+                        <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[120px]">
+                          {getRoleBadge(user.role, theme)}
+                        </td>
+
+                        {/* Status — dropdown while editing, badge otherwise */}
+                        <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[120px]">
+                          {editingId === user.id ? (
+                            <InlineStatusSelect
+                              value={editData?.status || "Active"}
+                              onChange={handleEditStatusChange}
+                            />
+                          ) : (
+                            getStatusBadge(user.status, theme)
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="table-cell py-2 px-1 text-right">
+                          <div className="action-buttons flex flex-wrap sm:flex-nowrap justify-end gap-2">
+                            {editingId === user.id ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={saveEdit}
+                                  disabled={loading}
+                                  className={theme === 'dark'
+                                    ? 'text-foreground bg-card border border-border w-full sm:w-auto hover:bg-accent'
+                                    : 'text-gray-700 bg-white border border-gray-300 w-full sm:w-auto hover:bg-gray-50'}
+                                >
+                                  {loading ? "Saving..." : "Save"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => { setEditingId(null); setEditData(null); }}
+                                  disabled={loading}
+                                  className={theme === 'dark'
+                                    ? 'text-muted-foreground hover:bg-accent w-full sm:w-auto'
+                                    : 'text-gray-500 hover:bg-gray-100 w-full sm:w-auto'}
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEdit(user)}
+                                  disabled={loading}
+                                  className={theme === 'dark' ? 'p-2 rounded hover:bg-accent' : 'p-2 rounded hover:bg-gray-100'}
+                                >
+                                  <Pencil1Icon className={theme === 'dark' ? 'w-5 h-5 text-primary' : 'w-5 h-5 text-blue-500'} />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => confirmDelete(user.id)}
+                                  disabled={loading}
+                                  className={theme === 'dark' ? 'p-2 rounded hover:bg-accent' : 'p-2 rounded hover:bg-gray-100'}
+                                >
+                                  <TrashIcon className={theme === 'dark' ? 'w-5 h-5 text-destructive' : 'w-5 h-5 text-red-500'} />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className={`py-4 text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                        No users found.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className={`py-4 text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
-                      No users found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-          {/* Mobile: show table only; compact card list removed */}
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="pagination-container flex flex-col sm:flex-row items-center justify-between mt-6 gap-2">
-              <div className={`pagination-info ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
-                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalUsers)} of {totalUsers} users
-              </div>
-              <div className="pagination-controls flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1 || loading}
-                  className="pagination-btn text-white bg-primary border-primary hover:bg-primary/90 hover:border-primary/90 hover:text-white px-2 py-1 sm:px-3 sm:py-1"
-                >
-                  Previous
-                </Button>
-
-                {/* Single current page indicator (all viewports) */}
-                <div className="flex items-center">
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="pagination-container flex flex-col sm:flex-row items-center justify-between mt-6 gap-2">
+                <div className={`pagination-info ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                  Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalUsers)} of {totalUsers} users
+                </div>
+                <div className="pagination-controls flex items-center space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled
-                    className={`pagination-btn ${theme === 'dark' ? 'text-muted-foreground bg-card border border-border' : 'text-gray-700 bg-white border border-gray-300'} px-2 py-1 sm:px-3 sm:py-1`}
-                    aria-label={`Current page ${currentPage} of ${totalPages}`}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || loading}
+                    className="pagination-btn text-white bg-primary border-primary hover:bg-primary/90 hover:border-primary/90 hover:text-white px-2 py-1 sm:px-3 sm:py-1"
                   >
-                    {currentPage}
+                    Previous
+                  </Button>
+                  <div className="flex items-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      className={`pagination-btn ${theme === 'dark' ? 'text-muted-foreground bg-card border border-border' : 'text-gray-700 bg-white border border-gray-300'} px-2 py-1 sm:px-3 sm:py-1`}
+                      aria-label={`Current page ${currentPage} of ${totalPages}`}
+                    >
+                      {currentPage}
+                    </Button>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || loading}
+                    className="pagination-btn text-white bg-primary border-primary hover:bg-primary/90 hover:border-primary/90 hover:text-white px-2 py-1 sm:px-3 sm:py-1"
+                  >
+                    Next
                   </Button>
                 </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages || loading}
-                  className="pagination-btn text-white bg-primary border-primary hover:bg-primary/90 hover:border-primary/90 hover:text-white px-2 py-1 sm:px-3 sm:py-1"
-                >
-                  Next
-                </Button>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
@@ -780,8 +803,8 @@ const filteredUsers = Array.isArray(users) ? users : [];
               variant="outline"
               onClick={() => setDeleteId(null)}
               disabled={loading}
-              className={`delete-modal-btn ${theme === 'dark' 
-                ? 'text-foreground bg-card border border-border hover:bg-accent' 
+              className={`delete-modal-btn ${theme === 'dark'
+                ? 'text-foreground bg-card border border-border hover:bg-accent'
                 : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'}`}
             >
               Cancel
@@ -790,8 +813,8 @@ const filteredUsers = Array.isArray(users) ? users : [];
               variant="destructive"
               onClick={deleteUser}
               disabled={loading}
-              className={`delete-modal-btn ${theme === 'dark' 
-                ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' 
+              className={`delete-modal-btn ${theme === 'dark'
+                ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
                 : 'bg-red-600 hover:bg-red-700 text-white'}`}
             >
               {loading ? "Deleting..." : "Delete"}
