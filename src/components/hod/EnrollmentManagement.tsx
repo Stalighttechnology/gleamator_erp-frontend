@@ -67,6 +67,12 @@ const EnrollmentManagement = () => {
     designation: ""
   });
   const [isCreatingStaff, setIsCreatingStaff] = useState(false);
+  const [phoneError, setPhoneError] = useState<string>("");
+
+  const validatePhoneNumber = (phone: string) => {
+    const phoneRegex = /^[0-9]{10}$/;
+    return phoneRegex.test(phone);
+  };
 
   useEffect(() => {
     const loadBootstrap = async () => {
@@ -231,6 +237,11 @@ const EnrollmentManagement = () => {
     e.preventDefault();
     if (!staffForm.email || !staffForm.first_name || !selectedRole) return;
     
+    if (!validatePhoneNumber(staffForm.phone)) {
+      toast({ title: "Validation Error", description: "Please enter a valid 10-digit phone number.", variant: "destructive" });
+      return;
+    }
+
     setIsCreatingStaff(true);
     try {
       let res: any = null;
@@ -286,6 +297,11 @@ const EnrollmentManagement = () => {
     e.preventDefault();
     if (!studentForm.usn || !studentForm.name || !studentForm.section_id || !studentForm.batch_id) {
       toast({ title: "Validation Error", description: "Please fill all required fields.", variant: "destructive" });
+      return;
+    }
+
+    if (!validatePhoneNumber(studentForm.phone)) {
+      toast({ title: "Validation Error", description: "Please enter a valid 10-digit phone number.", variant: "destructive" });
       return;
     }
 
@@ -425,9 +441,18 @@ const EnrollmentManagement = () => {
                           <Input 
                             placeholder="9876543210" 
                             value={studentForm.phone} 
-                            onChange={e => setStudentForm({...studentForm, phone: e.target.value})} 
-                            className="bg-white dark:bg-gray-800"
+                            onChange={e => {
+                              const value = e.target.value;
+                              setStudentForm({...studentForm, phone: value});
+                              if (!validatePhoneNumber(value)) {
+                                setPhoneError("Invalid phone number. Must be 10 digits.");
+                              } else {
+                                setPhoneError("");
+                              }
+                            }} 
+                            className={`bg-white dark:bg-gray-800 ${phoneError ? 'border-red-500 focus:ring-red-500' : ''}`} 
                           />
+                          {phoneError && <p className="text-sm text-red-500 mt-1">{phoneError}</p>}
                         </div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
@@ -451,8 +476,7 @@ const EnrollmentManagement = () => {
                             <SelectContent>
                               {sections
                                 .filter(s => !studentForm.batch_id || String(s.batch_id) === String(studentForm.batch_id))
-                                .map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)
-                              }
+                                .map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
@@ -467,164 +491,8 @@ const EnrollmentManagement = () => {
                   </CardContent>
                 </Card>
               </div>
-
-              <div className="space-y-4 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Subject Enrollment</h3>
-                </div>
-
-              <hr className="border-gray-100 dark:border-gray-800" />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Filter Batch</Label>
-                    <Select value={batchId} onValueChange={(v) => { setBatchId(v); setSectionId(""); }}>
-                      <SelectTrigger className="w-full bg-white dark:bg-gray-800">
-                        <SelectValue placeholder="Select batch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {batches.map((batch: any) => (
-                          <SelectItem key={batch.id} value={batch.id}>{batch.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Filter Section</Label>
-                    <Select value={sectionId} onValueChange={setSectionId} disabled={!batchId}>
-                      <SelectTrigger className="w-full bg-white dark:bg-gray-800">
-                        <SelectValue placeholder="Select section" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sections
-                          .filter((sec: any) => !batchId || String(sec.batch_id) === String(batchId))
-                          .map((sec: any) => (
-                            <SelectItem key={sec.id} value={sec.id}>{sec.name}</SelectItem>
-                          ))
-                        }
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Subject Type</Label>
-                    <Select value={subjectType} onValueChange={setSubjectType} disabled={!sectionId}>
-                      <SelectTrigger className="w-full bg-white dark:bg-gray-800">
-                        <SelectValue placeholder="Subject type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="elective">Elective</SelectItem>
-                        <SelectItem value="open_elective">Open Elective</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Select Subject</Label>
-                    <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId} disabled={!subjectType}>
-                      <SelectTrigger className="w-full bg-white dark:bg-gray-800">
-                        <SelectValue placeholder="Select subject" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjects.map((s: any) => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 rounded-xl border ${theme === 'dark' ? 'bg-muted/50 border-border' : 'bg-gray-50 border-gray-100 shadow-sm'}`}>
-                  <div className="flex-1">
-                    <Input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by USN or name" className="w-full bg-white dark:bg-gray-800" />
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-center gap-3">
-                    <Button onClick={() => loadStudents(1, searchTerm)} disabled={!selectedSubjectId || isLoading} className="w-full sm:w-auto px-6 bg-primary hover:bg-primary/90 text-white">
-                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search Students"}
-                    </Button>
-                    <Button onClick={saveStudentEnrollment} disabled={saving || students.length === 0} className="w-full sm:w-auto px-6 bg-green-600 hover:bg-green-700 text-white shadow-md transition-all">
-                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Enrollment"}
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-4 ml-auto border-l pl-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">Selected:</span>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                        {students.filter(s => s.checked).length}
-                      </span>
-                    </div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox checked={showEnrolledOnly} onCheckedChange={(v:any) => setShowEnrolledOnly(!!v)} />
-                      <span className="text-sm font-medium">Show enrolled only</span>
-                    </label>
-                  </div>
-                </div>
-
-                {isLoading ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <SkeletonCard />
-                    <SkeletonCard />
-                  </div>
-                ) : (
-                  <div className={showEnrolledOnly ? "" : "grid grid-cols-1 sm:grid-cols-2 gap-6"}>
-                    <Card className="border-dashed">
-                      <CardHeader className="py-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-bold flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500" />
-                            Enrolled Students
-                          </h4>
-                          <span className="text-xs text-muted-foreground">{students.filter(s => s.checked).length} Total</span>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="max-h-[400px] overflow-y-auto space-y-1">
-                        {students.filter(s => s.checked).map((s) => (
-                          <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded-md group">
-                            <Checkbox checked={s.checked} onCheckedChange={() => toggleStudent(s.id)} />
-                            <div className="text-sm">
-                              <span className="font-mono font-bold text-primary">{s.usn}</span>
-                              <span className="mx-2 text-gray-300">|</span>
-                              <span>{s.name}</span>
-                            </div>
-                          </div>
-                        ))}
-                        {students.filter(s => s.checked).length === 0 && <p className="text-center py-10 text-muted-foreground">No students enrolled yet</p>}
-                      </CardContent>
-                    </Card>
-
-                    {!showEnrolledOnly && (
-                      <Card className="border-dashed">
-                        <CardHeader className="py-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-bold flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-gray-400" />
-                              Available Students
-                            </h4>
-                            <span className="text-xs text-muted-foreground">{students.filter(s => !s.checked).length} Total</span>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="max-h-[400px] overflow-y-auto space-y-1">
-                          {students.filter(s => !s.checked).map((s) => (
-                            <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded-md group">
-                              <Checkbox checked={s.checked} onCheckedChange={() => toggleStudent(s.id)} />
-                              <div className="text-sm">
-                                <span className="font-mono font-bold">{s.usn}</span>
-                                <span className="mx-2 text-gray-300">|</span>
-                                <span>{s.name}</span>
-                              </div>
-                            </div>
-                          ))}
-                          {students.filter(s => !s.checked).length === 0 && <p className="text-center py-10 text-muted-foreground">All students are enrolled</p>}
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-                )}
-              </div>
-          </div>
-        ) : (
+            </div>
+          ) : (
             <div className="max-w-2xl mx-auto">
               <Card className="border-primary/10 shadow-md bg-white dark:bg-gray-900/50">
                 <CardHeader>
@@ -652,7 +520,22 @@ const EnrollmentManagement = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="phone">Phone Number</Label>
-                        <Input id="phone" placeholder="+91 9876543210" value={staffForm.phone} onChange={e => setStaffForm({...staffForm, phone: e.target.value})} />
+                        <Input 
+                          id="phone" 
+                          placeholder="9876543210" 
+                          value={staffForm.phone} 
+                          onChange={e => {
+                            const value = e.target.value;
+                            setStaffForm({...staffForm, phone: value});
+                            if (!validatePhoneNumber(value)) {
+                              setPhoneError("Invalid phone number. Must be 10 digits.");
+                            } else {
+                              setPhoneError("");
+                            }
+                          }} 
+                          className={`bg-white dark:bg-gray-800 ${phoneError ? 'border-red-500 focus:ring-red-500' : ''}`} 
+                        />
+                        {phoneError && <p className="text-sm text-red-500 mt-1">{phoneError}</p>}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="designation">Designation</Label>

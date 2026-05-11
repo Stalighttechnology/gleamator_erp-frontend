@@ -176,7 +176,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
   const [state, setState] = useState({
     facultyId: "",
     sectionId: "",
-    semesterId: "3",
+    semesterId: "",
     batchId: "",
     assignments: [] as Assignment[],
     editingId: null as string | null,
@@ -347,11 +347,16 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
           number: s.number
         }));
         const faculties = boot.data.faculties;
+        const defaultSemesterId =
+          semesters.find((s) => Number(s.number) === 3)?.id ||
+          semesters[0]?.id ||
+          "";
 
         updateState({
           branchId: profile.branch_id,
           semesters,
           faculties,
+          semesterId: defaultSemesterId,
         });
       } catch (err) {
         if (isErrorWithMessage(err)) {
@@ -501,11 +506,15 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
   }, [state.branchId, (state as any).filterBatchId, state.filterSectionId, updateState]);
 
   const resetForm = () => {
+    const fallbackSemesterId =
+      state.semesters.find((s) => Number(s.number) === 3)?.id ||
+      state.semesters[0]?.id ||
+      "";
     updateState({
       facultyId: "",
       batchId: "",
       sectionId: "",
-      semesterId: "3",
+      semesterId: fallbackSemesterId,
       editingId: null,
     });
   };
@@ -533,7 +542,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
       toast({ title: "Error", description: "Invalid section selected", variant: "destructive" });
       return false;
     }
-    if (!state.semesters.some(s => s.id === state.semesterId)) {
+    if (state.semesters.length > 0 && !state.semesters.some(s => s.id === state.semesterId)) {
       toast({ title: "Error", description: "Invalid semester selected", variant: "destructive" });
       return false;
     }
@@ -589,7 +598,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
       assignment_id: state.editingId,
       faculty_id: originalFormState.facultyId,
       batch_id: originalFormState.batchId,
-      semester_id: "3",
+      semester_id: originalFormState.semesterId,
       section_id: originalFormState.sectionId,
       branch_id: state.branchId,
     };
@@ -800,126 +809,7 @@ const FacultyAssignments = ({ setError }: FacultyAssignmentsProps) => {
           </CardContent>
         </Card>
 
-        <Card className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-200'}>
-          <CardHeader>
-            <CardTitle className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>Faculty Assignments List</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Select
-                  value={(state as any).filterBatchId || "all"}
-                  onValueChange={(value) => updateState({ filterBatchId: value === "all" ? "" : value, filterSectionId: "" })}
-                  disabled={state.loading || batches.length === 0}
-                >
-                  <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    <SelectValue placeholder="All Batches" />
-                  </SelectTrigger>
-                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    <SelectItem value="all" className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>All Batches</SelectItem>
-                    {batches.map((batch) => (
-                      <SelectItem key={batch.id} value={String(batch.id)} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
-                        {batch.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex gap-2">
-                <Select
-                  value={state.filterSectionId || "all"}
-                  onValueChange={(value) => updateState({ filterSectionId: value === "all" ? "" : value })}
-                  disabled={state.loading || !(state as any).filterBatchId || state.filterSections.length === 0}
-                >
-                  <SelectTrigger className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    <SelectValue placeholder="All Sections" />
-                  </SelectTrigger>
-                  <SelectContent className={theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'}>
-                    <SelectItem value="all" className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>All Sections</SelectItem>
-                    {state.filterSections.map((section) => (
-                      <SelectItem key={section.id} value={section.id} className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
-                        Section {section.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {((state as any).filterBatchId || state.filterSectionId) && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => updateState({ filterBatchId: "", filterSectionId: "" })}
-                    className="bg-primary hover:bg-[#9147e0] text-white"
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
-            {(() => {
-              if (state.loading) return <SkeletonTable rows={5} cols={5} />;
-              if (!(state as any).filterBatchId || !state.filterSectionId) return <div className={`text-center py-8 border-2 border-dashed rounded-lg ${theme === 'dark' ? 'border-border text-muted-foreground' : 'border-gray-200 text-gray-500'}`}>Please select a batch and section to view assignments.</div>;
-              if (filteredAssignments.length === 0) return <div className={`text-center py-4 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>No assignments found for the selected criteria.</div>;
-
-              return (
-                <div className={`rounded-md overflow-x-auto ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>
-                  <table className="w-full text-sm scroll-smooth">
-                    <thead className={theme === 'dark' ? 'bg-card sticky top-0 z-10 border-border' : 'bg-gray-100 sticky top-0 z-10 border-gray-300'}>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Batch</th>
-                          <th className="text-left p-2">Section</th>
-                          <th className="text-left p-2">Semester</th>
-                          <th className="text-left p-2">Assigned Faculty</th>
-                          <th className="text-left p-2">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                      {filteredAssignments.map((assignment) => (
-                        <tr
-                          key={assignment.id}
-                          className={`border-b ${theme === 'dark' ? 'border-border hover:bg-accent' : 'border-gray-300 hover:bg-gray-100'}`}
-                        >
-                          <td className="p-2">{(assignment as any).batch_name || assignment.batch || assignment.subject || ''}</td>
-                          <td className="p-2">{assignment.section}</td>
-                          <td className="p-2">{assignment.semester}</td>
-                          <td className="p-2">
-                            {facultyMap[assignment.faculty_id]?.name || assignment.faculty}
-                            <div className={`text-xs ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
-                              {facultyMap[assignment.faculty_id]?.email}
-                            </div>
-                          </td>
-                          <td className="p-2 flex items-center gap-2">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className={theme === 'dark' ? 'hover:bg-accent' : 'hover:bg-gray-200'}
-                              onClick={() => handleEdit(assignment)}
-                              disabled={state.loading || state.isAssigning}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className={theme === 'dark' ? 'hover:bg-accent' : 'hover:bg-gray-200'}
-                              onClick={() =>
-                                updateState({
-                                  deleteId: assignment.id,
-                                  openDeleteModal: true,
-                                })
-                              }
-                              disabled={state.loading || state.isAssigning}
-                            >
-                              <Trash2 className={`h-4 w-4 ${theme === 'dark' ? 'text-destructive' : 'text-red-500'}`} />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })()}
-          </CardContent>
-        </Card>
+  
 
         <Dialog open={state.openDeleteModal} onOpenChange={(open) => updateState({ openDeleteModal: open })}>
           <DialogContent className={`${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-white text-gray-900 border-gray-300'} p-4 md:p-6 w-[92%] max-w-sm md:w-auto rounded-2xl md:rounded` }>

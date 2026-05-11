@@ -84,6 +84,23 @@ const Navbar = ({ role, user, onNotificationClick, setPage, showHamburger = fals
     }
   };
 
+  const getRoleLabel = (currentRole?: string) => {
+    if (!currentRole) return "User";
+    if (currentRole === "admin" || currentRole === "principal") return "Centre Manager";
+    if (currentRole === "hod") return "Counselor";
+    return currentRole.replace("_", " ");
+  };
+
+  const getWelcomeName = () => {
+    const first = (user?.first_name || "").trim();
+    const uname = (user?.username || "").trim();
+    const raw = first || uname || "User";
+    if (role === "admin" && ["admin", "administrator"].includes(raw.toLowerCase())) {
+      return "Centre Manager";
+    }
+    return raw;
+  };
+
   return (
     <motion.div
       className={`w-full h-20 flex items-center justify-between p-4 relative border-b transition-all duration-500`}
@@ -111,11 +128,11 @@ const Navbar = ({ role, user, onNotificationClick, setPage, showHamburger = fals
           >
             Welcome,{" "}
             <span className={`text-primary`}>
-              {user?.first_name || user?.username || "User"}
+              {getWelcomeName()}
             </span>
           </motion.div>
           <p className={`text-[10px] uppercase tracking-wider font-semibold ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
-            {role === "principal" ? "Center Manager" : role === "hod" ? "Counselor" : (role ? role.replace('_', ' ') : "User")} Portal
+            {getRoleLabel(role)} Portal
           </p>
         </div>
       </div>
@@ -164,7 +181,7 @@ const Navbar = ({ role, user, onNotificationClick, setPage, showHamburger = fals
               <div className={`text-xs font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
                 {user?.first_name ? `${user.first_name} ${user?.last_name || ''}` : "User"}
               </div>
-              <div className="text-[10px] opacity-60 capitalize">{role}</div>
+              <div className="text-[10px] opacity-60 capitalize">{getRoleLabel(role)}</div>
             </div>
             <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-xs shadow-inner overflow-hidden">
               {user?.profile_picture ? (

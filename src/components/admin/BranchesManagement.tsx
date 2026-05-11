@@ -828,7 +828,7 @@ const BranchesManagement = ({ setError, toast }: { setError: (error: string | nu
             />
             <Input
               className={theme === 'dark' ? 'bg-card text-foreground' : 'bg-white text-gray-900'}
-              placeholder="Branch Code (e.g., CSE, ME)"
+              placeholder="Branch Code"
               value={newBranch.branch_code}
               onChange={(e) => setNewBranch({ ...newBranch, branch_code: e.target.value })}
             />

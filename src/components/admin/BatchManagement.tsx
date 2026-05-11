@@ -167,24 +167,37 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
   };
 
   const handleAddBatch = async () => {
+    if (!newBatch.name.trim()) {
+        if (toast) toast({ variant: "destructive", title: "Error", description: "Batch name is required." });
+        return;
+    }
+
+    if (newBatch.sections.length === 0) {
+        if (toast) toast({ variant: "destructive", title: "Error", description: "At least one section must be selected." });
+        return;
+    }
+
     setLoading(true);
     try {
-      const res = await manageBatches(
-        {
-          name: newBatch.name,
-          sections: newBatch.sections,
-        },
-        undefined,
-        "POST"
-      );
-      const dataSource = (res as any).results || res;
-      if (dataSource.success) {
-        fetchBatches();
-        setNewBatch({ name: "", sections: [] });
-        if (toast) toast({ title: "Success", description: "Batch added successfully" });
-      }
+        const res = await manageBatches(
+            {
+                name: newBatch.name,
+                sections: newBatch.sections,
+            },
+            undefined,
+            "POST"
+        );
+        const dataSource = (res as any).results || res;
+        if (dataSource.success) {
+            fetchBatches();
+            setNewBatch({ name: "", sections: [] });
+            if (toast) toast({ title: "Success", description: "Batch added successfully." });
+        } else {
+            if (toast) toast({ variant: "destructive", title: "Error", description: dataSource.message || "Failed to add batch." });
+        }
     } catch (err) {
-      if (toast) toast({ variant: "destructive", title: "Error", description: "Network error" });
+        console.error("Error adding batch:", err);
+        if (toast) toast({ variant: "destructive", title: "Error", description: "Network error or server issue." });
     }
     setLoading(false);
   };

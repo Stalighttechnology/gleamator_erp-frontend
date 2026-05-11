@@ -513,9 +513,20 @@ const handlePrev = () => {
               <p><strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>Attendance:</strong> {formatAttendancePercentage(state.selectedStudent?.attendance_percentage)}</p>
               <p><strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>Total Sessions:</strong> {state.selectedStudent?.total_sessions || "-"}</p>
               <p><strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>Present Sessions:</strong> {state.selectedStudent?.present_sessions || "-"}</p>
-              <p><strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>Branch:</strong> {state.branch.toUpperCase()}</p>
-              <p><strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>Semester:</strong> {state.selectedStudent?.semester || "-"}</p>
-              <p><strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>Section:</strong> {state.selectedStudent?.section?.toUpperCase() || "-"}</p>
+              <p>
+  <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
+    Batch:
+  </strong>{" "}
+  {state.batches.find((b) => b.id === state.filters.batch_id)?.name || "-"}
+</p>
+
+<p>
+  <strong className={theme === 'dark' ? 'text-foreground' : 'text-gray-900'}>
+    Section:
+  </strong>{" "}
+  {state.selectedStudent?.section?.toUpperCase() || "-"}
+</p>
+              
             </div>
 
             <DialogClose asChild>
