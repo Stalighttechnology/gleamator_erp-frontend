@@ -38,6 +38,11 @@ const EnrollUser = ({ setError, toast }: EnrollUserProps) => {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { theme } = useTheme();
 
+  const validatePhoneNumber = (phone: string) => {
+    const phoneRegex = /^[0-9]{10}$/;
+    return phoneRegex.test(phone);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
@@ -60,6 +65,14 @@ const EnrollUser = ({ setError, toast }: EnrollUserProps) => {
           setEmailError("Please enter a valid email address.");
         } else {
           setEmailError("");
+        }
+      } else if (name === "phone") {
+        if (!validatePhoneNumber(value)) {
+          toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Please enter a valid 10-digit phone number.",
+          });
         }
       }
     }, 500); // 500ms delay
