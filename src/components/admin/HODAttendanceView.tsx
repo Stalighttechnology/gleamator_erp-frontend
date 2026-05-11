@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Calendar, Users, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import { Button } from "@/components/ui/button";
 import { fetchWithTokenRefresh } from "../../utils/authService";
 import { API_ENDPOINT } from "../../utils/config";
 import Swal from "sweetalert2";
@@ -58,6 +59,107 @@ interface RecordRow {
     longitude?: number | null;
   } | null;
 }
+
+const loadJsPDF = (): Promise<void> =>
+  new Promise((resolve) => {
+    if ((window as any).jspdf) { resolve(); return; }
+    const s1 = document.createElement('script');
+    s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s1.onload = () => {
+      const s2 = document.createElement('script');
+      s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+      s2.onload = () => resolve();
+      document.head.appendChild(s2);
+    };
+    document.head.appendChild(s1);
+  });
+
+const exportTodayPDF = async (rows: TodayRow[], roleFilter: string, summary: { total_hods: number; present: number; absent: number; not_marked: number }) => {
+  await loadJsPDF();
+  const { jsPDF } = (window as any).jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+
+  const getRoleLabel = (role: string) => role === "hod" ? "Counselor" : role === "mis" ? "MIS" : "Faculty";
+  const formatTime = (d: string | null) => { if (!d) return 'Not marked'; try { return new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); } catch { return 'Not marked'; } };
+
+  doc.setFontSize(16);
+  doc.text("Today's Staff Attendance", 14, 15);
+  doc.setFontSize(10);
+  doc.text(`Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}   Filter: ${roleFilter === 'all' ? 'All' : getRoleLabel(roleFilter)}   Exported: ${new Date().toLocaleString('en-IN')}`, 14, 22);
+  doc.text(`Total: ${summary.total_hods}  Present: ${summary.present}  Absent: ${summary.absent}  Not Marked: ${summary.not_marked}`, 14, 29);
+
+  const filtered = rows.filter(r => roleFilter === 'all' || r.role === roleFilter);
+  const tableRows = filtered.map(r => [
+    getRoleLabel(r.role || 'teacher'),
+    r.hod_name,
+    r.contact || '-',
+    r.status,
+    r.location ? `${r.location.inside ? 'On campus' : 'Outside'}${r.location.distance_meters ? ` • ${Math.round(r.location.distance_meters)}m` : ''}` : '-',
+    formatTime(r.marked_at),
+    r.notes || '-',
+  ]);
+
+  (doc as any).autoTable({
+    startY: 34,
+    head: [['Role', 'Name', 'Contact', 'Status', 'Location', 'Marked At', 'Notes']],
+    body: tableRows,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [59, 130, 246] },
+  });
+
+  doc.save('today-attendance.pdf');
+};
+
+const exportRecordsPDF = async (records: RecordRow[], summary: SummaryRow[], roleFilter: string, dateRange: { start_date: string; end_date: string }) => {
+  await loadJsPDF();
+  const { jsPDF } = (window as any).jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+
+  const getRoleLabel = (role: string) => role === "hod" ? "Counselor" : role === "mis" ? "MIS" : "Faculty";
+  const formatDate = (d: string) => { try { return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); } catch { return d; } };
+  const formatTime = (d: string | null) => { if (!d) return 'Not marked'; try { return new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); } catch { return 'Not marked'; } };
+
+  doc.setFontSize(16);
+  doc.text('Attendance Records', 14, 15);
+  doc.setFontSize(10);
+  doc.text(`Period: ${dateRange.start_date} to ${dateRange.end_date}   Filter: ${roleFilter === 'all' ? 'All' : getRoleLabel(roleFilter)}   Exported: ${new Date().toLocaleString('en-IN')}`, 14, 22);
+
+  let startY = 27;
+
+  if (summary.length > 0) {
+    doc.setFontSize(12);
+    doc.text('Faculty Attendance Summary', 14, startY + 5);
+    (doc as any).autoTable({
+      startY: startY + 10,
+      head: [['Faculty', 'Total Days', 'Present', 'Absent', 'Attendance %']],
+      body: summary.map(s => [s.hod_name, s.total_days, s.present_days, s.absent_days, `${s.attendance_percentage.toFixed(1)}%`]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [16, 185, 129] },
+    });
+    startY = (doc as any).lastAutoTable.finalY + 10;
+  }
+
+  const filtered = records.filter(r => roleFilter === 'all' || r.role === roleFilter);
+  doc.setFontSize(12);
+  doc.text('Detailed Records', 14, startY + 5);
+  (doc as any).autoTable({
+    startY: startY + 10,
+    head: [['Role', 'Faculty', 'Date', 'Status', 'Location', 'Marked At', 'Notes']],
+    body: filtered.map(r => [
+      getRoleLabel(r.role || 'teacher'),
+      r.faculty_name,
+      formatDate(r.date),
+      r.status,
+      r.location ? `${r.location.inside ? 'On campus' : 'Outside'}${r.location.distance_meters ? ` • ${Math.round(r.location.distance_meters)}m` : ''}` : '-',
+      formatTime(r.marked_at),
+      r.notes || '-',
+    ]),
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [59, 130, 246] },
+  });
+
+  doc.save('attendance-records.pdf');
+};
 
 const AdminHODAttendance: React.FC = () => {
   const { theme } = useTheme();
@@ -232,17 +334,28 @@ const AdminHODAttendance: React.FC = () => {
 
           <div className={`rounded-lg shadow-sm ${theme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-gray-200'} overflow-hidden`}>
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Today's Counselor Attendance ({new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })})</h3>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className={`px-3 py-2 border rounded-md text-sm ${theme === 'dark' ? 'bg-background border-border text-foreground' : 'bg-white border-gray-300 text-gray-900'}`}
-              >
-                <option value="all">All</option>
-                <option value="hod">Counselor</option>
-                <option value="mis">MIS</option>
-                <option value="teacher">Faculty</option>
-              </select>
+              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Today's Staff Attendance ({new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })})</h3>
+              <div className="flex items-center gap-2">
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className={`px-3 py-2 border rounded-md text-sm ${theme === 'dark' ? 'bg-background border-border text-foreground' : 'bg-white border-gray-300 text-gray-900'}`}
+                >
+                  <option value="all">All</option>
+                  <option value="hod">Counselor</option>
+                  <option value="mis">MIS</option>
+                  <option value="teacher">Faculty</option>
+                </select>
+                {todayRows.length > 0 && (
+                 <Button
+  onClick={() => exportTodayPDF(todayRows, roleFilter, todaySummary)}
+  size="sm"
+  className="flex items-center gap-2"
+>
+  Export PDF
+</Button>
+                )}
+              </div>
             </div>
             {/* Desktop / Tablet (md+) Table; show cards on sm and below */}
             <div className="hidden md:block overflow-x-auto">
@@ -384,6 +497,14 @@ const AdminHODAttendance: React.FC = () => {
                 >
                   Filter
                 </button>
+                {records.length > 0 && (
+                  <button
+                    onClick={() => exportRecordsPDF(records, facultySummary, roleFilter, dateRange)}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors"
+                  >
+                    Export PDF
+                  </button>
+                )}
               </div>
             </div>
 

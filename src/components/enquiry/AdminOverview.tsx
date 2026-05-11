@@ -2,6 +2,51 @@
 import React, { useState, useEffect } from 'react';
 import { StudentProgress } from './types';
 import { api } from './api';
+import { Button } from "@/components/ui/button";
+const exportAdminOverviewPDF = async (filteredStudents: StudentProgress[], filters: { course: string; branch: string; batch: string; status: string }) => {
+  const loadScript = (src: string): Promise<void> =>
+    new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => resolve();
+      document.head.appendChild(s);
+    });
+
+  if (!(window as any).jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+
+  const { jsPDF } = (window as any).jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+
+  doc.setFontSize(16);
+  doc.text('Center Performance Dashboard — Students', 14, 15);
+  doc.setFontSize(10);
+  const activeFilters = [
+    filters.course && `Course: ${filters.course}`,
+    filters.branch && `Branch: ${filters.branch}`,
+    filters.batch && `Batch: ${filters.batch}`,
+    filters.status && `Status: ${filters.status}`,
+  ].filter(Boolean).join('   ') || 'All Students';
+  doc.text(`Filters: ${activeFilters}`, 14, 22);
+  doc.text(`Exported: ${new Date().toLocaleString('en-IN')}   Total: ${filteredStudents.length}`, 14, 29);
+
+  (doc as any).autoTable({
+    startY: 34,
+    head: [['Name', 'Course', 'Branch', 'Batch', 'Status', 'Fee Status']],
+    body: filteredStudents.map(s => [
+      s.student_name,
+      s.course || '-',
+      s.branch || '-',
+      s.batch || '-',
+      s.status === 'completed' ? 'Completed' : 'Pending',
+      s.fee_status === 'paid' ? 'Paid' : s.fee_status === 'half_paid' ? 'Half Paid' : 'Pending',
+    ]),
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [16, 185, 129] },
+  });
+
+  doc.save('student-overview.pdf');
+};
 
 export const AdminOverview: React.FC = () => {
   const [students, setStudents] = useState<StudentProgress[]>([]);
@@ -230,10 +275,19 @@ export const AdminOverview: React.FC = () => {
 
         {/* Results */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
             <h2 className="text-xl font-bold text-slate-900">
               Students {filteredStudents.length !== students.length && `(${filteredStudents.length})`}
             </h2>
+            {filteredStudents.length > 0 && (
+              <Button
+  onClick={() => exportAdminOverviewPDF(filteredStudents, filters)}
+  size="sm"
+  className="flex items-center gap-2"
+>
+  Export PDF
+</Button>
+            )}
           </div>
 
           {loading ? (

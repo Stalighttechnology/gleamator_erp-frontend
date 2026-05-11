@@ -595,18 +595,14 @@ const filteredUsers = Array.isArray(users) ? users : [];
               <div className="flex flex-col">
                 <label className={`filter-label mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Export</label>
                 <Button
-                  onClick={() => handleExportCSV(filteredUsers, roleFilter, toast)}
-                  disabled={filteredUsers.length === 0 || loading}
-                  size="sm"
-                  className={`flex items-center gap-2 ${
-                    theme === 'dark'
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  <DownloadIcon className="h-4 w-4" />
-                  Export CSV
-                </Button>
+  onClick={() => handleExportCSV(filteredUsers, roleFilter, toast)}
+  disabled={filteredUsers.length === 0 || loading}
+  size="sm"
+  className="flex items-center gap-2"
+>
+  <DownloadIcon className="h-4 w-4" />
+  Export PDF
+</Button>
               </div>
             </div>
           </div>

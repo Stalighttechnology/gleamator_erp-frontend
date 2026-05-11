@@ -35,6 +35,43 @@ interface BatchManagementProps {
   viewOnly?: boolean;
 }
 
+const exportBatchesToPDF = (batches: Batch[]) => {
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  script.onload = () => {
+    const autoTableScript = document.createElement('script');
+    autoTableScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+    autoTableScript.onload = () => {
+      const { jsPDF } = (window as any).jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text('Batch List', 14, 15);
+      doc.setFontSize(10);
+      doc.text(`Exported on: ${new Date().toLocaleString('en-IN')}`, 14, 22);
+
+      const rows = batches.map(b => [
+        b.name,
+        b.sections?.map(s => s.name).join(', ') || '-',
+        b.faculty?.map((f: any) => f.name || `${f.first_name || ''} ${f.last_name || ''}`.trim() || '-').join(', ') || '-',
+        String(b.student_count ?? 0),
+      ]);
+
+      (doc as any).autoTable({
+        startY: 27,
+        head: [['Batch Name', 'Sections', 'Faculty', 'Students']],
+        body: rows,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [59, 130, 246] },
+      });
+
+      doc.save('batches.pdf');
+    };
+    document.head.appendChild(autoTableScript);
+  };
+  document.head.appendChild(script);
+};
+
 const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, viewOnly = false }) => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -281,7 +318,18 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
 
       <Card className="min-h-[450px]">
         <CardHeader>
-          <CardTitle>Existing Batches</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Existing Batches</CardTitle>
+            {batches.length > 0 && (
+             <Button
+  onClick={() => exportBatchesToPDF(batches)}
+  size="sm"
+  className="flex items-center gap-2"
+>
+  Export PDF
+</Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? <SkeletonTable rows={5} cols={5} /> : (

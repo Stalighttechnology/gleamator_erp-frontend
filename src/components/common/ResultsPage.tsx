@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchWithTokenRefresh } from "@/utils/authService";
+import { Button } from "@/components/ui/button";
 import { API_ENDPOINT } from "@/utils/config";
 import { useToast } from "@/hooks/use-toast";
 import useClientPagination from '@/hooks/useClientPagination';
@@ -17,6 +18,48 @@ const getResultStatus = (item: any) => {
   if (item.attempt_status === 'in_progress') return 'Not Attended';
   if (item.submitted_at) return 'Attended';
   return 'Not Attended';
+};
+
+const exportToPDF = (results: any[], filters: { batch: string; assessment: string; section: string; status: string }) => {
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  script.onload = () => {
+    const autoTableScript = document.createElement('script');
+    autoTableScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+    autoTableScript.onload = () => {
+      const { jsPDF } = (window as any).jspdf;
+      const doc = new jsPDF({ orientation: 'landscape' });
+
+      doc.setFontSize(16);
+      doc.text('Assessment Results', 14, 15);
+      doc.setFontSize(10);
+      doc.text(`Exported on: ${new Date().toLocaleString('en-IN')}`, 14, 22);
+
+      const rows = results.map((r: any) => [
+        r.student_name || '-',
+        r.usn || '-',
+        r.section || '-',
+        r.result_status === 'Attended' ? String(r.score ?? '-') : '-',
+        r.total || '-',
+        r.result_status === 'Attended' && r.percentage !== undefined && r.percentage !== null ? `${r.percentage}%` : '-',
+        r.result_status,
+        r.result_status === 'Attended' ? (r.passed ? 'Passed' : 'Failed') : '-',
+        r.submitted_at ? new Date(r.submitted_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '-',
+      ]);
+
+      (doc as any).autoTable({
+        startY: 27,
+        head: [['Student', 'USN', 'Section', 'Score', 'Total', 'Percentage', 'Status', 'Result', 'Submitted At']],
+        body: rows,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [59, 130, 246] },
+      });
+
+      doc.save('assessment-results.pdf');
+    };
+    document.head.appendChild(autoTableScript);
+  };
+  document.head.appendChild(script);
 };
 
 const ResultsPage = () => {
@@ -277,7 +320,27 @@ const ResultsPage = () => {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Results</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Results</CardTitle>
+            {results.length > 0 && (
+              <Button
+  onClick={() =>
+    exportToPDF(results, {
+      batch: filter.batch,
+      assessment: selectedAssessment,
+      section: selectedSection,
+      status: hasAttemptedFilter,
+    })
+  }
+  size="sm"
+  className="flex items-center gap-2"
+>
+  Export PDF
+</Button>
+            )}
+          </div>
+        </CardHeader>
         <CardContent>
           {!selectedAssessment || selectedAssessment === 'NONE' ? (
             <div className="text-center py-12 text-muted-foreground">
