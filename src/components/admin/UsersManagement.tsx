@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import * as Select from "@radix-ui/react-select";
 import { ChevronDownIcon, CheckIcon, Pencil1Icon, TrashIcon, DownloadIcon } from "@radix-ui/react-icons";
-import { Search } from "lucide-react";
+import { Search, Eye, X, Download, FileText, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
@@ -12,11 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import { manageUsers, manageUserAction } from "../../utils/admin_api";
-import { useToast } from "../../hooks/use-toast";
+import { manageUsers, manageUserAction, manageAdminProfile } from "../../utils/admin_api";
 import { useTheme } from "../../context/ThemeContext";
+import { API_BASE_URL } from "../../utils/config";
 import { SkeletonTable, SkeletonPageHeader } from "../ui/skeleton";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface User {
   id: number;
   name: string;
@@ -24,6 +25,21 @@ interface User {
   role: string;
   status: string;
   username?: string;
+  profile_picture?: string;
+  extra?: {
+    usn?: string;
+    branch?: string;
+    branches?: string[];
+    phone?: string;
+    department?: string;
+    designation?: string;
+    section?: string;
+    year?: string;
+    enrollment_year?: string;
+    batch?: string;
+    documents?: Record<string, string | null>;
+    [key: string]: any;
+  };
 }
 
 interface UsersManagementProps {
@@ -31,64 +47,42 @@ interface UsersManagementProps {
   toast: (options: any) => void;
 }
 
+// ─── Badges ──────────────────────────────────────────────────────────────────
 const getStatusBadge = (status: string, theme: string) => {
-  const baseClass = "px-3 py-1 rounded-full text-xs font-medium";
+  const base = "px-3 py-1 rounded-full text-xs font-medium";
   if (status === "Active")
-    return <span className={`${baseClass} ${theme === 'dark' ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-700'}`}>Active</span>;
-  if (status === "Inactive")
+    return <span className={`${base} ${theme === "dark" ? "bg-green-900 text-green-300" : "bg-green-100 text-green-700"}`}>Active</span>;
   return (
-    <span
-      className={`${baseClass} ${
-        theme === 'dark'
-          ? 'bg-red-900/40 text-red-300 border border-red-800'
-          : 'bg-red-100 text-red-700 border border-red-200'
-      }`}
-    >
+    <span className={`${base} ${theme === "dark" ? "bg-red-900/40 text-red-300 border border-red-800" : "bg-red-100 text-red-700 border border-red-200"}`}>
       Inactive
     </span>
   );
 };
 
 const roleDisplayMap: Record<string, string> = {
-  student: "Student",
-  teacher: "Faculty",
-  hod: "Counselor",
-  mis: "MIS",
+  student: "Student", teacher: "Faculty", hod: "Counselor", mis: "MIS",
 };
 
-const getRoleBadge = (role: string, theme: string) => {
-  const displayRole = roleDisplayMap[role] || role;
-  return (
-    <span
-      className={`px-3 py-1 rounded-full text-xs font-medium ${
-        theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-800'
-      }`}
-    >
-      {displayRole}
-    </span>
-  );
-};
+const getRoleBadge = (role: string, theme: string) => (
+  <span className={`px-3 py-1 rounded-full text-xs font-medium ${theme === "dark" ? "bg-gray-700 text-gray-200" : "bg-gray-200 text-gray-800"}`}>
+    {roleDisplayMap[role] || role}
+  </span>
+);
 
+// ─── Filter options ───────────────────────────────────────────────────────────
 const roles = ["All", "Student", "Faculty", "Counselor", "MIS"];
 const statuses = ["All", "Active", "Inactive"];
 
-const roleMap = {
-  "Student": "student",
-  "Faculty": "teacher",
-  "Counselor": "hod",
-  "MIS": "mis",
+const roleMap: Record<string, string> = {
+  Student: "student", Faculty: "teacher", Counselor: "hod", MIS: "mis",
 };
 
-// ── CSV Export helpers ────────────────────────────────────────────────────────
-
+// ─── CSV helpers ──────────────────────────────────────────────────────────────
 const escapeCSV = (val: any): string => {
   if (val === null || val === undefined) return "";
   const s = String(val).trim();
-  return s.includes(",") || s.includes('"') || s.includes("\n")
-    ? `"${s.replace(/"/g, '""')}"`
-    : s;
+  return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
 };
-
 const normalizeRoleLabel = (role: string): string =>
   ({ student: "Student", teacher: "Faculty", hod: "Counselor", mis: "MIS", admin: "Admin" }[role] ?? role);
 
@@ -97,77 +91,23 @@ const getCSVConfig = (roleFilter: string) => {
     case "Student":
       return {
         headers: ["Sl.No", "USN", "First Name", "Last Name", "Email", "Phone Number", "Branch"],
-        row: (u: any, idx: number) => [
-          idx,
-          u.extra?.usn || "N/A",
-          u.name.split(" ")[0] || "",
-          u.name.split(" ").slice(1).join(" ") || "",
-          u.email,
-          u.extra?.phone || "N/A",
-          u.extra?.branch || "N/A",
-        ],
+        row: (u: any, idx: number) => [idx, u.extra?.usn || "N/A", u.name.split(" ")[0] || "", u.name.split(" ").slice(1).join(" ") || "", u.email, u.extra?.phone || "N/A", u.extra?.branch || "N/A"],
       };
     case "Faculty":
       return {
         headers: ["Sl.No", "First Name", "Last Name", "Email", "Phone Number", "Assigned Branches"],
-        row: (u: any, idx: number) => [
-          idx,
-          u.name.split(" ")[0] || "",
-          u.name.split(" ").slice(1).join(" ") || "",
-          u.email,
-          u.extra?.phone || "N/A",
-          Array.isArray(u.extra?.branches) ? u.extra.branches.join("; ") : u.extra?.branches || "N/A",
-        ],
-      };
-    case "Counselor":
-    case "MIS":
-      return {
-        headers: ["Sl.No", "First Name", "Last Name", "Email", "Phone Number", "Branch"],
-        row: (u: any, idx: number) => [
-          idx,
-          u.name.split(" ")[0] || "",
-          u.name.split(" ").slice(1).join(" ") || "",
-          u.email,
-          u.extra?.phone || "N/A",
-          u.extra?.branch || "N/A",
-        ],
-      };
-    case "Admin":
-      return {
-        headers: ["Sl.No", "Username", "Email", "Phone Number", "First Name", "Last Name"],
-        row: (u: any, idx: number) => [
-          idx,
-          u.username || "N/A",
-          u.email,
-          u.extra?.phone || "N/A",
-          u.name.split(" ")[0] || "",
-          u.name.split(" ").slice(1).join(" ") || "",
-        ],
+        row: (u: any, idx: number) => [idx, u.name.split(" ")[0] || "", u.name.split(" ").slice(1).join(" ") || "", u.email, u.extra?.phone || "N/A", Array.isArray(u.extra?.branches) ? u.extra.branches.join("; ") : u.extra?.branches || "N/A"],
       };
     default:
       return {
-        headers: ["Sl.No", "Username", "Email", "Role", "First Name", "Last Name", "Phone Number", "Branch", "Assigned Branches", "USN"],
-        row: (u: any, idx: number) => [
-          idx,
-          u.username || "N/A",
-          u.email,
-          normalizeRoleLabel(u.role),
-          u.name.split(" ")[0] || "",
-          u.name.split(" ").slice(1).join(" ") || "",
-          u.extra?.phone || "N/A",
-          u.extra?.branch || "N/A",
-          Array.isArray(u.extra?.branches) ? u.extra.branches.join("; ") : u.extra?.branches || "N/A",
-          u.extra?.usn || "N/A",
-        ],
+        headers: ["Sl.No", "Username", "Email", "Role", "First Name", "Last Name", "Phone Number", "Branch"],
+        row: (u: any, idx: number) => [idx, u.username || "N/A", u.email, normalizeRoleLabel(u.role), u.name.split(" ")[0] || "", u.name.split(" ").slice(1).join(" ") || "", u.extra?.phone || "N/A", u.extra?.branch || "N/A"],
       };
   }
 };
 
 const handleExportCSV = (users: User[], roleFilter: string, toast: any): void => {
-  if (!users || users.length === 0) {
-    toast({ variant: "destructive", title: "No Data", description: "No users available to export" });
-    return;
-  }
+  if (!users?.length) { toast({ variant: "destructive", title: "No Data", description: "No users available to export" }); return; }
   try {
     const { headers, row } = getCSVConfig(roleFilter);
     const lines = [headers.map(escapeCSV).join(",")];
@@ -176,7 +116,7 @@ const handleExportCSV = (users: User[], roleFilter: string, toast: any): void =>
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     a.href = url;
     a.download = `users-export-${roleFilter.toLowerCase()}-${dateStr}.csv`;
     document.body.appendChild(a);
@@ -184,13 +124,325 @@ const handleExportCSV = (users: User[], roleFilter: string, toast: any): void =>
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast({ title: "Exported", description: `${users.length} user(s) exported to CSV` });
-  } catch (err) {
+  } catch {
     toast({ variant: "destructive", title: "Export Failed", description: "Could not generate CSV" });
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Document view modal (inside user profile popup) ─────────────────────────
+const DocViewModal: React.FC<{ open: boolean; url: string; label: string; onClose: () => void }> = ({ open, url, label, onClose }) => {
+  if (!open) return null;
+  const isPDF = url?.toLowerCase().endsWith(".pdf");
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-card rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b dark:border-border">
+          <h3 className="font-bold text-lg dark:text-foreground">{label}</h3>
+          <div className="flex items-center gap-2">
+            <a href={url} download className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors">
+              <Download size={14} /> Download
+            </a>
+            {isPDF && (
+              <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-accent transition-colors">
+                <ExternalLink size={14} /> Open
+              </a>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors"><X size={18} /></button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50 dark:bg-muted/20">
+          {isPDF
+            ? <iframe src={url} className="w-full h-[60vh] rounded-lg border" title={label} />
+            : <img src={url} alt={label} className="max-w-full max-h-[60vh] object-contain rounded-lg shadow" />}
+        </div>
+      </div>
+    </div>
+  );
+};
 
+// ─── User Profile View Modal ──────────────────────────────────────────────────
+const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: () => void; theme: string }> = ({ user, open, onClose, theme }) => {
+  const [docView, setDocView] = useState<{ url: string; label: string } | null>(null);
+  const [profileTab, setProfileTab] = useState<"overview" | "documents">("overview");
+
+  if (!open || !user) return null;
+
+  const role = roleDisplayMap[user.role] || user.role;
+  const isStudent = user.role === "student";
+  const isFaculty = user.role === "teacher";
+  const isHOD = user.role === "hod";
+  const isMIS = user.role === "mis";
+
+  const documents: { key: string; label: string; url: string | null }[] = user.extra?.documents
+    ? Object.entries(user.extra.documents).map(([key, url]) => ({
+        key,
+        label: key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        url: url ? (url.startsWith("http") ? url : `${API_BASE_URL}${url}`) : null,
+      }))
+    : [];
+
+  const InfoRow = ({ label, value }: { label: string; value?: string | null }) => (
+    <div className={`flex flex-col py-2 border-b last:border-0 ${theme === "dark" ? "border-border" : "border-gray-100"}`}>
+      <span className={`text-xs font-semibold mb-0.5 ${theme === "dark" ? "text-muted-foreground" : "text-gray-500"}`}>{label}</span>
+      <span className={`text-sm font-medium ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>{value || "—"}</span>
+    </div>
+  );
+
+  return (
+    <>
+      {docView && (
+        <DocViewModal open={!!docView} url={docView.url} label={docView.label} onClose={() => setDocView(null)} />
+      )}
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
+        onClick={onClose}
+      >
+        <div
+          className={`w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-200 ${
+            theme === "dark" ? "bg-card text-foreground" : "bg-white text-gray-900"
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Modal Header */}
+          <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${theme === "dark" ? "border-border" : "border-gray-200"}`}>
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0 overflow-hidden ${!user.profile_picture ? "bg-primary text-white" : ""}`}>
+                {user.profile_picture ? (
+                  <img src={user.profile_picture.startsWith("http") ? user.profile_picture : `${API_BASE_URL}${user.profile_picture}`} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    {(user.name?.split(" ")[0]?.[0] || "").toUpperCase()}
+                    {(user.name?.split(" ")[1]?.[0] || "").toUpperCase()}
+                  </>
+                )}
+              </div>
+              <div>
+                <h2 className={`text-lg font-bold ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>{user.name}</h2>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {getRoleBadge(user.role, theme)}
+                  {getStatusBadge(user.status, theme)}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className={`p-2 rounded-lg transition-colors ${theme === "dark" ? "hover:bg-accent" : "hover:bg-gray-100"}`}
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Sub-tabs */}
+          <div className={`flex gap-1 px-6 pt-3 pb-0 flex-shrink-0 border-b ${theme === "dark" ? "border-border" : "border-gray-200"}`}>
+            {(["overview", "documents"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setProfileTab(t)}
+                className={`px-4 py-2 text-sm rounded-t-md font-medium transition-colors capitalize ${
+                  profileTab === t
+                    ? "bg-primary text-white"
+                    : theme === "dark"
+                    ? "text-muted-foreground hover:text-foreground"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {t === "overview" ? "Profile" : "Documents"}
+              </button>
+            ))}
+          </div>
+
+          {/* Modal Body */}
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+
+            {/* OVERVIEW */}
+            {profileTab === "overview" && (
+              <div className="space-y-5">
+                {/* Basic info */}
+                <div className={`rounded-xl border p-4 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                  <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
+                    Basic Information
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                    <InfoRow label="Full Name" value={user.name} />
+                    <InfoRow label="Email" value={user.email} />
+                    <InfoRow label="Phone" value={user.extra?.phone} />
+                    <InfoRow label="Username" value={user.username} />
+                    <InfoRow label="Status" value={user.status} />
+                    <InfoRow label="Role" value={role} />
+                  </div>
+                </div>
+
+                {/* Student-specific */}
+                {isStudent && (
+                  <div className={`rounded-xl border p-4 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
+                      Academic Details
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                      <InfoRow label="USN" value={user.extra?.usn} />
+                      <InfoRow label="Branch" value={user.extra?.branch} />
+                      <InfoRow label="Section" value={user.extra?.section} />
+                      <InfoRow label="Year" value={user.extra?.year} />
+                      <InfoRow label="Batch" value={user.extra?.batch} />
+                      <InfoRow label="Enrollment Year" value={user.extra?.enrollment_year} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Faculty-specific */}
+                {isFaculty && (
+                  <div className={`rounded-xl border p-4 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
+                      Professional Details
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                      <InfoRow label="Department" value={user.extra?.department} />
+                      <InfoRow label="Designation" value={user.extra?.designation} />
+                      <InfoRow label="Assigned Branches" value={Array.isArray(user.extra?.branches) ? user.extra.branches.join(", ") : user.extra?.branches} />
+                    </div>
+                  </div>
+                )}
+
+                {/* HOD/MIS-specific */}
+                {(isHOD || isMIS) && (
+                  <div className={`rounded-xl border p-4 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
+                      Staff Details
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                      <InfoRow label="Department" value={user.extra?.department} />
+                      <InfoRow label="Designation" value={user.extra?.designation} />
+                      <InfoRow label="Branch" value={user.extra?.branch} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DOCUMENTS */}
+            {profileTab === "documents" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {documents.length === 0 ? (
+                  <div className={`col-span-full text-center py-12 rounded-xl border ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                    <FileText size={40} className={`mx-auto mb-3 ${theme === "dark" ? "text-muted-foreground" : "text-gray-300"}`} />
+                    <p className={`text-sm ${theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>No documents uploaded yet.</p>
+                  </div>
+                ) : (
+                  documents.map(({ key, label, url }) => (
+                    <div
+                      key={key}
+                      className={`flex flex-col gap-3 p-4 rounded-xl border ${
+                        theme === "dark" ? "border-border bg-muted/20 hover:bg-muted/40" : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                      } transition-colors`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-12 h-12 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center border ${
+                          url ? "bg-green-50 dark:bg-green-950/20 border-green-100 dark:border-green-900/30" : "bg-gray-100 dark:bg-muted border-transparent"
+                        }`}>
+                          {url && !url.toLowerCase().endsWith(".pdf") ? (
+                            <img src={url} alt={label} className="w-full h-full object-cover" />
+                          ) : (
+                            <FileText size={20} className={url ? "text-green-500" : theme === "dark" ? "text-muted-foreground" : "text-gray-400"} />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`text-sm font-semibold truncate ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>{label}</p>
+                          <p className={`text-xs ${url ? "text-green-600 dark:text-green-400" : theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
+                            {url ? "Uploaded" : "Not uploaded"}
+                          </p>
+                        </div>
+                      </div>
+                      {url && (
+                        <div className="flex items-center gap-2 mt-auto pt-2 border-t dark:border-border/50">
+                          <button
+                            onClick={() => setDocView({ url, label })}
+                            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
+                              theme === "dark" ? "bg-muted hover:bg-accent text-foreground" : "bg-white hover:bg-gray-200 text-gray-700 border border-gray-200"
+                            }`}
+                          >
+                            <Eye size={14} /> View
+                          </button>
+                          <a
+                            href={url}
+                            download
+                            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
+                              theme === "dark" ? "bg-muted hover:bg-accent text-foreground" : "bg-white hover:bg-gray-200 text-gray-700 border border-gray-200"
+                            }`}
+                          >
+                            <Download size={14} /> Download
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Modal Footer */}
+          <div className={`px-6 py-4 border-t flex-shrink-0 flex justify-end ${theme === "dark" ? "border-border" : "border-gray-200"}`}>
+            <Button variant="outline" onClick={onClose}>Close</Button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// ─── SelectMenu ──────────────────────────────────────────────────────────────
+const SelectMenu = ({
+  label, value, onChange, options, theme,
+}: { label: string; value: string; onChange: (v: string) => void; options: string[]; theme: string }) => (
+  <div className="flex flex-col">
+    <label className={`text-sm mb-1 ${theme === "dark" ? "text-muted-foreground" : "text-gray-600"}`}>{label}</label>
+    <Select.Root value={value} onValueChange={onChange}>
+      <Select.Trigger className={`inline-flex items-center justify-between px-3 py-2 rounded w-full sm:w-48 text-sm shadow-sm outline-none focus:ring-2 ${
+        theme === "dark" ? "bg-card border border-border text-foreground focus:ring-primary" : "bg-white border border-gray-300 text-gray-900 focus:ring-blue-500"
+      }`}>
+        <Select.Value />
+        <Select.Icon><ChevronDownIcon className={theme === "dark" ? "text-foreground" : "text-gray-500"} /></Select.Icon>
+      </Select.Trigger>
+      <Select.Portal>
+        <Select.Content className={`rounded shadow-lg z-50 ${theme === "dark" ? "bg-card border border-border text-foreground" : "bg-white border border-gray-300 text-gray-900"}`}>
+          <Select.Viewport>
+            {options.map((opt) => (
+              <Select.Item key={opt} value={opt} className={`px-3 py-2 cursor-pointer text-sm flex items-center ${theme === "dark" ? "hover:bg-accent text-foreground" : "hover:bg-gray-100 text-gray-900"}`}>
+                <Select.ItemText>{opt}</Select.ItemText>
+                <Select.ItemIndicator className="ml-2"><CheckIcon className={theme === "dark" ? "text-primary" : "text-blue-500"} /></Select.ItemIndicator>
+              </Select.Item>
+            ))}
+          </Select.Viewport>
+        </Select.Content>
+      </Select.Portal>
+    </Select.Root>
+  </div>
+);
+
+const InlineStatusSelect = ({ value, onChange, theme }: { value: string; onChange: (v: string) => void; theme: string }) => (
+  <Select.Root value={value} onValueChange={onChange}>
+    <Select.Trigger className={`inline-flex items-center justify-between px-2 py-1 rounded text-xs w-28 shadow-sm outline-none focus:ring-1 ${
+      theme === "dark" ? "bg-card border border-border text-foreground focus:ring-primary" : "bg-white border border-gray-300 text-gray-900 focus:ring-blue-500"
+    }`}>
+      <Select.Value />
+      <Select.Icon><ChevronDownIcon className="w-3 h-3" /></Select.Icon>
+    </Select.Trigger>
+    <Select.Portal>
+      <Select.Content className={`rounded shadow-lg z-50 ${theme === "dark" ? "bg-card border border-border text-foreground" : "bg-white border border-gray-300 text-gray-900"}`}>
+        <Select.Viewport>
+          {["Active", "Inactive"].map((opt) => (
+            <Select.Item key={opt} value={opt} className={`px-3 py-2 cursor-pointer text-sm flex items-center ${theme === "dark" ? "hover:bg-accent text-foreground" : "hover:bg-gray-100 text-gray-900"}`}>
+              <Select.ItemText>{opt}</Select.ItemText>
+              <Select.ItemIndicator className="ml-2"><CheckIcon className="w-3 h-3" /></Select.ItemIndicator>
+            </Select.Item>
+          ))}
+        </Select.Viewport>
+      </Select.Content>
+    </Select.Portal>
+  </Select.Root>
+);
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
   const [users, setUsers] = useState<User[]>([]);
   const [roleFilter, setRoleFilter] = useState("All");
@@ -207,18 +459,14 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
   const [pageSize] = useState(10);
   const { theme } = useTheme();
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [roleFilter, statusFilter, appliedSearch]);
+  // View modal
+  const [viewUser, setViewUser] = useState<User | null>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
 
-  const performSearch = () => {
-    setAppliedSearch(searchQuery.trim());
-    setCurrentPage(1);
-  };
+  useEffect(() => { setCurrentPage(1); }, [roleFilter, statusFilter, appliedSearch]);
 
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') performSearch();
-  };
+  const performSearch = () => { setAppliedSearch(searchQuery.trim()); setCurrentPage(1); };
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => { if (e.key === "Enter") performSearch(); };
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -232,15 +480,12 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
 
         const response = await manageUsers(filterParams);
 
-        if (!response.success && response.message && response.message.includes("Invalid page")) {
-          setCurrentPage(1);
-          return;
-        }
+        if (!response.success && response.message?.includes("Invalid page")) { setCurrentPage(1); return; }
 
-        const hasResults = response && typeof response === 'object' && 'results' in response;
-        const dataSource = hasResults ? (response as any).results : (response as any);
+        const hasResults = response && typeof response === "object" && "results" in response;
+        const dataSource = hasResults ? (response as any).results : response as any;
 
-        if (dataSource && dataSource.success) {
+        if (dataSource?.success) {
           const usersData = dataSource.users || [];
           const paginationData = hasResults ? (response as any) : dataSource;
           const allowedRoles = ["student", "teacher", "hod", "mis"];
@@ -259,22 +504,28 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
                     branch: user.extra?.branch || "",
                     branches: user.extra?.branches || [],
                     phone: user.extra?.phone || "",
+                    department: user.extra?.department || "",
+                    designation: user.extra?.designation || "",
+                    section: user.extra?.section || "",
+                    year: user.extra?.year || "",
+                    batch: user.extra?.batch || "",
+                    enrollment_year: user.extra?.enrollment_year || "",
+                    documents: user.extra?.documents || {},
                   },
                 }))
-                .filter((user: any) => allowedRoles.includes(user.role))
+                .filter((u: any) => allowedRoles.includes(u.role))
             : [];
 
           setUsers(transformedUsers);
           setTotalUsers(paginationData.count || 0);
-          const calculatedTotalPages = Math.ceil((paginationData.count || 0) / pageSize);
-          setTotalPages(calculatedTotalPages);
-          if (currentPage > calculatedTotalPages && calculatedTotalPages > 0) setCurrentPage(1);
+          const total = Math.ceil((paginationData.count || 0) / pageSize);
+          setTotalPages(total);
+          if (currentPage > total && total > 0) setCurrentPage(1);
         } else {
           setError(dataSource?.message || "Failed to fetch users");
           toast({ variant: "destructive", title: "Error", description: dataSource?.message || "Failed to fetch users" });
         }
       } catch (err) {
-        console.error("Fetch Users Error:", err);
         setError("Network error");
         toast({ variant: "destructive", title: "Error", description: "Network error" });
       } finally {
@@ -286,341 +537,180 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
 
   const filteredUsers = Array.isArray(users) ? users : [];
 
-  const handleEdit = (user: User) => {
-    setEditingId(user.id);
-    setEditData({ ...user });
-  };
-
+  const handleEdit = (user: User) => { setEditingId(user.id); setEditData({ ...user }); };
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (editData) setEditData({ ...editData, [e.target.name]: e.target.value });
   };
-
-  // ── Status inline select while editing ──────────────────────────────────────
-  const handleEditStatusChange = (val: string) => {
-    if (editData) setEditData({ ...editData, status: val });
-  };
+  const handleEditStatusChange = (val: string) => { if (editData) setEditData({ ...editData, status: val }); };
 
   const saveEdit = async () => {
-    if (editData) {
-      setLoading(true);
-      setError(null);
-      try {
-        const [firstName, ...lastNameParts] = editData.name.split(" ");
-        const lastName = lastNameParts.join(" ");
-        const username = editData.email;
-        const updates: any = {
-          username,
-          email: editData.email,
-          first_name: firstName || "",
-          last_name: lastName || "",
-          // Send is_active derived from the chosen status
-          is_active: editData.status === "Active",
-        };
+    if (!editData) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const [firstName, ...lastNameParts] = editData.name.split(" ");
+      const lastName = lastNameParts.join(" ");
+      const updates: any = {
+        username: editData.email, email: editData.email,
+        first_name: firstName || "", last_name: lastName || "",
+        is_active: editData.status === "Active",
+      };
+      const response = await manageUserAction({ user_id: editData.id.toString(), action: "edit", updates });
+      const isSuccess = response.success || (response.message && (response.message.toLowerCase().includes("managed_branch") || response.message.toLowerCase().includes("does not have")));
 
-        const response = await manageUserAction({
-          user_id: editData.id.toString(),
-          action: "edit",
-          updates,
-        });
-        const isSuccess =
-          response.success ||
-          (response.message &&
-            (
-              response.message.toLowerCase().includes("managed_branch") ||
-              response.message.toLowerCase().includes("does not have")
-            ));
-        if (isSuccess) {
-          if (response.user) {
-            setUsers(prevUsers =>
-              prevUsers.map(user =>
-                user.id === editData.id
-                  ? {
-                      ...user,
-                      name: `${response.user.first_name || ""} ${response.user.last_name || ""}`.trim() || response.user.username || "N/A",
-                      email: response.user.email || "N/A",
-                      role: response.user.role || "N/A",
-                      // Prefer server response; fall back to what user chose
-                      status: response.user.is_active !== undefined
-                        ? (response.user.is_active ? "Active" : "Inactive")
-                        : editData.status,
-                      username: response.user.username || "",
-                    }
-                  : user
-              )
-            );
-          } else {
-            // Server didn't return updated user — update locally with what we sent
-            setUsers(prevUsers =>
-              prevUsers.map(user =>
-                user.id === editData.id
-                  ? { ...user, name: editData.name, email: editData.email, status: editData.status }
-                  : user
-              )
-            );
-          }
-          setEditingId(null);
-          setEditData(null);
-          toast({ title: "Success", description: "User updated successfully" });
-        } else {
-          setError(response.message || "Failed to update user");
-          toast({ variant: "destructive", title: "Error", description: response.message || "Failed to update user" });
-        }
-      } catch (err) {
-        console.error("Save Edit Error:", err);
-        setError("Network error");
-        toast({ variant: "destructive", title: "Error", description: "Network error" });
-      } finally {
-        setLoading(false);
+      if (isSuccess) {
+        setUsers((prev) => prev.map((u) =>
+          u.id === editData.id
+            ? {
+                ...u,
+                name: response.user ? `${response.user.first_name || ""} ${response.user.last_name || ""}`.trim() || response.user.username || "N/A" : editData.name,
+                email: response.user?.email || editData.email,
+                status: response.user?.is_active !== undefined ? (response.user.is_active ? "Active" : "Inactive") : editData.status,
+                username: response.user?.username || editData.username || "",
+              }
+            : u
+        ));
+        setEditingId(null);
+        setEditData(null);
+        toast({ title: "Success", description: "User updated successfully" });
+      } else {
+        setError(response.message || "Failed to update user");
+        toast({ variant: "destructive", title: "Error", description: response.message || "Failed to update user" });
       }
+    } catch {
+      setError("Network error");
+      toast({ variant: "destructive", title: "Error", description: "Network error" });
+    } finally {
+      setLoading(false);
     }
   };
 
   const confirmDelete = (id: number) => setDeleteId(id);
 
   const deleteUser = async () => {
-    if (deleteId !== null) {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await manageUserAction({
-          user_id: deleteId.toString(),
-          action: "delete",
-        });
+    if (deleteId === null) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await manageUserAction({ user_id: deleteId.toString(), action: "delete" });
+      const isSuccess = response.success || (response.message && (response.message.toLowerCase().includes("managed_branch") || response.message.toLowerCase().includes("does not have")));
 
-        // Treat success even if the only error is a missing managed_branch —
-        // the user record itself may have been removed on the server.
-        const isSuccess =
-          response.success ||
-          (response.message &&
-            (response.message.toLowerCase().includes("managed_branch") ||
-              response.message.toLowerCase().includes("does not have")));
-
-        if (isSuccess) {
-          setUsers(prevUsers => prevUsers.filter(user => user.id !== deleteId));
-          setTotalUsers(prevTotal => Math.max(0, prevTotal - 1));
-          if (users.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
-          setDeleteId(null);
-          toast({ title: "Success", description: "User deleted successfully" });
-        } else {
-          setError(response.message || "Failed to delete user");
-          toast({ variant: "destructive", title: "Error", description: response.message || "Failed to delete user" });
-        }
-      } catch (err) {
-        console.error("Delete User Error:", err);
-        setError("Network error");
-        toast({ variant: "destructive", title: "Error", description: "Network error" });
-      } finally {
-        setLoading(false);
+      if (isSuccess) {
+        setUsers((prev) => prev.filter((u) => u.id !== deleteId));
+        setTotalUsers((prev) => Math.max(0, prev - 1));
+        if (users.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
+        setDeleteId(null);
+        toast({ title: "Success", description: "User deleted successfully" });
+      } else {
+        setError(response.message || "Failed to delete user");
+        toast({ variant: "destructive", title: "Error", description: response.message || "Failed to delete user" });
       }
+    } catch {
+      setError("Network error");
+      toast({ variant: "destructive", title: "Error", description: "Network error" });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const SelectMenu = ({
-    label,
-    value,
-    onChange,
-    options,
-  }: {
-    label: string;
-    value: string;
-    onChange: (val: string) => void;
-    options: string[];
-  }) => (
-    <div className="flex flex-col">
-      <label className={`text-sm mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>{label}</label>
-      <Select.Root value={value} onValueChange={onChange}>
-        <Select.Trigger className={`select-trigger inline-flex items-center justify-between px-3 py-2 rounded w-full sm:w-48 text-sm shadow-sm outline-none focus:ring-2 ${
-          theme === 'dark'
-            ? 'bg-card border border-border text-foreground focus:ring-primary'
-            : 'bg-white border border-gray-300 text-gray-900 focus:ring-blue-500'
-        }`}>
-          <Select.Value />
-          <Select.Icon>
-            <ChevronDownIcon className={theme === 'dark' ? 'text-foreground' : 'text-gray-500'} />
-          </Select.Icon>
-        </Select.Trigger>
-        <Select.Portal>
-          <Select.Content className={`rounded shadow-lg z-50 ${
-            theme === 'dark'
-              ? 'bg-card border border-border text-foreground'
-              : 'bg-white border border-gray-300 text-gray-900'
-          }`}>
-            <Select.Viewport>
-              {options.map((opt) => (
-                <Select.Item
-                  key={opt}
-                  value={opt}
-                  className={`px-3 py-2 cursor-pointer text-sm flex items-center ${
-                    theme === 'dark' ? 'hover:bg-accent text-foreground' : 'hover:bg-gray-100 text-gray-900'
-                  }`}
-                >
-                  <Select.ItemText>{opt}</Select.ItemText>
-                  <Select.ItemIndicator className="ml-2">
-                    <CheckIcon className={theme === 'dark' ? 'text-primary' : 'text-blue-500'} />
-                  </Select.ItemIndicator>
-                </Select.Item>
-              ))}
-            </Select.Viewport>
-          </Select.Content>
-        </Select.Portal>
-      </Select.Root>
-    </div>
-  );
-
-  // Compact inline select used inside the table edit row
-  const InlineStatusSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
-    <Select.Root value={value} onValueChange={onChange}>
-      <Select.Trigger className={`inline-flex items-center justify-between px-2 py-1 rounded text-xs w-28 shadow-sm outline-none focus:ring-1 ${
-        theme === 'dark'
-          ? 'bg-card border border-border text-foreground focus:ring-primary'
-          : 'bg-white border border-gray-300 text-gray-900 focus:ring-blue-500'
-      }`}>
-        <Select.Value />
-        <Select.Icon>
-          <ChevronDownIcon className="w-3 h-3" />
-        </Select.Icon>
-      </Select.Trigger>
-      <Select.Portal>
-        <Select.Content className={`rounded shadow-lg z-50 ${
-          theme === 'dark'
-            ? 'bg-card border border-border text-foreground'
-            : 'bg-white border border-gray-300 text-gray-900'
-        }`}>
-          <Select.Viewport>
-            {["Active", "Inactive"].map((opt) => (
-              <Select.Item
-                key={opt}
-                value={opt}
-                className={`px-3 py-2 cursor-pointer text-sm flex items-center ${
-                  theme === 'dark' ? 'hover:bg-accent text-foreground' : 'hover:bg-gray-100 text-gray-900'
-                }`}
-              >
-                <Select.ItemText>{opt}</Select.ItemText>
-                <Select.ItemIndicator className="ml-2">
-                  <CheckIcon className="w-3 h-3" />
-                </Select.ItemIndicator>
-              </Select.Item>
-            ))}
-          </Select.Viewport>
-        </Select.Content>
-      </Select.Portal>
-    </Select.Root>
-  );
+  const handleViewUser = async (user: User) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await manageAdminProfile({ user_id: user.id.toString() }, "GET");
+      if (response.success && response.profile) {
+        const p = response.profile;
+        const fullUser: User = {
+          id: p.id,
+          name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.username || "N/A",
+          email: p.email,
+          role: p.role,
+          status: p.is_active ? "Active" : "Inactive",
+          username: p.username,
+          profile_picture: p.profile_picture,
+          extra: p.extra
+        };
+        setViewUser(fullUser);
+        setViewModalOpen(true);
+      } else {
+        toast({ variant: "destructive", title: "Error", description: response.message || "Failed to fetch profile details" });
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Network error" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading && users.length === 0) {
     return (
       <div className="space-y-6">
         <SkeletonPageHeader />
-        <SkeletonTable rows={10} cols={5} />
+        <SkeletonTable rows={10} cols={6} />
       </div>
     );
   }
 
   return (
     <>
-      <style>{`
-        @media (max-width: 480px) {
-          .users-card { border-radius: 8px; }
-          .users-card-header { padding: 12px; }
-          .users-card-title { font-size: 20px; line-height: 1.3; }
-          .users-card-desc { font-size: 13px; margin-top: 4px; }
-          .users-card-content { padding: 12px; }
-          .filters-search { gap: 12px; }
-          .filter-label { font-size: 13px; margin-bottom: 4px; }
-          .search-wrapper { gap: 8px; }
-          .search-input { font-size: 14px; }
-          .table-wrapper { border-radius: 6px; }
-          .users-table { font-size: 13px; }
-          .users-table { display: table !important; table-layout: auto !important; width: 100% !important; }
-          .users-table thead, .users-table tbody { display: table-row-group !important; }
-          .users-table tr { display: table-row !important; }
-          .users-table th, .users-table td { display: table-cell !important; }
-          .table-wrapper { overflow-x: auto; }
-          .table-header th { font-size: 13px; padding: 8px 6px !important; white-space: nowrap; }
-          .table-cell { padding: 8px 6px !important; font-size: 14px; }
-          .action-buttons { gap: 4px; }
-          .pagination-container { gap: 8px; flex-direction: column; align-items: center; }
-          .pagination-info { font-size: 12px; }
-          .pagination-controls { gap: 4px; }
-          .pagination-btn { padding: 6px 10px !important; font-size: 12px !important; }
-          .delete-modal { width: 90vw !important; max-width: 320px !important; padding: 16px !important; }
-          .delete-modal-title { font-size: 20px; line-height: 1.3; }
-          .delete-modal-body { font-size: 14px; line-height: 1.5; margin: 12px 0; }
-          .delete-modal-buttons { gap: 8px; flex-direction: column; }
-          .delete-modal-btn { width: 100% !important; padding: 10px 12px !important; font-size: 13px !important; }
-        }
-      `}</style>
-      <div className={`users-container text-sm sm:text-base max-w-none mx-auto ${theme === 'dark' ? 'bg-background' : 'bg-gray-50'}`}>
-        <Card className={`users-card ${theme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-gray-200'}`}>
-          <CardHeader className="users-card-header">
-            <CardTitle className={`users-card-title ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>User Management</CardTitle>
-            <p className={`users-card-desc ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>Manage all users in the system</p>
+      {/* User Profile View Modal */}
+      <UserProfileModal user={viewUser} open={viewModalOpen} onClose={() => { setViewModalOpen(false); setViewUser(null); }} theme={theme} />
+
+      <div className={`text-sm sm:text-base max-w-none mx-auto ${theme === "dark" ? "bg-background" : "bg-gray-50"}`}>
+        <Card className={`${theme === "dark" ? "bg-card border border-border" : "bg-white border border-gray-200"}`}>
+          <CardHeader>
+            <CardTitle className={theme === "dark" ? "text-foreground" : "text-gray-900"}>User Management</CardTitle>
+            <p className={`text-sm mt-1 ${theme === "dark" ? "text-muted-foreground" : "text-gray-500"}`}>Manage all users in the system</p>
           </CardHeader>
-          <CardContent className="users-card-content">
-            <div className="filters-search flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-              {/* Filters */}
+
+          <CardContent>
+            {/* Filters + Search */}
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
               <div className="grid grid-cols-1 gap-3 md:flex md:gap-4">
-                <div className="w-full lg:w-auto">
-                  <span className={`filter-label block mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Filter by Role</span>
-                  <SelectMenu label="" value={roleFilter} onChange={setRoleFilter} options={roles} />
-                </div>
-                <div className="w-full lg:w-auto">
-                  <span className={`filter-label block mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Filter by Status</span>
-                  <SelectMenu label="" value={statusFilter} onChange={setStatusFilter} options={statuses} />
-                </div>
+                <SelectMenu label="Filter by Role" value={roleFilter} onChange={setRoleFilter} options={roles} theme={theme} />
+                <SelectMenu label="Filter by Status" value={statusFilter} onChange={setStatusFilter} options={statuses} theme={theme} />
               </div>
 
-              {/* Search + Export */}
-              <div className="w-full md:w-auto flex flex-col gap-3">
-                <div className="flex flex-col">
-                  <label className={`filter-label mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Search</label>
-                  <div className="search-wrapper flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div>
+                  <label className={`block text-sm mb-1 ${theme === "dark" ? "text-muted-foreground" : "text-gray-600"}`}>Search</label>
+                  <div className="flex gap-2">
                     <Input
                       placeholder="Search name or email..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyPress={handleSearchKeyPress}
-                      className={`search-input w-full md:w-52 rounded ${theme === 'dark'
-                        ? 'bg-card border border-border text-foreground px-2 py-1'
-                        : 'bg-white border border-gray-300 text-gray-900 px-2 py-1'}`}
+                      className={`w-full md:w-52 ${theme === "dark" ? "bg-card border border-border text-foreground" : "bg-white border border-gray-300 text-gray-900"}`}
                     />
-                    <Button
-                      onClick={performSearch}
-                      variant="outline"
-                      size="sm"
-                      className={theme === 'dark'
-                        ? 'bg-card border border-border text-foreground hover:bg-accent'
-                        : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}
-                    >
+                    <Button onClick={performSearch} variant="outline" size="sm" className={theme === "dark" ? "bg-card border border-border text-foreground hover:bg-accent" : "bg-white border border-gray-300 text-gray-900 hover:bg-gray-50"}>
                       <Search className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-                {/* Export CSV */}
-                <div className="flex flex-col">
-                  <label className={`filter-label mb-1 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>Export</label>
+                <div>
+                  <label className={`block text-sm mb-1 ${theme === "dark" ? "text-muted-foreground" : "text-gray-600"}`}>Export</label>
                   <Button
                     onClick={() => handleExportCSV(filteredUsers, roleFilter, toast)}
                     disabled={filteredUsers.length === 0 || loading}
                     size="sm"
                     className="flex items-center gap-2"
                   >
-                    <DownloadIcon className="h-4 w-4" />
-                    Export PDF
+                    <DownloadIcon className="h-4 w-4" /> Export CSV
                   </Button>
                 </div>
               </div>
             </div>
 
-            <div className="table-wrapper block overflow-x-auto">
-              <table className="users-table w-full text-left">
-                <thead className={`table-header border-b ${theme === 'dark' ? 'border-border text-foreground' : 'border-gray-200 text-gray-900'}`}>
+            {/* Table */}
+            <div className="block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className={`border-b ${theme === "dark" ? "border-border text-foreground" : "border-gray-200 text-gray-900"}`}>
                   <tr>
-                    <th className="py-2 px-4 sm:w-[200px]">Full Name</th>
-                    <th className="py-2 px-1 md:w-[200px]">Email</th>
-                    <th className="py-2 px-1 md:w-[120px]">Role</th>
-                    <th className="py-2 px-1 md:w-[120px]">Status</th>
-                    <th className="py-2 px-1 text-right">Actions</th>
+                    <th className="py-2 px-3 text-sm font-semibold">Full Name</th>
+                    <th className="py-2 px-3 text-sm font-semibold">Email</th>
+                    <th className="py-2 px-3 text-sm font-semibold">Role</th>
+                    <th className="py-2 px-3 text-sm font-semibold">Status</th>
+                    <th className="py-2 px-3 text-sm font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -628,101 +718,73 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
                     filteredUsers.map((user) => (
                       <tr
                         key={user.id}
-                        className={`table-row border-b transition-colors duration-200 ${
-                          theme === 'dark' ? 'border-border hover:bg-accent' : 'border-gray-200 hover:bg-gray-50'
-                        }`}
+                        className={`border-b transition-colors duration-200 ${theme === "dark" ? "border-border hover:bg-accent" : "border-gray-200 hover:bg-gray-50"}`}
                       >
-                        {/* Name */}
-                        <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[200px]">
+                        <td className="py-2.5 px-3 break-words whitespace-normal">
                           {editingId === user.id ? (
-                            <Input
-                              name="name"
-                              value={editData?.name || ""}
-                              onChange={handleEditChange}
-                              className={theme === 'dark' ? 'bg-card text-foreground w-full' : 'bg-white text-gray-900 w-full'}
-                            />
+                            <Input name="name" value={editData?.name || ""} onChange={handleEditChange} className={`w-full ${theme === "dark" ? "bg-card text-foreground" : "bg-white text-gray-900"}`} />
                           ) : (
-                            user.name
+                            <span className="text-sm font-medium">{user.name}</span>
                           )}
                         </td>
-
-                        {/* Email */}
-                        <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[200px]">
+                        <td className="py-2.5 px-3 break-words whitespace-normal">
                           {editingId === user.id ? (
-                            <Input
-                              name="email"
-                              value={editData?.email || ""}
-                              onChange={handleEditChange}
-                              className={theme === 'dark' ? 'bg-card text-foreground w-full' : 'bg-white text-gray-900 w-full'}
-                            />
+                            <Input name="email" value={editData?.email || ""} onChange={handleEditChange} className={`w-full ${theme === "dark" ? "bg-card text-foreground" : "bg-white text-gray-900"}`} />
                           ) : (
-                            user.email
+                            <span className="text-sm">{user.email}</span>
                           )}
                         </td>
-
-                        {/* Role */}
-                        <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[120px]">
-                          {getRoleBadge(user.role, theme)}
+                        <td className="py-2.5 px-3">{getRoleBadge(user.role, theme)}</td>
+                        <td className="py-2.5 px-3">
+                          {editingId === user.id
+                            ? <InlineStatusSelect value={editData?.status || "Active"} onChange={handleEditStatusChange} theme={theme} />
+                            : getStatusBadge(user.status, theme)}
                         </td>
-
-                        {/* Status — dropdown while editing, badge otherwise */}
-                        <td className="table-cell py-2 px-1 break-words whitespace-normal md:w-[120px]">
-                          {editingId === user.id ? (
-                            <InlineStatusSelect
-                              value={editData?.status || "Active"}
-                              onChange={handleEditStatusChange}
-                            />
-                          ) : (
-                            getStatusBadge(user.status, theme)
-                          )}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="table-cell py-2 px-1 text-right">
-                          <div className="action-buttons flex flex-wrap sm:flex-nowrap justify-end gap-2">
+                        <td className="py-2.5 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
                             {editingId === user.id ? (
                               <>
-                                <Button
-                                  size="sm"
-                                  onClick={saveEdit}
-                                  disabled={loading}
-                                  className={theme === 'dark'
-                                    ? 'text-foreground bg-card border border-border w-full sm:w-auto hover:bg-accent'
-                                    : 'text-gray-700 bg-white border border-gray-300 w-full sm:w-auto hover:bg-gray-50'}
-                                >
+                                <Button size="sm" onClick={saveEdit} disabled={loading} className={theme === "dark" ? "text-foreground bg-card border border-border hover:bg-accent" : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"}>
                                   {loading ? "Saving..." : "Save"}
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => { setEditingId(null); setEditData(null); }}
-                                  disabled={loading}
-                                  className={theme === 'dark'
-                                    ? 'text-muted-foreground hover:bg-accent w-full sm:w-auto'
-                                    : 'text-gray-500 hover:bg-gray-100 w-full sm:w-auto'}
-                                >
+                                <Button size="sm" variant="ghost" onClick={() => { setEditingId(null); setEditData(null); }} disabled={loading} className={theme === "dark" ? "text-muted-foreground hover:bg-accent" : "text-gray-500 hover:bg-gray-100"}>
                                   Cancel
                                 </Button>
                               </>
                             ) : (
                               <>
+                                {/* View */}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleViewUser(user)}
+                                  disabled={loading}
+                                  title="View Profile"
+                                  className={theme === "dark" ? "p-2 rounded hover:bg-accent" : "p-2 rounded hover:bg-gray-100"}
+                                >
+                                  <Eye className={theme === "dark" ? "w-4 h-4 text-blue-400" : "w-4 h-4 text-blue-500"} />
+                                </Button>
+                                {/* Edit */}
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleEdit(user)}
                                   disabled={loading}
-                                  className={theme === 'dark' ? 'p-2 rounded hover:bg-accent' : 'p-2 rounded hover:bg-gray-100'}
+                                  title="Edit User"
+                                  className={theme === "dark" ? "p-2 rounded hover:bg-accent" : "p-2 rounded hover:bg-gray-100"}
                                 >
-                                  <Pencil1Icon className={theme === 'dark' ? 'w-5 h-5 text-primary' : 'w-5 h-5 text-blue-500'} />
+                                  <Pencil1Icon className={theme === "dark" ? "w-4 h-4 text-primary" : "w-4 h-4 text-blue-500"} />
                                 </Button>
+                                {/* Delete */}
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => confirmDelete(user.id)}
                                   disabled={loading}
-                                  className={theme === 'dark' ? 'p-2 rounded hover:bg-accent' : 'p-2 rounded hover:bg-gray-100'}
+                                  title="Delete User"
+                                  className={theme === "dark" ? "p-2 rounded hover:bg-accent" : "p-2 rounded hover:bg-gray-100"}
                                 >
-                                  <TrashIcon className={theme === 'dark' ? 'w-5 h-5 text-destructive' : 'w-5 h-5 text-red-500'} />
+                                  <TrashIcon className={theme === "dark" ? "w-4 h-4 text-destructive" : "w-4 h-4 text-red-500"} />
                                 </Button>
                               </>
                             )}
@@ -732,7 +794,7 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className={`py-4 text-center ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                      <td colSpan={5} className={`py-8 text-center text-sm ${theme === "dark" ? "text-muted-foreground" : "text-gray-500"}`}>
                         No users found.
                       </td>
                     </tr>
@@ -741,41 +803,35 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
               </table>
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination */}
             {totalPages > 1 && (
-              <div className="pagination-container flex flex-col sm:flex-row items-center justify-between mt-6 gap-2">
-                <div className={`pagination-info ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
-                  Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalUsers)} of {totalUsers} users
+              <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-2">
+                <div className={`text-sm ${theme === "dark" ? "text-muted-foreground" : "text-gray-500"}`}>
+                  Showing {((currentPage - 1) * pageSize) + 1} – {Math.min(currentPage * pageSize, totalUsers)} of {totalUsers} users
                 </div>
-                <div className="pagination-controls flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1 || loading}
-                    className="pagination-btn text-white bg-primary border-primary hover:bg-primary/90 hover:border-primary/90 hover:text-white px-2 py-1 sm:px-3 sm:py-1"
+                    className="text-white bg-primary border-primary hover:bg-primary/90"
                   >
+                    <ChevronLeft className="w-4 h-4" />
                     Previous
                   </Button>
-                  <div className="flex items-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled
-                      className={`pagination-btn ${theme === 'dark' ? 'text-muted-foreground bg-card border border-border' : 'text-gray-700 bg-white border border-gray-300'} px-2 py-1 sm:px-3 sm:py-1`}
-                      aria-label={`Current page ${currentPage} of ${totalPages}`}
-                    >
-                      {currentPage}
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="sm" disabled className={theme === "dark" ? "text-muted-foreground bg-card border border-border" : "text-gray-700 bg-white border border-gray-300"}>
+                    {currentPage} / {totalPages}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages || loading}
-                    className="pagination-btn text-white bg-primary border-primary hover:bg-primary/90 hover:border-primary/90 hover:text-white px-2 py-1 sm:px-3 sm:py-1"
+                    className="text-white bg-primary border-primary hover:bg-primary/90"
                   >
                     Next
+                    <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -784,39 +840,20 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
         </Card>
       </div>
 
+      {/* Delete Confirm Dialog */}
       <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent
-          className={
-            theme === 'dark'
-              ? 'delete-modal bg-card border border-border text-foreground w-[92%] max-w-[420px] sm:max-w-md rounded-lg mx-auto'
-              : 'delete-modal bg-white border border-gray-200 text-gray-900 w-[92%] max-w-[420px] sm:max-w-md rounded-lg mx-auto'
-          }
-        >
+        <DialogContent className={`${theme === "dark" ? "bg-card border border-border text-foreground" : "bg-white border border-gray-200 text-gray-900"} w-[92%] max-w-[420px] rounded-lg mx-auto`}>
           <DialogHeader>
-            <DialogTitle className={`delete-modal-title ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>Confirm Deletion</DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
           </DialogHeader>
-          <p className={`delete-modal-body ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
+          <p className={`${theme === "dark" ? "text-muted-foreground" : "text-gray-500"}`}>
             Are you sure you want to delete this user? This action cannot be undone.
           </p>
-          <DialogFooter className="delete-modal-buttons">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteId(null)}
-              disabled={loading}
-              className={`delete-modal-btn ${theme === 'dark'
-                ? 'text-foreground bg-card border border-border hover:bg-accent'
-                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'}`}
-            >
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={loading} className={theme === "dark" ? "text-foreground bg-card border border-border hover:bg-accent" : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={deleteUser}
-              disabled={loading}
-              className={`delete-modal-btn ${theme === 'dark'
-                ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-                : 'bg-red-600 hover:bg-red-700 text-white'}`}
-            >
+            <Button variant="destructive" onClick={deleteUser} disabled={loading} className={theme === "dark" ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : "bg-red-600 hover:bg-red-700 text-white"}>
               {loading ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>

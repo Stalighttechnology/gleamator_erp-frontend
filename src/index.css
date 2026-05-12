@@ -131,8 +131,8 @@
 
 /* Global scrollbar hiding but still scrollable */
 html, body, #root {
-  @apply overflow-hidden; /* disable window scrolling */
-  height: 100%;
+  @apply min-h-screen overflow-x-hidden;
+  height: auto;
 }
 
 /* Chrome, Safari, Edge */

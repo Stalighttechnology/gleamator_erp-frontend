@@ -58,24 +58,24 @@ const Pricing = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white py-20 px-4">
+    <div className="min-h-screen w-full overflow-y-auto overflow-x-hidden bg-white py-12 md:py-20 px-4">
       <div className="max-w-7xl mx-auto text-center mb-16">
-        <motion.h2 
+        <motion.h2
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-primary font-semibold tracking-wide uppercase mb-3"
         >
           Pricing Plans
         </motion.h2>
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="text-4xl md:text-5xl font-bold text-gray-900 mb-6"
         >
-          Choose the right plan for <br />your institution
+          Choose the right plan for <br className="hidden md:block" />your institution
         </motion.h1>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -92,16 +92,15 @@ const Pricing = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 * (index + 1) }}
-            className={`relative p-8 rounded-3xl border ${
-              plan.popular ? 'border-primary shadow-xl shadow-primary/10' : 'border-gray-100 shadow-lg shadow-gray-100'
-            } bg-white flex flex-col`}
+            className={`relative p-8 rounded-3xl border ${plan.popular ? 'border-primary shadow-xl shadow-primary/10' : 'border-gray-100 shadow-lg shadow-gray-100'
+              } bg-white flex flex-col`}
           >
             {plan.popular && (
               <div className="absolute top-0 right-8 -translate-y-1/2 bg-primary text-white px-4 py-1 rounded-full text-sm font-medium">
                 Most Popular
               </div>
             )}
-            
+
             <div className="mb-8">
               <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mb-6">
                 {plan.icon}
@@ -127,11 +126,10 @@ const Pricing = () => {
 
             <Button
               onClick={() => navigate(plan.link)}
-              className={`w-full h-12 rounded-xl text-lg font-semibold transition-all ${
-                plan.popular 
-                  ? 'bg-primary hover:bg-primary/90 text-white' 
-                  : 'bg-gray-900 hover:bg-gray-800 text-white'
-              }`}
+              className={`w-full h-12 rounded-xl text-lg font-semibold transition-all ${plan.popular
+                ? 'bg-primary hover:bg-primary/90 text-white'
+                : 'bg-gray-900 hover:bg-gray-800 text-white'
+                }`}
             >
               Get Started
               <ArrowRight size={18} className="ml-2" />
@@ -140,7 +138,7 @@ const Pricing = () => {
         ))}
       </div>
       {/* Detailed Feature Comparison Section */}
-      <div className="max-w-7xl mx-auto mt-24 mb-32 px-4">
+      <div className="max-w-7xl mx-auto mt-16 md:mt-24 mb-20 md:mb-32 px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -155,9 +153,9 @@ const Pricing = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="overflow-x-auto"
+          className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
         >
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[700px] text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="py-6 px-4 text-sm font-semibold text-gray-400 uppercase tracking-wider w-1/2">Features & Capabilities</th>

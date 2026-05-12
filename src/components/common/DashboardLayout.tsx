@@ -115,7 +115,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   return (
     <motion.div
-      className={`flex h-screen overflow-hidden ${
+      className={`flex min-h-screen overflow-x-hidden ${
         theme === "dark"
           ? "dark bg-background text-foreground"
           : "bg-gray-50 text-gray-900"
@@ -136,7 +136,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Main Content Area */}
       <div
-        className={`flex-1 min-w-0 flex flex-col h-screen overflow-hidden transition-all duration-300 ${
+        className={`flex-1 min-w-0 flex flex-col min-h-screen transition-all duration-300 ${
           sidebarCollapsed ? 'ml-0' : 'ml-64'
         }`}
       >
