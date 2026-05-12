@@ -9,6 +9,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   Camera, Eye, EyeOff, Upload, Download, FileText, CheckCircle, X, ExternalLink,
 } from "lucide-react";
+
+// ── Helper: Convert various date formats to YYYY-MM-DD ──
+const convertToISODate = (raw: any): string | null => {
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    // If already in YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    // If in DD/MM/YYYY format
+    const parts = raw.split("/");
+    if (parts.length === 3) {
+      const [d, m, y] = parts;
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+    // Try to parse as date
+    const parsed = new Date(raw);
+    if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  }
+  return null;
+};
 import { useTheme } from "@/context/ThemeContext";
 import { getFullStudentProfile } from "@/utils/student_api";
 import { useStudentProfileUpdateMutation } from "@/hooks/useApiQueries";
@@ -261,6 +280,22 @@ const StudentProfile: React.FC = () => {
   const [showPasswords, setShowPasswords] = useState({ current: false, next: false, confirm: false });
   const passwordDialogContentRef = useRef<HTMLDivElement | null>(null);
 
+  // ── Helper: Convert various date formats to YYYY-MM-DD ──────────────────
+  const convertToISODate = (raw: any): string => {
+    if (!raw) return "";
+    if (typeof raw === "string") {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw; // Already YYYY-MM-DD
+      const parts = raw.split("/");
+      if (parts.length === 3) {
+        const [d, m, y] = parts;
+        return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      }
+      const parsed = new Date(raw);
+      if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+    }
+    return "";
+  };
+
   const {
     uploadFile: uploadProfilePicture,
     uploadProgress,
@@ -281,34 +316,44 @@ const StudentProfile: React.FC = () => {
         const data = await getFullStudentProfile();
         if (data?.success && data.profile) {
           const pd = data.profile;
-          const newForm = { ...form } as StudentForm;
-          Object.keys(pd).forEach((k) => {
-            if (k === "profile_picture" && pd[k]) {
-              newForm[k] = pd[k].startsWith("http")
-                ? pd[k]
-                : `${API_ENDPOINT.replace("/api", "")}${pd[k]}`;
-              return;
-            }
-            if (k === "mobile_number") { newForm["phone"] = pd[k] ?? ""; return; }
-            if (k === "date_of_birth" && pd[k]) {
-              const raw = pd[k];
-              let iso = raw;
-              if (typeof raw === "string") {
-                const parts = raw.split("/");
-                if (parts.length === 3) {
-                  const [d, m, y] = parts;
-                  iso = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-                } else {
-                  const parsed = new Date(raw);
-                  if (!isNaN(parsed.getTime())) iso = parsed.toISOString().slice(0, 10);
-                }
-              }
-              newForm["date_of_birth"] = iso ?? "";
-              return;
-            }
-            newForm[k] = pd[k] ?? "";
-          });
+          console.log("[StudentProfile] Fetched backend profile:", pd);
+
+          // Create fresh form object with ALL fields explicitly mapped from backend
+          const newForm: StudentForm = {
+            user_id: pd.user_id ?? "",
+            username: pd.username ?? "",
+            email: pd.email ?? "",
+            first_name: pd.first_name ?? "",
+            last_name: pd.last_name ?? "",
+            phone: pd.mobile_number ?? pd.mobile ?? "",
+            date_of_birth: convertToISODate(pd.date_of_birth),
+            address: pd.address ?? "",
+            about: pd.bio ?? "",
+            profile_picture: pd.profile_picture ? (pd.profile_picture.startsWith("http") ? pd.profile_picture : `${API_ENDPOINT.replace("/api", "")}${pd.profile_picture}`) : "",
+            branch: pd.branch ?? "",
+            department: pd.department ?? "",
+            semester: pd.semester ?? "",
+            current_semester: pd.current_semester ?? "",
+            year_of_study: pd.year_of_study ?? "",
+            section: pd.section ?? "",
+            usn: pd.usn ?? "",
+            enrollment_year: pd.enrollment_year ?? "",
+            expected_graduation: pd.expected_graduation ?? "",
+            student_status: pd.student_status ?? "",
+            mode_of_admission: pd.mode_of_admission ?? "",
+            name: pd.name ?? "",
+            batch: pd.batch ?? "",
+            course: pd.course ?? "",
+            date_of_admission: pd.date_of_admission ?? "",
+            parent_name: pd.parent_name ?? "",
+            parent_contact: pd.parent_contact ?? "",
+            emergency_contact: pd.emergency_contact ?? "",
+            blood_group: pd.blood_group ?? "",
+            gender: pd.gender ?? "",
+            proctor: pd.proctor ?? {},
+          };
           setForm(newForm);
+          console.log("[StudentProfile] Mapped form state:", newForm);
 
           // Load documents if backend provides them
           if (pd.documents) {
@@ -320,16 +365,16 @@ const StudentProfile: React.FC = () => {
               }
             });
             setDocuments((prev) => ({ ...prev, ...processedDocs }));
+            console.log("[StudentProfile] Loaded documents:", processedDocs);
           }
         } else {
-          console.error("API response unsuccessful or missing profile:", data);
+          console.error("[StudentProfile] API response unsuccessful or missing profile:", data);
         }
       } catch (err) {
-        console.error("Failed to fetch student profile", err);
+        console.error("[StudentProfile] Failed to fetch student profile", err);
       }
     };
     fetchProfile().finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -379,6 +424,12 @@ const StudentProfile: React.FC = () => {
         mobile_number: form.phone,
         address: form.address,
         bio: form.about,
+        date_of_birth: form.date_of_birth,
+        gender: form.gender,
+        parent_name: form.parent_name,
+        parent_contact: form.parent_contact,
+        emergency_contact: form.emergency_contact,
+        blood_group: form.blood_group,
       });
       showSuccessAlert("Profile Updated", "Your profile has been successfully updated.");
       setEditing(false);
@@ -414,7 +465,10 @@ const StudentProfile: React.FC = () => {
         }
         showSuccessAlert("Uploaded", "Document uploaded successfully!");
       } else {
-        showErrorAlert("Error", json.message || "Document upload failed");
+        const msg = typeof json.message === "object"
+          ? Object.entries(json.message).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ")
+          : json.message || "Document upload failed";
+        showErrorAlert("Error", msg);
       }
     } catch {
       showErrorAlert("Error", "Document upload failed");
@@ -447,7 +501,10 @@ const StudentProfile: React.FC = () => {
         setPasswordData({ current_password: "", new_password: "", confirm_password: "" });
         showSuccessAlert("Password changed", "Your password has been updated successfully.");
       } else {
-        showErrorAlert("Unable to change password", j.message || "Failed to change password");
+        const msg = typeof j.message === "object"
+          ? Object.entries(j.message).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ")
+          : j.message || "Failed to change password";
+        showErrorAlert("Unable to change password", msg);
       }
     } catch {
       showErrorAlert("Unable to change password", "Network error");
@@ -707,6 +764,7 @@ const StudentProfile: React.FC = () => {
                   {activeTab === "personal" && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FieldRow label="Date of Birth" name="date_of_birth" type="date" value={form.date_of_birth || ""} onChange={handleChange} readOnly={!editing} theme={theme} />
+                      <FieldRow label="Gender" {...inputEditable("gender")} readOnly={!editing} />
                       <FieldRow label="Blood Group" {...inputEditable("blood_group")} readOnly={!editing} />
                       <FieldRow label="Parent Name" {...inputEditable("parent_name")} readOnly={!editing} />
                       <FieldRow label="Parent Contact" {...inputEditable("parent_contact")} readOnly={!editing} />
@@ -717,20 +775,19 @@ const StudentProfile: React.FC = () => {
                   {/* ACADEMIC TAB */}
                   {activeTab === "academic" && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FieldRow label="Current Semester" name="current_semester" value={form.current_semester} theme={theme} readOnly />
-                      <FieldRow label="Section" name="section" value={form.section} theme={theme} readOnly />
-                      <FieldRow label="Enrollment Year" name="enrollment_year" value={form.enrollment_year || ""} theme={theme} readOnly />
-                      <FieldRow label="Expected Graduation" name="expected_graduation" value={form.expected_graduation || ""} theme={theme} readOnly />
-                      <FieldRow label="Proctor" name="proctor_name" value={
-                        form.proctor
-                          ? `${form.proctor.first_name || ""} ${form.proctor.last_name || ""}`.trim() || form.proctor.username || ""
-                          : ""
-                      } theme={theme} readOnly />
-                      <FieldRow label="Student Status" name="student_status" value={form.student_status || ""} theme={theme} readOnly />
-                      <FieldRow label="Mode of Admission" name="mode_of_admission" value={form.mode_of_admission || ""} theme={theme} readOnly />
                       <FieldRow label="Batch" name="batch" value={form.batch || ""} theme={theme} readOnly />
-                      <FieldRow label="Course" name="course" value={form.course || ""} theme={theme} readOnly />
-                      <FieldRow label="Date of Admission" name="date_of_admission" value={form.date_of_admission ? form.date_of_admission.slice(0, 10) : ""} theme={theme} readOnly />
+
+                      <FieldRow label="Section" name="section" value={form.section} theme={theme} readOnly />
+
+                      <FieldRow label="Student Status" name="student_status" value={form.student_status || ""} theme={theme} readOnly />
+
+                      <FieldRow
+                        label="Date of Admission"
+                        name="date_of_admission"
+                        value={form.date_of_admission ? form.date_of_admission.slice(0, 10) : ""}
+                        theme={theme}
+                        readOnly
+                      />
                     </div>
                   )}
 

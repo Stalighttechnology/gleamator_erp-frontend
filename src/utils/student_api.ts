@@ -228,6 +228,12 @@ interface UpdateProfileRequest {
   mobile_number?: string;
   address?: string;
   bio?: string;
+  date_of_birth?: string;
+  gender?: string;
+  parent_name?: string;
+  parent_contact?: string;
+  emergency_contact?: string;
+  blood_group?: string;
 }
 
 interface UpdateProfileResponse {

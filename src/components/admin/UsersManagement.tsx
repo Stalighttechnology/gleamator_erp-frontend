@@ -163,15 +163,15 @@ const DocViewModal: React.FC<{ open: boolean; url: string; label: string; onClos
 // ─── User Profile View Modal ──────────────────────────────────────────────────
 const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: () => void; theme: string }> = ({ user, open, onClose, theme }) => {
   const [docView, setDocView] = useState<{ url: string; label: string } | null>(null);
-  const [profileTab, setProfileTab] = useState<"overview" | "documents">("overview");
+  const [profileTab, setProfileTab] = useState<"overview" | "details" | "contact" | "documents">("overview");
 
   if (!open || !user) return null;
 
   const role = roleDisplayMap[user.role] || user.role;
   const isStudent = user.role === "student";
   const isFaculty = user.role === "teacher";
-  const isHOD = user.role === "hod";
-  const isMIS = user.role === "mis";
+  const isHOD = user.role === "hod" || user.role === "mis";
+  const isStaff = isFaculty || isHOD;
 
   const documents: { key: string; label: string; url: string | null }[] = user.extra?.documents
     ? Object.entries(user.extra.documents).map(([key, url]) => ({
@@ -181,11 +181,17 @@ const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: ()
       }))
     : [];
 
-  const InfoRow = ({ label, value }: { label: string; value?: string | null }) => (
-    <div className={`flex flex-col py-2 border-b last:border-0 ${theme === "dark" ? "border-border" : "border-gray-100"}`}>
+  const InfoRow = ({ label, value, fullWidth = false }: { label: string; value?: string | number | null; fullWidth?: boolean }) => (
+    <div className={`flex flex-col py-2 border-b last:border-0 ${theme === "dark" ? "border-border" : "border-gray-100"} ${fullWidth ? "col-span-full" : ""}`}>
       <span className={`text-xs font-semibold mb-0.5 ${theme === "dark" ? "text-muted-foreground" : "text-gray-500"}`}>{label}</span>
-      <span className={`text-sm font-medium ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>{value || "—"}</span>
+      <span className={`text-sm font-medium break-words ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>{value || "—"}</span>
     </div>
+  );
+
+  const SectionHeader = ({ title }: { title: string }) => (
+    <p className={`text-xs font-bold uppercase tracking-wider mb-3 mt-4 first:mt-0 ${theme === "dark" ? "text-primary/80" : "text-primary"}`}>
+      {title}
+    </p>
   );
 
   return (
@@ -206,7 +212,7 @@ const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: ()
           {/* Modal Header */}
           <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${theme === "dark" ? "border-border" : "border-gray-200"}`}>
             <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0 overflow-hidden ${!user.profile_picture ? "bg-primary text-white" : ""}`}>
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-semibold flex-shrink-0 overflow-hidden border-2 ${theme === "dark" ? "border-primary/20" : "border-primary/10"} ${!user.profile_picture ? "bg-primary text-white" : ""}`}>
                 {user.profile_picture ? (
                   <img src={user.profile_picture.startsWith("http") ? user.profile_picture : `${API_BASE_URL}${user.profile_picture}`} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
@@ -217,8 +223,8 @@ const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: ()
                 )}
               </div>
               <div>
-                <h2 className={`text-lg font-bold ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>{user.name}</h2>
-                <div className="flex items-center gap-2 mt-0.5">
+                <h2 className={`text-xl font-bold ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>{user.name}</h2>
+                <div className="flex items-center gap-2 mt-1">
                   {getRoleBadge(user.role, theme)}
                   {getStatusBadge(user.status, theme)}
                 </div>
@@ -226,96 +232,132 @@ const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: ()
             </div>
             <button
               onClick={onClose}
-              className={`p-2 rounded-lg transition-colors ${theme === "dark" ? "hover:bg-accent" : "hover:bg-gray-100"}`}
+              className={`p-2 rounded-lg transition-colors ${theme === "dark" ? "hover:bg-accent text-muted-foreground hover:text-foreground" : "hover:bg-gray-100 text-gray-500"}`}
             >
               <X size={20} />
             </button>
           </div>
 
           {/* Sub-tabs */}
-          <div className={`flex gap-1 px-6 pt-3 pb-0 flex-shrink-0 border-b ${theme === "dark" ? "border-border" : "border-gray-200"}`}>
-            {(["overview", "documents"] as const).map((t) => (
+          <div className={`flex gap-1 px-6 pt-3 pb-0 flex-shrink-0 border-b overflow-x-auto no-scrollbar ${theme === "dark" ? "border-border" : "border-gray-200"}`}>
+            {(["overview", "details", "contact", "documents"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setProfileTab(t)}
-                className={`px-4 py-2 text-sm rounded-t-md font-medium transition-colors capitalize ${
+                className={`px-4 py-2 text-sm rounded-t-md font-medium transition-all capitalize whitespace-nowrap border-b-2 ${
                   profileTab === t
-                    ? "bg-primary text-white"
-                    : theme === "dark"
-                    ? "text-muted-foreground hover:text-foreground"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
               >
-                {t === "overview" ? "Profile" : "Documents"}
+                {t === "details" ? (isStudent ? "Academic" : "Professional") : t === "contact" ? "Personal & Contact" : t}
               </button>
             ))}
           </div>
 
           {/* Modal Body */}
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar">
 
             {/* OVERVIEW */}
             {profileTab === "overview" && (
-              <div className="space-y-5">
-                {/* Basic info */}
-                <div className={`rounded-xl border p-4 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
-                  <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
-                    Basic Information
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+              <div className="space-y-6">
+                <div className={`rounded-xl border p-5 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                  <SectionHeader title="Basic Information" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
                     <InfoRow label="Full Name" value={user.name} />
-                    <InfoRow label="Email" value={user.email} />
-                    <InfoRow label="Phone" value={user.extra?.phone} />
                     <InfoRow label="Username" value={user.username} />
-                    <InfoRow label="Status" value={user.status} />
-                    <InfoRow label="Role" value={role} />
+                    <InfoRow label="Email Address" value={user.email} />
+                    <InfoRow label="Primary Phone" value={user.extra?.phone} />
+                    <InfoRow label="Account Role" value={role} />
+                    <InfoRow label="Current Status" value={user.status} />
                   </div>
                 </div>
 
-                {/* Student-specific */}
+                {user.bio && (
+                  <div className={`rounded-xl border p-5 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                    <SectionHeader title="Bio / About" />
+                    <p className={`text-sm leading-relaxed ${theme === "dark" ? "text-muted-foreground" : "text-gray-600"}`}>
+                      {user.bio}
+                    </p>
+                  </div>
+                )}
+
+
+              </div>
+            )}
+
+            {/* DETAILS (Academic/Professional) */}
+            {profileTab === "details" && (
+              <div className="space-y-6">
                 {isStudent && (
-                  <div className={`rounded-xl border p-4 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
-                    <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
-                      Academic Details
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-                      <InfoRow label="USN" value={user.extra?.usn} />
-                      <InfoRow label="Branch" value={user.extra?.branch} />
+                  <div className={`rounded-xl border p-5 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                    <SectionHeader title="Academic Records" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                      <InfoRow label="USN / Roll No" value={user.extra?.usn} />
+                      <InfoRow label="Branch / Stream" value={user.extra?.branch} />
                       <InfoRow label="Section" value={user.extra?.section} />
-                      <InfoRow label="Year" value={user.extra?.year} />
                       <InfoRow label="Batch" value={user.extra?.batch} />
-                      <InfoRow label="Enrollment Year" value={user.extra?.enrollment_year} />
+                    </div>
+                    
+                    <SectionHeader title="Admission Info" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                      <InfoRow label="Admission Date" value={user.extra?.date_of_admission ? new Date(user.extra.date_of_admission).toLocaleDateString() : ""} />
                     </div>
                   </div>
                 )}
 
-                {/* Faculty-specific */}
-                {isFaculty && (
-                  <div className={`rounded-xl border p-4 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
-                    <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
-                      Professional Details
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                {(isFaculty || isStaff) && (
+                  <div className={`rounded-xl border p-5 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                    <SectionHeader title="Professional Records" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
                       <InfoRow label="Department" value={user.extra?.department} />
                       <InfoRow label="Designation" value={user.extra?.designation} />
-                      <InfoRow label="Assigned Branches" value={Array.isArray(user.extra?.branches) ? user.extra.branches.join(", ") : user.extra?.branches} />
+                      <InfoRow label="Qualification" value={user.extra?.qualification} />
+                      <InfoRow label="Experience (Years)" value={user.extra?.experience_years} />
+                      <InfoRow label="Employment Type" value={user.extra?.employment_type} />
+                      <InfoRow label="Staff Status" value={user.extra?.faculty_status} />
+                      <InfoRow label="Branch" value={isHOD ? user.extra?.branch : (Array.isArray(user.extra?.branches) ? user.extra.branches.join(", ") : user.extra?.branch)} />
                     </div>
-                  </div>
-                )}
 
-                {/* HOD/MIS-specific */}
-                {(isHOD || isMIS) && (
-                  <div className={`rounded-xl border p-4 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
-                    <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
-                      Staff Details
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-                      <InfoRow label="Department" value={user.extra?.department} />
-                      <InfoRow label="Designation" value={user.extra?.designation} />
-                      <InfoRow label="Branch" value={user.extra?.branch} />
+                    <SectionHeader title="Workplace Information" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                      <InfoRow label="Joining Date" value={user.extra?.joining_date ? new Date(user.extra.joining_date).toLocaleDateString() : ""} />
+                      <InfoRow label="Office Location" value={user.extra?.office_location} />
+                      <InfoRow label="Office Hours" value={user.extra?.office_hours} fullWidth />
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* CONTACT & PERSONAL */}
+            {profileTab === "contact" && (
+              <div className="space-y-6">
+                <div className={`rounded-xl border p-5 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                  <SectionHeader title="Personal Information" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                    <InfoRow label="Date of Birth" value={user.extra?.date_of_birth ? new Date(user.extra.date_of_birth).toLocaleDateString() : "Not specified"} />
+                    <InfoRow label="Gender" value={user.extra?.gender || "Not specified"} />
+                    <InfoRow label="Blood Group" value={user.extra?.blood_group} />
+                    {isStudent && (
+                      <InfoRow label="Parent Name" value={user.extra?.parent_name} />
+                    )}
+                  </div>
+                </div>
+
+                <div className={`rounded-xl border p-5 ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                  <SectionHeader title="Contact Details" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                    <InfoRow label="Primary Phone" value={user.extra?.phone} />
+                    <InfoRow label="Address" value={user.address} fullWidth />
+                    {isStudent && (
+                      <>
+                        <InfoRow label="Parent Contact" value={user.extra?.parent_contact} />
+                        <InfoRow label="Emergency Contact" value={user.extra?.emergency_contact} />
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -323,41 +365,47 @@ const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: ()
             {profileTab === "documents" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {documents.length === 0 ? (
-                  <div className={`col-span-full text-center py-12 rounded-xl border ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
-                    <FileText size={40} className={`mx-auto mb-3 ${theme === "dark" ? "text-muted-foreground" : "text-gray-300"}`} />
-                    <p className={`text-sm ${theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>No documents uploaded yet.</p>
+                  <div className={`col-span-full text-center py-16 rounded-xl border ${theme === "dark" ? "border-border bg-muted/20" : "border-gray-200 bg-gray-50"}`}>
+                    <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${theme === "dark" ? "bg-muted text-muted-foreground" : "bg-gray-100 text-gray-300"}`}>
+                      <FileText size={32} />
+                    </div>
+                    <p className={`text-base font-medium ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>No documents found</p>
+                    <p className={`text-sm mt-1 ${theme === "dark" ? "text-muted-foreground" : "text-gray-500"}`}>This user hasn't uploaded any documents yet.</p>
                   </div>
                 ) : (
                   documents.map(({ key, label, url }) => (
                     <div
                       key={key}
-                      className={`flex flex-col gap-3 p-4 rounded-xl border ${
-                        theme === "dark" ? "border-border bg-muted/20 hover:bg-muted/40" : "border-gray-200 bg-gray-50 hover:bg-gray-100"
-                      } transition-colors`}
+                      className={`flex flex-col gap-3 p-4 rounded-xl border group transition-all duration-200 ${
+                        theme === "dark" ? "border-border bg-muted/20 hover:bg-muted/40 hover:border-primary/50" : "border-gray-200 bg-gray-50 hover:bg-white hover:shadow-md hover:border-primary/30"
+                      }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-12 h-12 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center border ${
-                          url ? "bg-green-50 dark:bg-green-950/20 border-green-100 dark:border-green-900/30" : "bg-gray-100 dark:bg-muted border-transparent"
+                        <div className={`w-12 h-12 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center border transition-colors ${
+                          url ? "bg-primary/10 border-primary/20 text-primary" : "bg-gray-100 dark:bg-muted border-transparent text-muted-foreground"
                         }`}>
                           {url && !url.toLowerCase().endsWith(".pdf") ? (
                             <img src={url} alt={label} className="w-full h-full object-cover" />
                           ) : (
-                            <FileText size={20} className={url ? "text-green-500" : theme === "dark" ? "text-muted-foreground" : "text-gray-400"} />
+                            <FileText size={20} />
                           )}
                         </div>
-                        <div className="min-w-0">
-                          <p className={`text-sm font-semibold truncate ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>{label}</p>
-                          <p className={`text-xs ${url ? "text-green-600 dark:text-green-400" : theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
-                            {url ? "Uploaded" : "Not uploaded"}
-                          </p>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-bold truncate group-hover:text-primary transition-colors ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>{label}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className={`w-2 h-2 rounded-full ${url ? "bg-green-500" : "bg-gray-300"}`} />
+                            <p className={`text-xs ${url ? "text-green-600 dark:text-green-400 font-medium" : theme === "dark" ? "text-muted-foreground" : "text-gray-400"}`}>
+                              {url ? "Uploaded" : "Pending"}
+                            </p>
+                          </div>
                         </div>
                       </div>
                       {url && (
-                        <div className="flex items-center gap-2 mt-auto pt-2 border-t dark:border-border/50">
+                        <div className="flex items-center gap-2 mt-auto pt-3 border-t border-dashed dark:border-border/50">
                           <button
                             onClick={() => setDocView({ url, label })}
-                            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
-                              theme === "dark" ? "bg-muted hover:bg-accent text-foreground" : "bg-white hover:bg-gray-200 text-gray-700 border border-gray-200"
+                            className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                              theme === "dark" ? "bg-muted hover:bg-primary hover:text-white" : "bg-white hover:bg-primary hover:text-white text-gray-700 border border-gray-200"
                             }`}
                           >
                             <Eye size={14} /> View
@@ -365,8 +413,8 @@ const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: ()
                           <a
                             href={url}
                             download
-                            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
-                              theme === "dark" ? "bg-muted hover:bg-accent text-foreground" : "bg-white hover:bg-gray-200 text-gray-700 border border-gray-200"
+                            className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                              theme === "dark" ? "bg-muted hover:bg-primary hover:text-white" : "bg-white hover:bg-primary hover:text-white text-gray-700 border border-gray-200"
                             }`}
                           >
                             <Download size={14} /> Download
@@ -381,14 +429,16 @@ const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: ()
           </div>
 
           {/* Modal Footer */}
-          <div className={`px-6 py-4 border-t flex-shrink-0 flex justify-end ${theme === "dark" ? "border-border" : "border-gray-200"}`}>
-            <Button variant="outline" onClick={onClose}>Close</Button>
+          <div className={`px-6 py-4 border-t flex-shrink-0 flex justify-end gap-3 ${theme === "dark" ? "border-border bg-muted/10" : "border-gray-200 bg-gray-50"}`}>
+            <Button variant="outline" onClick={onClose} className="min-w-[100px]">Close</Button>
           </div>
         </div>
       </div>
     </>
   );
 };
+
+
 
 // ─── SelectMenu ──────────────────────────────────────────────────────────────
 const SelectMenu = ({

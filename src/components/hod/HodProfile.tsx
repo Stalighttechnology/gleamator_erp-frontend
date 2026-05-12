@@ -30,6 +30,7 @@ interface Profile {
   department?: string; designation?: string; joining_date?: string;
   office_location?: string; office_hours?: string;
   employment_type?: string; staff_status?: string;
+  gender?: string; blood_group?: string; date_of_birth?: string;
   // Counselor-specific
   managed_departments?: string; assigned_batches?: string; reporting_faculty_count?: string;
   // MIS-specific
@@ -190,14 +191,30 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
     address: "", bio: "", role: "",
     department: "", designation: "", joining_date: "", office_location: "",
     office_hours: "", employment_type: "", staff_status: "",
+    gender: "", blood_group: "", date_of_birth: "",
     managed_departments: "", assigned_batches: "", reporting_faculty_count: "",
     access_level: "", work_shift: "",
   });
   const [localError, setLocalError] = useState<string | null>(null);
   const { theme } = useTheme();
   const [fetchedUser, setFetchedUser] = useState<User | null>(null);
-  const skipFetch = useRef(false);
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
+
+  // ── Helper: Convert various date formats to YYYY-MM-DD ──────────────────
+  const convertToISODate = (raw: any): string => {
+    if (!raw) return "";
+    if (typeof raw === "string") {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw; // Already YYYY-MM-DD
+      const parts = raw.split("/");
+      if (parts.length === 3) {
+        const [d, m, y] = parts;
+        return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      }
+      const parsed = new Date(raw);
+      if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+    }
+    return "";
+  };
 
   // Documents
   const [documents, setDocuments] = useState<Record<string, string | null>>({
@@ -214,8 +231,6 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
   // ── Fetch profile ───────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchProfile = async () => {
-      if (skipFetch.current) { skipFetch.current = false; setLoading(false); return; }
-
       let currentUser = propUser;
       if (!currentUser?.user_id) {
         try {
@@ -240,8 +255,9 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
           if (!payload && (response as any).first_name) payload = response;
         }
         if (payload) {
-          setProfile((prev) => ({
-            ...prev,
+          console.log("[HodProfile] Fetched backend profile:", payload);
+          
+          const mappedProfile: Profile = {
             first_name: payload.first_name || "",
             last_name: payload.last_name || "",
             email: payload.email || payload.username || "",
@@ -251,17 +267,24 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
             role: payload.role || "",
             department: payload.department || "",
             designation: payload.designation || "",
-            joining_date: payload.joining_date || "",
+            joining_date: convertToISODate(payload.joining_date),
             office_location: payload.office_location || "",
             office_hours: payload.office_hours || "",
             employment_type: payload.employment_type || "",
             staff_status: payload.staff_status || "",
+            gender: payload.gender || "",
+            blood_group: payload.blood_group || "",
+            date_of_birth: convertToISODate(payload.date_of_birth),
             managed_departments: payload.managed_departments || "",
             assigned_batches: payload.assigned_batches || "",
             reporting_faculty_count: payload.reporting_faculty_count ? String(payload.reporting_faculty_count) : "",
             access_level: payload.access_level || "",
             work_shift: payload.work_shift || "",
-          }));
+          };
+          
+          setProfile(mappedProfile);
+          console.log("[HodProfile] Mapped profile data:", mappedProfile);
+          
           if (payload.documents) {
             const processedDocs: Record<string, string> = {};
             const baseUrl = API_ENDPOINT.replace("/api", "");
@@ -271,12 +294,13 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
               }
             });
             setDocuments((p) => ({ ...p, ...processedDocs }));
+            console.log("[HodProfile] Loaded documents:", processedDocs);
           }
         } else {
-          console.error("API response unsuccessful or missing payload:", response);
+          console.error("[HodProfile] API response unsuccessful or missing payload:", response);
         }
       } catch (err) {
-        console.error("Fetch Profile Error:", err);
+        console.error("[HodProfile] Fetch Profile Error:", err);
         setLocalError("Network error");
       } finally {
         setLoading(false);
@@ -304,12 +328,12 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
       "first_name", "last_name", "email", "mobile_number", "address", "bio",
       "department", "designation", "joining_date", "office_location",
       "office_hours", "employment_type", "staff_status",
+      "gender", "blood_group", "date_of_birth",
       "managed_departments", "assigned_batches", "reporting_faculty_count",
       "access_level", "work_shift",
     ];
     fields.forEach((f) => {
-      const cur = (currentUser as any)?.[f] || "";
-      if (profile[f] !== cur) updates[f === "mobile_number" ? "mobile_number" : f] = profile[f];
+      updates[f === "mobile_number" ? "mobile_number" : f] = profile[f];
     });
 
     if (Object.keys(updates).length === 0) {
@@ -320,7 +344,6 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
     }
 
     try {
-      skipFetch.current = true;
       const response = await manageProfile(updates, "PATCH");
       if (response.success && response.data) {
         setProfile((prev) => ({ ...prev, ...(response.data as Partial<Profile>) }));
@@ -542,6 +565,11 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
                   {/* CONTACT TAB */}
                   {activeTab === "contact" && (
                     <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FieldRow label="Date of Birth" type="date" value={profile.date_of_birth || ""} onChange={(v) => handleChange("date_of_birth", v)} readOnly={!editing} theme={theme} />
+                        <FieldRow label="Gender" value={profile.gender || ""} onChange={(v) => handleChange("gender", v)} readOnly={!editing} theme={theme} placeholder="Male/Female/Other" />
+                        <FieldRow label="Blood Group" value={profile.blood_group || ""} onChange={(v) => handleChange("blood_group", v)} readOnly={!editing} theme={theme} />
+                      </div>
                       <div>
                         <label className={`block text-sm mb-1.5 font-semibold ${theme === "dark" ? "text-foreground" : "text-gray-900"}`}>Address</label>
                         <Textarea
@@ -663,14 +691,7 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
                   )}
                 </div>
 
-                {/* Save footer */}
-                {(activeTab === "profile" || activeTab === "contact" || activeTab === "professional") && (
-                  <div className="flex justify-end mt-4">
-                    <Button className="bg-primary hover:bg-primary/90 text-white" onClick={handleSave} disabled={loading}>
-                      {loading ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </div>
-                )}
+               
               </div>
             </div>
           </CardContent>

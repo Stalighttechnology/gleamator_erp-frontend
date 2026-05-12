@@ -169,12 +169,29 @@ const FacultyProfile = () => {
     branch: "", experience_years: "", office_location: "", office_hours: "",
     date_of_birth: "", gender: "", joining_date: "", employment_type: "",
     faculty_status: "",
+    blood_group: "",
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
   const { theme } = useTheme();
+
+  // ── Helper: Convert various date formats to YYYY-MM-DD ──────────────────
+  const convertToISODate = (raw: any): string => {
+    if (!raw) return "";
+    if (typeof raw === "string") {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw; // Already YYYY-MM-DD
+      const parts = raw.split("/");
+      if (parts.length === 3) {
+        const [d, m, y] = parts;
+        return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      }
+      const parsed = new Date(raw);
+      if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+    }
+    return "";
+  };
 
   // Documents
   const [documents, setDocuments] = useState<Record<string, string | null>>({
@@ -195,7 +212,9 @@ const FacultyProfile = () => {
       .then((res) => {
         const payload = res.profile || res.data || null;
         if (res.success && payload) {
-          setFormData({
+          console.log("[FacultyProfile] Fetched backend profile:", payload);
+          
+          const mappedData = {
             firstName: payload.first_name || "",
             lastName: payload.last_name || "",
             email: payload.email || "",
@@ -210,12 +229,17 @@ const FacultyProfile = () => {
             experience_years: payload.experience_years ? String(payload.experience_years) : "",
             office_location: payload.office_location || "",
             office_hours: payload.office_hours || "",
-            date_of_birth: payload.date_of_birth || "",
+            date_of_birth: convertToISODate(payload.date_of_birth),
             gender: payload.gender || "",
-            joining_date: payload.joining_date || "",
+            joining_date: convertToISODate(payload.joining_date),
             employment_type: payload.employment_type || "",
             faculty_status: payload.faculty_status || "",
-          });
+            blood_group: payload.blood_group || "",
+          };
+          
+          setFormData(mappedData);
+          console.log("[FacultyProfile] Mapped form data:", mappedData);
+          
           if (payload.documents) {
             const processedDocs: Record<string, string> = {};
             const baseUrl = API_ENDPOINT.replace("/api", "");
@@ -225,14 +249,15 @@ const FacultyProfile = () => {
               }
             });
             setDocuments((p) => ({ ...p, ...processedDocs }));
+            console.log("[FacultyProfile] Loaded documents:", processedDocs);
           }
         } else {
-          console.error("API response unsuccessful or missing payload:", res);
+          console.error("[FacultyProfile] API response unsuccessful or missing payload:", res);
           setError(res.message || "Failed to load profile");
         }
       })
       .catch((err) => {
-        console.error("Failed to load faculty profile:", err);
+        console.error("[FacultyProfile] Failed to load faculty profile:", err);
         setError("Failed to load profile");
       })
       .finally(() => setLoading(false));
@@ -277,14 +302,18 @@ const FacultyProfile = () => {
         gender: formData.gender || undefined,
         joining_date: (formData as any).joining_date || undefined,
         employment_type: (formData as any).employment_type || undefined,
-        faculty_status: (formData as any).faculty_status || undefined,
+        faculty_status: formData.faculty_status || undefined,
+        blood_group: formData.blood_group || undefined,
       } as any);
       if (res.success) {
         showSuccessAlert("Success", "Profile updated successfully!");
         setIsEditing(false);
       } else {
-        setError(res.message || "Failed to update profile");
-        showErrorAlert("Error", res.message || "Failed to update profile");
+        const msg = typeof res.message === "object"
+          ? Object.entries(res.message).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ")
+          : res.message || "Failed to update profile";
+        setError(msg);
+        showErrorAlert("Error", msg);
       }
     } catch {
       setError("Network error");
@@ -342,7 +371,10 @@ const FacultyProfile = () => {
         setPasswordData({ current_password: "", new_password: "", confirm_password: "" });
         showSuccessAlert("Password changed", "Your password has been updated successfully.");
       } else {
-        showErrorAlert("Unable to change password", result.message || "Failed to change password");
+        const msg = typeof result.message === "object"
+          ? Object.entries(result.message).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ")
+          : result.message || "Failed to change password";
+        showErrorAlert("Unable to change password", msg);
       }
     } catch {
       showErrorAlert("Unable to change password", "Failed to change password");
@@ -492,6 +524,7 @@ const FacultyProfile = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FieldRow label="Date of Birth" type="date" value={formData.date_of_birth} onChange={(v) => handleChange("date_of_birth", v)} readOnly={!isEditing} theme={theme} />
                     <FieldRow label="Gender" value={formData.gender} onChange={(v) => handleChange("gender", v)} readOnly={!isEditing} theme={theme} />
+                    <FieldRow label="Blood Group" value={formData.blood_group} onChange={(v) => handleChange("blood_group", v)} readOnly={!isEditing} theme={theme} />
                   </div>
                 )}
 
