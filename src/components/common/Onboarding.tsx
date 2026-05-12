@@ -32,6 +32,17 @@ const Onboarding = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate phone number
+    if (formData.phone.length !== 10) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Phone Number",
+        description: "Please enter a valid 10-digit contact number.",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -185,10 +196,15 @@ const Onboarding = () => {
                 <Input
                   required
                   type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
                   placeholder="Enter 10-digit number"
                   className="pl-10 bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:ring-[hsl(var(--primary))]/20 rounded-lg h-12 transition-all"
                   value={formData.phone}
-                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                    setFormData({ ...formData, phone: val });
+                  }}
                 />
               </div>
             </div>
@@ -270,7 +286,7 @@ const Onboarding = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 1 }}
           >
-            <img
+            <motion.img
               src="/undraw_educator_6dgp.svg"
               alt="Educator Illustration"
               className="w-full h-auto drop-shadow-2xl"
