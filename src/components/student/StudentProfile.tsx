@@ -28,6 +28,7 @@ const convertToISODate = (raw: any): string | null => {
   }
   return null;
 };
+import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { getFullStudentProfile } from "@/utils/student_api";
 import { useStudentProfileUpdateMutation } from "@/hooks/useApiQueries";
@@ -247,6 +248,7 @@ const FieldRow: React.FC<{
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 const StudentProfile: React.FC = () => {
   const { theme } = useTheme();
+  const queryClient = useQueryClient();
   const updateProfileMutation = useStudentProfileUpdateMutation();
 
   const [form, setForm] = useState<StudentForm>({
@@ -850,18 +852,7 @@ const StudentProfile: React.FC = () => {
                   )}
                 </div>
 
-                {/* Save footer — only show in editable tabs */}
-                {(activeTab === "profile" || activeTab === "personal") && (
-                  <div className="flex justify-end mt-4">
-                    <Button
-                      className="bg-primary hover:bg-primary/90 text-white"
-                      onClick={handleSave}
-                      disabled={updateProfileMutation.isPending}
-                    >
-                      {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </div>
-                )}
+                
               </div>
             </div>
           </CardContent>

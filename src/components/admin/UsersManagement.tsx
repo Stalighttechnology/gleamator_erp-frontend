@@ -26,6 +26,8 @@ interface User {
   status: string;
   username?: string;
   profile_picture?: string;
+  address?: string;
+  bio?: string;
   extra?: {
     usn?: string;
     branch?: string;
@@ -315,10 +317,30 @@ const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: ()
                       <InfoRow label="Qualification" value={user.extra?.qualification} />
                       <InfoRow label="Experience (Years)" value={user.extra?.experience_years} />
                       <InfoRow label="Employment Type" value={user.extra?.employment_type} />
-                      <InfoRow label="Staff Status" value={user.extra?.faculty_status} />
+                      <InfoRow label="Staff Status" value={user.extra?.staff_status || user.extra?.faculty_status} />
                       <InfoRow label="Branch" value={isHOD ? user.extra?.branch : (Array.isArray(user.extra?.branches) ? user.extra.branches.join(", ") : user.extra?.branch)} />
                     </div>
 
+                    {(isHOD || user.role === "mis") && (
+                      <>
+                        <SectionHeader title={user.role === "hod" ? "Counselor Details" : "MIS Details"} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                          {user.role === "hod" ? (
+                            <>
+                              <InfoRow label="Managed Depts" value={user.extra?.managed_departments} />
+                              <InfoRow label="Assigned Batches" value={user.extra?.assigned_batches} />
+                              <InfoRow label="Reporting Faculty" value={user.extra?.reporting_faculty_count} />
+                            </>
+                          ) : (
+                            <>
+                              <InfoRow label="Access Level" value={user.extra?.access_level} />
+                              <InfoRow label="Work Shift" value={user.extra?.work_shift} />
+                            </>
+                          )}
+                        </div>
+                      </>
+                    )}
+                    
                     <SectionHeader title="Workplace Information" />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
                       <InfoRow label="Joining Date" value={user.extra?.joining_date ? new Date(user.extra.joining_date).toLocaleDateString() : ""} />
@@ -549,19 +571,31 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
                   role: user.role || "N/A",
                   status: user.is_active ? "Active" : "Inactive",
                   username: user.username || "",
-                  extra: {
-                    usn: user.extra?.usn || "",
-                    branch: user.extra?.branch || "",
-                    branches: user.extra?.branches || [],
-                    phone: user.extra?.phone || "",
-                    department: user.extra?.department || "",
-                    designation: user.extra?.designation || "",
-                    section: user.extra?.section || "",
-                    year: user.extra?.year || "",
-                    batch: user.extra?.batch || "",
-                    enrollment_year: user.extra?.enrollment_year || "",
-                    documents: user.extra?.documents || {},
-                  },
+                    extra: {
+                      usn: user.extra?.usn || "",
+                      branch: user.extra?.branch || "",
+                      branches: user.extra?.branches || [],
+                      phone: user.extra?.phone || "",
+                      department: user.extra?.department || "",
+                      designation: user.extra?.designation || "",
+                      section: user.extra?.section || "",
+                      year: user.extra?.year || "",
+                      batch: user.extra?.batch || "",
+                      enrollment_year: user.extra?.enrollment_year || "",
+                      documents: user.extra?.documents || {},
+                      qualification: user.extra?.qualification || "",
+                      experience_years: user.extra?.experience_years ?? "",
+                      joining_date: user.extra?.joining_date || "",
+                      employment_type: user.extra?.employment_type || "",
+                      staff_status: user.extra?.staff_status || "",
+                      faculty_status: user.extra?.faculty_status || "",
+                      blood_group: user.extra?.blood_group || "",
+                      access_level: user.extra?.access_level || "",
+                      work_shift: user.extra?.work_shift || "",
+                      managed_departments: user.extra?.managed_departments || "",
+                      assigned_batches: user.extra?.assigned_batches || "",
+                      reporting_faculty_count: user.extra?.reporting_faculty_count ?? "",
+                    },
                 }))
                 .filter((u: any) => allowedRoles.includes(u.role))
             : [];
@@ -669,7 +703,7 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
     try {
       const response = await manageAdminProfile({ user_id: user.id.toString() }, "GET");
       if (response.success && response.profile) {
-        const p = response.profile;
+        const p = response.profile as any;
         const fullUser: User = {
           id: p.id,
           name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.username || "N/A",
@@ -678,6 +712,8 @@ const UsersManagement = ({ setError, toast }: UsersManagementProps) => {
           status: p.is_active ? "Active" : "Inactive",
           username: p.username,
           profile_picture: p.profile_picture,
+          address: p.address,
+          bio: p.bio,
           extra: p.extra
         };
         setViewUser(fullUser);

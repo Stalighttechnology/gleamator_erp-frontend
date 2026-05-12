@@ -206,61 +206,64 @@ const FacultyProfile = () => {
   const [showPasswords, setShowPasswords] = useState({ current: false, next: false, confirm: false });
   const passwordDialogContentRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
+  const fetchProfile = async () => {
     setLoading(true);
-    getFacultyProfile()
-      .then((res) => {
-        const payload = res.profile || res.data || null;
-        if (res.success && payload) {
-          console.log("[FacultyProfile] Fetched backend profile:", payload);
-          
-          const mappedData = {
-            firstName: payload.first_name || "",
-            lastName: payload.last_name || "",
-            email: payload.email || "",
-            mobile: payload.mobile_number || payload.mobile || "",
-            address: payload.address || "",
-            bio: payload.bio || "",
-            profile_picture: payload.profile_picture || "",
-            department: payload.department || "",
-            designation: payload.designation || "",
-            qualification: payload.qualification || "",
-            branch: payload.branch || "",
-            experience_years: payload.experience_years ? String(payload.experience_years) : "",
-            office_location: payload.office_location || "",
-            office_hours: payload.office_hours || "",
-            date_of_birth: convertToISODate(payload.date_of_birth),
-            gender: payload.gender || "",
-            joining_date: convertToISODate(payload.joining_date),
-            employment_type: payload.employment_type || "",
-            faculty_status: payload.faculty_status || "",
-            blood_group: payload.blood_group || "",
-          };
-          
-          setFormData(mappedData);
-          console.log("[FacultyProfile] Mapped form data:", mappedData);
-          
-          if (payload.documents) {
-            const processedDocs: Record<string, string> = {};
-            const baseUrl = API_ENDPOINT.replace("/api", "");
-            Object.entries(payload.documents).forEach(([key, url]) => {
-              if (url && typeof url === "string") {
-                processedDocs[key] = url.startsWith("http") ? url : `${baseUrl}${url}`;
-              }
-            });
-            setDocuments((p) => ({ ...p, ...processedDocs }));
-            console.log("[FacultyProfile] Loaded documents:", processedDocs);
-          }
-        } else {
-          console.error("[FacultyProfile] API response unsuccessful or missing payload:", res);
-          setError(res.message || "Failed to load profile");
+    try {
+      const res = await getFacultyProfile();
+      const payload = res.profile || res.data || null;
+      if (res.success && payload) {
+        console.log("[FacultyProfile] Fetched backend profile:", payload);
+        
+        const mappedData = {
+          firstName: payload.first_name || "",
+          lastName: payload.last_name || "",
+          email: payload.email || "",
+          mobile: payload.mobile_number || payload.mobile || "",
+          address: payload.address || "",
+          bio: payload.bio || "",
+          profile_picture: payload.profile_picture || "",
+          department: payload.department || "",
+          designation: payload.designation || "",
+          qualification: payload.qualification || "",
+          branch: payload.branch || "",
+          experience_years: payload.experience_years ? String(payload.experience_years) : "",
+          office_location: payload.office_location || "",
+          office_hours: payload.office_hours || "",
+          date_of_birth: convertToISODate(payload.date_of_birth),
+          gender: payload.gender || "",
+          joining_date: convertToISODate(payload.joining_date),
+          employment_type: payload.employment_type || "",
+          faculty_status: payload.faculty_status || "",
+          blood_group: payload.blood_group || "",
+        };
+        
+        setFormData(mappedData);
+        console.log("[FacultyProfile] Mapped form data:", mappedData);
+        
+        if (payload.documents) {
+          const processedDocs: Record<string, string> = {};
+          const baseUrl = API_ENDPOINT.replace("/api", "");
+          Object.entries(payload.documents).forEach(([key, url]) => {
+            if (url && typeof url === "string") {
+              processedDocs[key] = url.startsWith("http") ? url : `${baseUrl}${url}`;
+            }
+          });
+          setDocuments((p) => ({ ...p, ...processedDocs }));
         }
-      })
-      .catch((err) => {
-        console.error("[FacultyProfile] Failed to load faculty profile:", err);
-        setError("Failed to load profile");
-      })
-      .finally(() => setLoading(false));
+      } else {
+        console.error("[FacultyProfile] API response unsuccessful or missing payload:", res);
+        setError(res.message || "Failed to load profile");
+      }
+    } catch (err) {
+      console.error("[FacultyProfile] Failed to load faculty profile:", err);
+      setError("Failed to load profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
   }, []);
 
   const handleChange = (field: string, value: string) => {
@@ -308,6 +311,7 @@ const FacultyProfile = () => {
       if (res.success) {
         showSuccessAlert("Success", "Profile updated successfully!");
         setIsEditing(false);
+        fetchProfile();
       } else {
         const msg = typeof res.message === "object"
           ? Object.entries(res.message).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ")
@@ -592,12 +596,7 @@ const FacultyProfile = () => {
                 )}
               </div>
 
-              {/* Save footer */}
-              {(activeTab === "profile" || activeTab === "personal" || activeTab === "professional") && (
-                <div className="flex justify-end mt-4">
-                  <Button className="bg-primary hover:bg-primary/90 text-white" onClick={handleSave}>Save Changes</Button>
-                </div>
-              )}
+              
             </div>
           </div>
         </CardContent>

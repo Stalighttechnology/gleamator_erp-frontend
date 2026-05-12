@@ -176,7 +176,7 @@ interface ManageSectionsResponse {
 }
 
 interface ManageStudentsRequest {
-  action: "create" | "update" | "delete" | "bulk_update" | "register_subjects" | "bulk_register_subjects" | "bulk_unregister_subjects";
+  action: "create" | "update" | "delete" | "bulk_update" | "register_subjects" | "bulk_register_subjects" | "bulk_unregister_subjects" | "get_enrollment_status";
   student_id?: string;
   usn?: string;
   name?: string;
@@ -547,6 +547,21 @@ interface ManageProfileRequest {
   mobile_number?: string;
   address?: string;
   bio?: string;
+  department?: string;
+  designation?: string;
+  joining_date?: string;
+  office_location?: string;
+  office_hours?: string;
+  employment_type?: string;
+  staff_status?: string;
+  gender?: string;
+  blood_group?: string;
+  date_of_birth?: string;
+  managed_departments?: string;
+  assigned_batches?: string;
+  reporting_faculty_count?: string | number;
+  access_level?: string;
+  work_shift?: string;
 }
 
 interface ManageProfileResponse {

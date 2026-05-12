@@ -406,6 +406,10 @@ export interface ManageProfileRequest {
   experience_years?: string | number;
   office_location?: string;
   office_hours?: string;
+  joining_date?: string;
+  employment_type?: string;
+  faculty_status?: string;
+  blood_group?: string;
 }
 
 interface ManageProfileResponse {
@@ -965,6 +969,10 @@ export const manageProfile = async (
     if (typeof data.experience_years !== 'undefined' && data.experience_years !== null) formData.append("experience_years", String(data.experience_years));
     if (data.office_location) formData.append("office_location", data.office_location);
     if (data.office_hours) formData.append("office_hours", data.office_hours);
+    if (data.joining_date) formData.append("joining_date", data.joining_date);
+    if (data.employment_type) formData.append("employment_type", data.employment_type);
+    if (data.faculty_status) formData.append("faculty_status", data.faculty_status);
+    if (data.blood_group) formData.append("blood_group", data.blood_group);
     const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/profile/`, {
       method: "POST",
       headers: {

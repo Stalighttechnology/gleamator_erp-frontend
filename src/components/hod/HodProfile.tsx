@@ -27,7 +27,7 @@ interface Profile {
   first_name: string; last_name: string; email: string;
   mobile_number: string; address: string; bio: string; role?: string;
   // Professional
-  department?: string; designation?: string; joining_date?: string;
+  department?: string; designation?: string; qualification?: string; experience_years?: string; joining_date?: string;
   office_location?: string; office_hours?: string;
   employment_type?: string; staff_status?: string;
   gender?: string; blood_group?: string; date_of_birth?: string;
@@ -229,83 +229,86 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
   const passwordDialogContentRef = useRef<HTMLDivElement | null>(null);
 
   // ── Fetch profile ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    const fetchProfile = async () => {
-      let currentUser = propUser;
-      if (!currentUser?.user_id) {
-        try {
-          const userData = localStorage.getItem("user");
-          if (userData) {
-            const p = JSON.parse(userData);
-            if (p.user_id) {
-              currentUser = { user_id: p.user_id, username: p.username || p.first_name || "", email: p.email || "", role: p.role || "hod" };
-              setFetchedUser(currentUser);
-            }
-          }
-        } catch { /* ignore */ }
-      }
-
-      setLoading(true);
+  const fetchProfile = async () => {
+    let currentUser = propUser;
+    if (!currentUser?.user_id) {
       try {
-        const response = await manageProfile({}, "GET");
-        let payload: any = null;
-        if (response) {
-          if ((response as any).data) payload = (response as any).data.profile || (response as any).data;
-          if (!payload && (response as any).profile) payload = (response as any).profile;
-          if (!payload && (response as any).first_name) payload = response;
-        }
-        if (payload) {
-          console.log("[HodProfile] Fetched backend profile:", payload);
-          
-          const mappedProfile: Profile = {
-            first_name: payload.first_name || "",
-            last_name: payload.last_name || "",
-            email: payload.email || payload.username || "",
-            mobile_number: payload.mobile_number || payload.mobile || "",
-            address: payload.address || "",
-            bio: payload.bio || "",
-            role: payload.role || "",
-            department: payload.department || "",
-            designation: payload.designation || "",
-            joining_date: convertToISODate(payload.joining_date),
-            office_location: payload.office_location || "",
-            office_hours: payload.office_hours || "",
-            employment_type: payload.employment_type || "",
-            staff_status: payload.staff_status || "",
-            gender: payload.gender || "",
-            blood_group: payload.blood_group || "",
-            date_of_birth: convertToISODate(payload.date_of_birth),
-            managed_departments: payload.managed_departments || "",
-            assigned_batches: payload.assigned_batches || "",
-            reporting_faculty_count: payload.reporting_faculty_count ? String(payload.reporting_faculty_count) : "",
-            access_level: payload.access_level || "",
-            work_shift: payload.work_shift || "",
-          };
-          
-          setProfile(mappedProfile);
-          console.log("[HodProfile] Mapped profile data:", mappedProfile);
-          
-          if (payload.documents) {
-            const processedDocs: Record<string, string> = {};
-            const baseUrl = API_ENDPOINT.replace("/api", "");
-            Object.entries(payload.documents).forEach(([key, url]) => {
-              if (url && typeof url === "string") {
-                processedDocs[key] = url.startsWith("http") ? url : `${baseUrl}${url}`;
-              }
-            });
-            setDocuments((p) => ({ ...p, ...processedDocs }));
-            console.log("[HodProfile] Loaded documents:", processedDocs);
+        const userData = localStorage.getItem("user");
+        if (userData) {
+          const p = JSON.parse(userData);
+          if (p.user_id) {
+            currentUser = { user_id: p.user_id, username: p.username || p.first_name || "", email: p.email || "", role: p.role || "hod" };
+            setFetchedUser(currentUser);
           }
-        } else {
-          console.error("[HodProfile] API response unsuccessful or missing payload:", response);
         }
-      } catch (err) {
-        console.error("[HodProfile] Fetch Profile Error:", err);
-        setLocalError("Network error");
-      } finally {
-        setLoading(false);
+      } catch { /* ignore */ }
+    }
+
+    setLoading(true);
+    try {
+      const response = await manageProfile({}, "GET");
+      let payload: any = null;
+      if (response) {
+        if ((response as any).data) payload = (response as any).data.profile || (response as any).data;
+        if (!payload && (response as any).profile) payload = (response as any).profile;
+        if (!payload && (response as any).first_name) payload = response;
       }
-    };
+      if (payload) {
+        console.log("[HodProfile] Fetched backend profile:", payload);
+        
+        const mappedProfile: Profile = {
+          first_name: payload.first_name || "",
+          last_name: payload.last_name || "",
+          email: payload.email || payload.username || "",
+          mobile_number: payload.mobile_number || payload.mobile || "",
+          address: payload.address || "",
+          bio: payload.bio || "",
+          role: payload.role || "",
+          department: payload.department || "",
+          designation: payload.designation || "",
+          qualification: payload.qualification || "",
+          experience_years: payload.experience_years ? String(payload.experience_years) : "",
+          joining_date: convertToISODate(payload.joining_date),
+          office_location: payload.office_location || "",
+          office_hours: payload.office_hours || "",
+          employment_type: payload.employment_type || "",
+          staff_status: payload.staff_status || "",
+          gender: payload.gender || "",
+          blood_group: payload.blood_group || "",
+          date_of_birth: convertToISODate(payload.date_of_birth),
+          managed_departments: payload.managed_departments || "",
+          assigned_batches: payload.assigned_batches || "",
+          reporting_faculty_count: payload.reporting_faculty_count ? String(payload.reporting_faculty_count) : "",
+          access_level: payload.access_level || "",
+          work_shift: payload.work_shift || "",
+        };
+        
+        setProfile(mappedProfile);
+        console.log("[HodProfile] Mapped profile data:", mappedProfile);
+        
+        if (payload.documents) {
+          const processedDocs: Record<string, string> = {};
+          const baseUrl = API_ENDPOINT.replace("/api", "");
+          Object.entries(payload.documents).forEach(([key, url]) => {
+            if (url && typeof url === "string") {
+              processedDocs[key] = url.startsWith("http") ? url : `${baseUrl}${url}`;
+            }
+          });
+          setDocuments((p) => ({ ...p, ...processedDocs }));
+          console.log("[HodProfile] Loaded documents:", processedDocs);
+        }
+      } else {
+        console.error("[HodProfile] API response unsuccessful or missing payload:", response);
+      }
+    } catch (err) {
+      console.error("[HodProfile] Fetch Profile Error:", err);
+      setLocalError("Network error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProfile();
   }, [propUser]);
 
@@ -326,7 +329,7 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
     const updates: any = {};
     const fields: (keyof Profile)[] = [
       "first_name", "last_name", "email", "mobile_number", "address", "bio",
-      "department", "designation", "joining_date", "office_location",
+      "department", "designation", "qualification", "experience_years", "joining_date", "office_location",
       "office_hours", "employment_type", "staff_status",
       "gender", "blood_group", "date_of_birth",
       "managed_departments", "assigned_batches", "reporting_faculty_count",
@@ -346,9 +349,10 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
     try {
       const response = await manageProfile(updates, "PATCH");
       if (response.success && response.data) {
-        setProfile((prev) => ({ ...prev, ...(response.data as Partial<Profile>) }));
         showSuccessAlert("Success", "Profile saved successfully");
         setEditing(false);
+        // Re-fetch to ensure all fields are synchronized
+        await fetchProfile();
       } else {
         showErrorAlert("Error", response.message || "Failed to save profile");
       }
@@ -603,6 +607,8 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FieldRow label="Department" value={profile.department || ""} onChange={(v) => handleChange("department", v)} readOnly={!editing} theme={theme} />
                         <FieldRow label="Designation" value={profile.designation || ""} onChange={(v) => handleChange("designation", v)} readOnly={!editing} theme={theme} />
+                        <FieldRow label="Qualification" value={profile.qualification || ""} onChange={(v) => handleChange("qualification", v)} readOnly={!editing} theme={theme} />
+                        <FieldRow label="Experience (Years)" type="number" value={profile.experience_years || ""} onChange={(v) => handleChange("experience_years", v)} readOnly={!editing} theme={theme} />
                         <FieldRow label="Joining Date" type="date" value={profile.joining_date || ""} onChange={(v) => handleChange("joining_date", v)} readOnly={!editing} theme={theme} />
                         <FieldRow label="Office Location" value={profile.office_location || ""} onChange={(v) => handleChange("office_location", v)} readOnly={!editing} theme={theme} />
                         <FieldRow label="Office Hours" value={profile.office_hours || ""} onChange={(v) => handleChange("office_hours", v)} readOnly={!editing} theme={theme} placeholder="e.g. Mon–Fri 9am–5pm" />
