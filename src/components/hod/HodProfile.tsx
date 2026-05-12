@@ -32,7 +32,7 @@ interface Profile {
   employment_type?: string; staff_status?: string;
   gender?: string; blood_group?: string; date_of_birth?: string;
   // Counselor-specific
-  managed_departments?: string; assigned_batches?: string; reporting_faculty_count?: string;
+  managed_departments?: string; assigned_batches?: string;
   // MIS-specific
   access_level?: string; work_shift?: string;
 }
@@ -192,7 +192,7 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
     department: "", designation: "", joining_date: "", office_location: "",
     office_hours: "", employment_type: "", staff_status: "",
     gender: "", blood_group: "", date_of_birth: "",
-    managed_departments: "", assigned_batches: "", reporting_faculty_count: "",
+    managed_departments: "", assigned_batches: "",
     access_level: "", work_shift: "",
   });
   const [localError, setLocalError] = useState<string | null>(null);
@@ -278,7 +278,7 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
           date_of_birth: convertToISODate(payload.date_of_birth),
           managed_departments: payload.managed_departments || "",
           assigned_batches: payload.assigned_batches || "",
-          reporting_faculty_count: payload.reporting_faculty_count ? String(payload.reporting_faculty_count) : "",
+
           access_level: payload.access_level || "",
           work_shift: payload.work_shift || "",
         };
@@ -332,7 +332,7 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
       "department", "designation", "qualification", "experience_years", "joining_date", "office_location",
       "office_hours", "employment_type", "staff_status",
       "gender", "blood_group", "date_of_birth",
-      "managed_departments", "assigned_batches", "reporting_faculty_count",
+      "managed_departments", "assigned_batches",
       "access_level", "work_shift",
     ];
     fields.forEach((f) => {
@@ -626,7 +626,7 @@ const HodProfile = ({ user: propUser, setError }: { user?: User; setError?: (err
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <FieldRow label="Managed Departments" value={profile.managed_departments || ""} onChange={(v) => handleChange("managed_departments", v)} readOnly={!editing} theme={theme} />
                               <FieldRow label="Assigned Batches" value={profile.assigned_batches || ""} onChange={(v) => handleChange("assigned_batches", v)} readOnly={!editing} theme={theme} />
-                              <FieldRow label="Reporting Faculty Count" value={profile.reporting_faculty_count || ""} onChange={(v) => handleChange("reporting_faculty_count", v)} readOnly={!editing} theme={theme} />
+                
                             </div>
                           </div>
                         </>
