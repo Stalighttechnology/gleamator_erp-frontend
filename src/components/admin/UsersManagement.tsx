@@ -327,13 +327,10 @@ const UserProfileModal: React.FC<{ user: User | null; open: boolean; onClose: ()
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
                           {user.role === "hod" ? (
                             <>
-                              <InfoRow label="Managed Depts" value={user.extra?.managed_departments} />
                               <InfoRow label="Assigned Batches" value={user.extra?.assigned_batches} />
-                              <InfoRow label="Reporting Faculty" value={user.extra?.reporting_faculty_count} />
                             </>
                           ) : (
                             <>
-                              <InfoRow label="Access Level" value={user.extra?.access_level} />
                               <InfoRow label="Work Shift" value={user.extra?.work_shift} />
                             </>
                           )}
