@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { API_ENDPOINT } from "@/utils/config";
+
 import {
   Card,
   CardContent,
@@ -254,7 +256,7 @@ const TakeAttendance = () => {
               <TabsContent value="manual">
                 {loadingStudents ? (
                   <div className="mt-4">
-                    <SkeletonTable rows={5} columns={3} />
+                    <SkeletonTable rows={5} cols={3} />
                   </div>
                 ) : students.length > 0 ? (
                   <>
