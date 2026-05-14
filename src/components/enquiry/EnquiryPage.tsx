@@ -2,10 +2,21 @@
 import React, { useState, useEffect } from 'react';
 import { Enquiry } from './types';
 import { api } from './api';
+import { useTheme } from '@/context/ThemeContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 export const EnquiryPage: React.FC = () => {
+  const { theme } = useTheme();
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -15,12 +26,56 @@ export const EnquiryPage: React.FC = () => {
     fee_status: 'pending' as const,
     notes: '',
   });
+  const [phoneError, setPhoneError] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
     loadEnquiries();
   }, []);
+
+  const validatePhoneNumber = (phone: string): boolean => {
+    // Remove whitespace
+    const cleanPhone = phone.trim();
+    
+    // Check: exactly 10 digits
+    if (!/^\d{10}$/.test(cleanPhone)) {
+      return false;
+    }
+    
+    // Check: first digit is 6-9 (Indian mobile number standard)
+    const firstDigit = parseInt(cleanPhone[0]);
+    if (firstDigit < 6 || firstDigit > 9) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Allow only digits
+    const digitsOnly = value.replace(/\D/g, '');
+    
+    // Limit to 10 digits
+    const limitedValue = digitsOnly.slice(0, 10);
+    
+    setForm({ ...form, phone: limitedValue });
+    
+    // Validate as user types
+    if (limitedValue.length === 10) {
+      if (!validatePhoneNumber(limitedValue)) {
+        setPhoneError('Enter valid 10-digit mobile number');
+      } else {
+        setPhoneError('');
+      }
+    } else if (limitedValue.length > 0) {
+      setPhoneError('');
+    } else {
+      setPhoneError('');
+    }
+  };
 
   const loadEnquiries = async () => {
     try {
@@ -38,6 +93,14 @@ export const EnquiryPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate phone if provided
+    if (form.phone && !validatePhoneNumber(form.phone)) {
+      setPhoneError('Enter valid 10-digit mobile number');
+      setError('Phone number validation failed');
+      return;
+    }
+    
     try {
       setError('');
       setSuccess('');
@@ -53,6 +116,7 @@ export const EnquiryPage: React.FC = () => {
           fee_status: 'pending',
           notes: '',
         });
+        setPhoneError('');
         loadEnquiries();
       }
     } catch (err) {
@@ -60,13 +124,24 @@ export const EnquiryPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure?')) return;
+  const handleDeleteClick = (id: number) => {
+    setDeleteId(id);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (deleteId === null) return;
+    
     try {
-      await api.deleteEnquiry(id);
+      setError('');
+      setSuccess('');
+      await api.deleteEnquiry(deleteId);
+      setSuccess('Enquiry deleted successfully');
+      setDeleteId(null);
       loadEnquiries();
     } catch (err) {
-      setError('Failed to delete enquiry');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete enquiry';
+      setError(errorMessage);
+      setDeleteId(null);
     }
   };
 
@@ -79,7 +154,8 @@ export const EnquiryPage: React.FC = () => {
         loadEnquiries();
       }
     } catch (err) {
-      setError('Failed to convert enquiry');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to convert enquiry';
+      setError(errorMessage);
     }
   };
 
@@ -88,7 +164,7 @@ export const EnquiryPage: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold text-black mb-2">
             Enquiry Management
           </h1>
           <p className="text-slate-600">Create and manage student enquiries</p>
@@ -133,11 +209,18 @@ export const EnquiryPage: React.FC = () => {
                   <input
                     type="tel"
                     required
+                    inputMode="numeric"
                     value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                    placeholder="10-digit number"
+                    onChange={handlePhoneChange}
+                    className={`w-full px-4 py-2 rounded-lg border ${
+                      phoneError ? 'border-red-500' : 'border-slate-300'
+                    } focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition`}
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
                   />
+                  {phoneError && (
+                    <p className="mt-1 text-xs text-red-500">{phoneError}</p>
+                  )}
                 </div>
 
                 <div>
@@ -214,7 +297,7 @@ export const EnquiryPage: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:shadow-lg transition transform hover:scale-105"
+                  className="w-full text-white bg-primary hover:bg-[#9147e0] border-primary font-semibold py-2.5 rounded-lg transition"
                 >
                   Create Enquiry
                 </button>
@@ -299,7 +382,7 @@ export const EnquiryPage: React.FC = () => {
                                 {enq.is_converted ? 'Converted' : 'Convert'}
                               </button>
                               <button
-                                onClick={() => handleDelete(enq.id)}
+                                onClick={() => handleDeleteClick(enq.id)}
                                 className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition"
                               >
                                 Delete
@@ -316,6 +399,54 @@ export const EnquiryPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
+        <DialogContent
+          className={`${
+            theme === 'dark'
+              ? 'bg-card border border-border text-foreground'
+              : 'bg-white border border-slate-200 text-slate-900'
+          } w-[92%] max-w-[420px] rounded-lg mx-auto`}
+        >
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+          </DialogHeader>
+          <p
+            className={`${
+              theme === 'dark' ? 'text-muted-foreground' : 'text-slate-600'
+            }`}
+          >
+            Are you sure you want to delete this enquiry?
+          </p>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteId(null)}
+              disabled={loading}
+              className={
+                theme === 'dark'
+                  ? 'text-foreground bg-card border border-border hover:bg-accent'
+                  : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
+              }
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={loading}
+              className={
+                theme === 'dark'
+                  ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }
+            >
+              {loading ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

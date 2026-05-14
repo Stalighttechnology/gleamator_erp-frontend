@@ -14,10 +14,23 @@ async function request<T>(
     },
   });
 
+  // Handle 204 No Content response (successful delete operations)
+  if (response.status === 204) {
+    return { success: true, data: null as T };
+  }
+
   const contentType = response.headers.get('content-type') || '';
-  const payload = contentType.includes('application/json')
-    ? await response.json()
-    : null;
+  let payload = null;
+  
+  // Only try to parse JSON if content-type indicates JSON and there's a body
+  if (contentType.includes('application/json') && response.status !== 204) {
+    try {
+      payload = await response.json();
+    } catch (error) {
+      console.error('Failed to parse JSON response:', error);
+      payload = null;
+    }
+  }
 
   if (!response.ok) {
     const message = payload?.message || payload?.detail || `API Error: ${response.status}`;

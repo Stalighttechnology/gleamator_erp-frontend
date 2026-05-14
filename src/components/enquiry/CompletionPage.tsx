@@ -132,7 +132,7 @@ export const CompletionPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold text-black mb-2">
             Course Completion Tracking
           </h1>
           <p className="text-slate-600">Update and monitor student progress</p>
