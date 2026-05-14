@@ -38,7 +38,7 @@ interface FacultyAssignment {
 const TakeAttendance = () => {
   const { toast } = useToast();
   const { theme } = useTheme();
-  
+
   const [batches, setBatches] = useState<any[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -247,108 +247,108 @@ const TakeAttendance = () => {
             {/* Tabs for Manual and AI Entry - Only show after selection */}
             {selectedBatch ? (
               <Tabs defaultValue="manual">
-              <TabsList className={`inline-flex h-10 items-center justify-start gap-2 rounded-md p-1 overflow-auto ${theme === 'dark' ? 'bg-muted text-muted-foreground' : 'bg-gray-100 text-gray-500'}`}>
-                <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-                <TabsTrigger value="ai">AI Processing</TabsTrigger>
-              </TabsList>
+                <TabsList className={`inline-flex h-10 items-center justify-start gap-2 rounded-md p-1 overflow-auto ${theme === 'dark' ? 'bg-muted text-muted-foreground' : 'bg-gray-100 text-gray-500'}`}>
+                  <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                  <TabsTrigger value="ai">AI Processing</TabsTrigger>
+                </TabsList>
 
-              {/* Manual Entry Tab */}
-              <TabsContent value="manual">
-                {loadingStudents ? (
-                  <div className="mt-4">
-                    <SkeletonTable rows={5} cols={3} />
-                  </div>
-                ) : students.length > 0 ? (
-                  <>
-                    <div className={`border rounded-lg p-4 mt-4 space-y-2 max-h-96 overflow-y-auto ${theme === 'dark' ? 'border-border' : 'border-gray-200'}`}>
-                      {students.map(student => (
-                        <div key={student.id} className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
-                          <input
-                            type="checkbox"
-                            checked={attendance[student.id] || false}
-                            onChange={(e) => handleAttendance(student.id, e.target.checked)}
-                            className="w-4 h-4"
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium text-sm">{student.name}</div>
-                            <div className={`text-xs ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>{student.usn}</div>
-                          </div>
-                          <div className="text-xs">
-                            {attendance[student.id] ? (
-                              <span className={`px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-800'}`}>Present</span>
-                            ) : (
-                              <span className={`px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-gray-500/20 text-gray-400' : 'bg-gray-100 text-gray-800'}`}>Absent</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                {/* Manual Entry Tab */}
+                <TabsContent value="manual">
+                  {loadingStudents ? (
+                    <div className="mt-4">
+                      <SkeletonTable rows={5} cols={3} />
                     </div>
+                  ) : students.length > 0 ? (
+                    <>
+                      <div className={`border rounded-lg p-4 mt-4 space-y-2 max-h-96 overflow-y-auto ${theme === 'dark' ? 'border-border' : 'border-gray-200'}`}>
+                        {students.map(student => (
+                          <div key={student.id} className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+                            <input
+                              type="checkbox"
+                              checked={attendance[student.id] || false}
+                              onChange={(e) => handleAttendance(student.id, e.target.checked)}
+                              className="w-4 h-4"
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{student.name}</div>
+                              <div className={`text-xs ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>{student.usn}</div>
+                            </div>
+                            <div className="text-xs">
+                              {attendance[student.id] ? (
+                                <span className={`px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-800'}`}>Present</span>
+                              ) : (
+                                <span className={`px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-gray-500/20 text-gray-400' : 'bg-gray-100 text-gray-800'}`}>Absent</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
 
-                    {errorMsg && <div className={`text-sm p-3 mt-3 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>{errorMsg}</div>}
-
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={submitting || students.length === 0}
-                      className="w-full mt-4"
-                    >
-                      {submitting ? "Submitting..." : "Submit Attendance"}
-                    </Button>
-                  </>
-                ) : (
-                  <div className={`text-center p-6 mt-4 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
-                    {batches.length === 0 ? (
-                      'No batches available'
-                    ) : (selectedBatch ? 'No students found for this batch' : 'Select a batch to load students')}
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* AI Tab */}
-              <TabsContent value="ai">
-                <div className="mt-4 space-y-4">
-                  <div className={`border rounded-lg p-6 text-center ${theme === 'dark' ? 'border-border' : 'border-gray-200'}`}>
-                    <UploadCloud className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <h3 className="text-lg font-medium mb-2">AI Attendance Processing</h3>
-                    <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>
-                      Upload a class photo for automatic attendance marking
-                    </p>
-
-                    <div className="flex flex-col gap-3">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        className="hidden"
-                        id="photo-upload"
-                      />
-                      <label
-                        htmlFor="photo-upload"
-                        className={`px-4 py-2 border rounded-md cursor-pointer text-center ${theme === 'dark' ? 'border-border hover:bg-accent' : 'border-gray-300 hover:bg-gray-100'}`}
-                      >
-                        {aiPhoto ? aiPhoto.name : "Upload Photo"}
-                      </label>
+                      {errorMsg && <div className={`text-sm p-3 mt-3 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>{errorMsg}</div>}
 
                       <Button
-                        onClick={handleAIProcess}
-                        disabled={processingAI || !aiPhoto}
+                        onClick={handleSubmit}
+                        disabled={submitting || students.length === 0}
+                        className="w-full mt-4"
                       >
-                        {processingAI ? "Processing..." : "Process with AI"}
+                        {submitting ? "Submitting..." : "Submit Attendance"}
                       </Button>
+                    </>
+                  ) : (
+                    <div className={`text-center p-6 mt-4 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                      {batches.length === 0 ? (
+                        'No batches available'
+                      ) : (selectedBatch ? 'No students found for this batch' : 'Select a batch to load students')}
                     </div>
+                  )}
+                </TabsContent>
 
-                    {aiResults && (
-                      <div className="mt-4 text-left">
-                        <h4 className="font-medium mb-2">Results:</h4>
-                        <pre className={`text-sm overflow-auto p-3 rounded ${theme === 'dark' ? 'bg-muted' : 'bg-gray-100'}`}>
-                          {JSON.stringify(aiResults, null, 2)}
-                        </pre>
+                {/* AI Tab */}
+                <TabsContent value="ai">
+                  <div className="mt-4 space-y-4">
+                    <div className={`border rounded-lg p-6 text-center ${theme === 'dark' ? 'border-border' : 'border-gray-200'}`}>
+                      <UploadCloud className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <h3 className="text-lg font-medium mb-2">AI Attendance Processing</h3>
+                      <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-600'}`}>
+                        Upload a class photo for automatic attendance marking
+                      </p>
+
+                      <div className="flex flex-col gap-3">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
+                          id="photo-upload"
+                        />
+                        <label
+                          htmlFor="photo-upload"
+                          className={`px-4 py-2 border rounded-md cursor-pointer text-center ${theme === 'dark' ? 'border-border hover:bg-accent' : 'border-gray-300 hover:bg-gray-100'}`}
+                        >
+                          {aiPhoto ? aiPhoto.name : "Upload Photo"}
+                        </label>
+
+                        <Button
+                          onClick={handleAIProcess}
+                          disabled={processingAI || !aiPhoto}
+                        >
+                          {processingAI ? "Processing..." : "Process with AI"}
+                        </Button>
                       </div>
-                    )}
 
-                    {errorMsg && <div className={`text-sm p-3 mt-3 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>{errorMsg}</div>}
+                      {aiResults && (
+                        <div className="mt-4 text-left">
+                          <h4 className="font-medium mb-2">Results:</h4>
+                          <pre className={`text-sm overflow-auto p-3 rounded ${theme === 'dark' ? 'bg-muted' : 'bg-gray-100'}`}>
+                            {JSON.stringify(aiResults, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+
+                      {errorMsg && <div className={`text-sm p-3 mt-3 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>{errorMsg}</div>}
+                    </div>
                   </div>
-                </div>
-              </TabsContent>
+                </TabsContent>
               </Tabs>
             ) : (
               <div className={`p-10 text-center border-2 border-dashed rounded-xl ${theme === 'dark' ? 'border-border text-muted-foreground' : 'border-gray-200 text-gray-500'}`}>
