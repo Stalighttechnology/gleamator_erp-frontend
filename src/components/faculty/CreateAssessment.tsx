@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithTokenRefresh } from "@/utils/authService";
+import { API_ENDPOINT } from "@/utils/config";
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
@@ -171,7 +172,7 @@ const CreateAssessment = () => {
       setSaving(true);
       const payload = buildPayload();
 
-      const response = await fetchWithTokenRefresh('/api/assessment/assessments/', {
+      const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/assessments/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -179,14 +180,23 @@ const CreateAssessment = () => {
 
       if (!response.ok) throw new Error('Failed to save assessment');
 
-      const result = await response.json();
-      if (status === 'pending_approval') {
-        const approvalResponse = await fetchWithTokenRefresh(`/api/assessment/assessments/${result.assessment_id}/submit-approval/`, {
+      const text = await response.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        throw new Error('Failed to parse response JSON: ' + text.substring(0, 100));
+      }
+
+      if (status === 'pending_approval' && result.assessment_id) {
+        const approvalResponse = await fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/assessments/${result.assessment_id}/submit-approval/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         });
 
         if (!approvalResponse.ok) throw new Error('Failed to submit assessment for approval');
+        const approvalText = await approvalResponse.text();
+        try { JSON.parse(approvalText); } catch (e) {}
       }
 
       MySwal.fire({

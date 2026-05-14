@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithTokenRefresh } from "@/utils/authService";
+import { API_ENDPOINT } from "@/utils/config";
 import { Calendar, Clock, Users } from "lucide-react";
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
@@ -70,21 +71,21 @@ const AssignAssessment = () => {
     try {
       setLoading(true);
 
-      const assessmentsRes = await fetchWithTokenRefresh('/api/assessment/assessments/?status=all');
+      const assessmentsRes = await fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/assessments/?status=all`);
       if (assessmentsRes.ok) {
         const assessmentsData = await assessmentsRes.json();
         const list = assessmentsData.results?.assessments || assessmentsData.assessments || assessmentsData.results || assessmentsData;
         setAssessments(Array.isArray(list) ? list : []);
       }
 
-      const batchesRes = await fetchWithTokenRefresh('/api/assessment/batches/');
+      const batchesRes = await fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/batches/`);
       if (batchesRes.ok) {
         const batchesData = await batchesRes.json();
         const list = batchesData.results?.batches || batchesData.batches || batchesData.results || batchesData;
         setBatches(Array.isArray(list) ? list : []);
       }
 
-      const assignmentsRes = await fetchWithTokenRefresh('/api/assessment/assignments/');
+      const assignmentsRes = await fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/assignments/`);
       if (assignmentsRes.ok) {
         const assignmentsData = await assignmentsRes.json();
         const list = assignmentsData.results?.assignments || assignmentsData.assignments || assignmentsData.results || assignmentsData;
@@ -114,7 +115,7 @@ const AssignAssessment = () => {
     let mounted = true;
     const fetchStudents = async () => {
       try {
-        const res = await fetchWithTokenRefresh(`/api/faculty/students/?batch_id=${batchId}`);
+        const res = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/students/?batch_id=${batchId}`);
         const json = await res.json();
         const list = json.results?.data || json.data || json.results || json || [];
         if (!mounted) return;
@@ -196,7 +197,7 @@ const AssignAssessment = () => {
         student_ids: selectedStudents,
       };
 
-      const response = await fetchWithTokenRefresh('/api/assessment/assignments/', {
+      const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/assignments/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
