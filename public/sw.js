@@ -18,17 +18,7 @@ self.addEventListener('fetch', (event) => {
       url.hostname === 'localhost' || 
       url.hostname === '127.0.0.1') {
     console.log("[SW] Skipping cache for API route:", request.url);
-    event.respondWith(fetch(request).catch(() => {
-      console.error("[SW] API fetch failed:", request.url);
-      return new Response(JSON.stringify({ 
-        success: false, 
-        message: "Network error" 
-      }), {
-        status: 0,
-        statusText: "Network Unavailable",
-        headers: { "Content-Type": "application/json" }
-      });
-    }));
+    event.respondWith(fetch(request));
     return;
   }
 

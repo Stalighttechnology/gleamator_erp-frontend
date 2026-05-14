@@ -4,6 +4,7 @@ import { Download, FileText, UploadCloud, X } from "lucide-react";
 import { getStudyMaterials, uploadStudyMaterial, getSections } from "../../utils/faculty_api";
 import { useTheme } from "../../context/ThemeContext";
 import { fetchWithTokenRefresh } from "@/utils/authService";
+import { API_ENDPOINT } from "@/utils/config";
 import {
   Select,
   SelectContent,
@@ -124,7 +125,7 @@ const StudyMaterialsFaculty = () => {
   useEffect(() => {
     const loadBatches = async () => {
       try {
-        const res = await fetchWithTokenRefresh('/api/assessment/batches/');
+        const res = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/batches/`);
         if (!res.ok) {
           setBatches([]);
           return;
@@ -150,7 +151,7 @@ const StudyMaterialsFaculty = () => {
     let mounted = true;
     const fetchStudents = async () => {
       try {
-        const res = await fetchWithTokenRefresh(`/api/faculty/students/?batch_id=${batchId}`);
+        const res = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/students/?batch_id=${batchId}`);
         if (!res.ok) {
           if (mounted) setStudents([]);
           return;

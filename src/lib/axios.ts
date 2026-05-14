@@ -1,7 +1,8 @@
 import axios from "axios";
+import { API_ENDPOINT } from "@/utils/config";
 
 const API = axios.create({
-  baseURL: "http://127.0.0.1:8000/api",
+  baseURL: API_ENDPOINT,
 });
 
 // Attach token automatically
