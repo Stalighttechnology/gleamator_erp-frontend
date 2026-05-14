@@ -123,8 +123,13 @@ const EnrollUser = ({ setError, toast }: EnrollUserProps) => {
     };
 
     try {
+      console.log("[EnrollUser Component] Submitting form with payload:", payload);
       const response = await enrollUser(payload);
+      
+      console.log("[EnrollUser Component] Received response:", response);
+      
       if (response.success) {
+        console.log("[EnrollUser Component] Enrollment successful");
         toast({ title: "Success", description: "User enrolled successfully" });
         setFormData({
           email: "",
@@ -135,6 +140,7 @@ const EnrollUser = ({ setError, toast }: EnrollUserProps) => {
           designation: "",
         });
       } else {
+        console.error("[EnrollUser Component] Enrollment failed:", response.message);
         setError(response.message || "Failed to enroll staff");
         toast({
           variant: "destructive",
@@ -143,11 +149,16 @@ const EnrollUser = ({ setError, toast }: EnrollUserProps) => {
         });
       }
     } catch (err) {
+      console.error("[EnrollUser Component] Exception during enrollment:", {
+        name: err instanceof Error ? err.name : "Unknown",
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
       setError("Network error while enrolling staff");
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Network error while enrolling user",
+        description: err instanceof Error ? err.message : "Network error while enrolling user",
       });
     } finally {
       setLoading(false);

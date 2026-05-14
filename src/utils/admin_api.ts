@@ -227,7 +227,11 @@ export const getAdminStats = async (): Promise<AdminStatsResponse> => {
 
 export const enrollUser = async (data: EnrollUserRequest): Promise<EnrollUserResponse> => {
   try {
-    const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/admin/enroll-user/`, {
+    console.log("[Enroll User] Starting request with payload:", data);
+    const url = `${API_ENDPOINT}/admin/enroll-user/`;
+    console.log("[Enroll User] API URL:", url);
+    
+    const response = await fetchWithTokenRefresh(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
@@ -235,15 +239,34 @@ export const enrollUser = async (data: EnrollUserRequest): Promise<EnrollUserRes
       },
       body: JSON.stringify(data),
     });
+    
+    console.log("[Enroll User] Response Status:", response.status, response.statusText);
+    
     const result = await response.json();
+    console.log("[Enroll User] Response Body:", result);
+    
     if (!response.ok) {
-      console.error("Enroll User Failed:", { status: response.status, result });
-      return { success: false, message: result.message || `HTTP ${response.status}` };
+      console.error("[Enroll User] API Error:", { 
+        status: response.status, 
+        statusText: response.statusText,
+        message: result.message, 
+        error: result.error 
+      });
+      return { 
+        success: false, 
+        message: result.message || result.error || `HTTP ${response.status}: ${response.statusText}` 
+      };
     }
+    
+    console.log("[Enroll User] Success - User enrolled");
     return result;
   } catch (error) {
-    console.error("Enroll User Error:", error);
-    return { success: false, message: "Network error" };
+    console.error("[Enroll User] Fetch Error:", {
+      name: error instanceof Error ? error.name : "Unknown",
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    return { success: false, message: error instanceof Error ? error.message : "Network error" };
   }
 };
 

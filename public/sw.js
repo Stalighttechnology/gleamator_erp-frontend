@@ -11,6 +11,26 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  const url = new URL(request.url);
+
+  // Skip caching for API routes (localhost or any /api/ requests)
+  if (url.pathname.startsWith('/api/') || 
+      url.hostname === 'localhost' || 
+      url.hostname === '127.0.0.1') {
+    console.log("[SW] Skipping cache for API route:", request.url);
+    event.respondWith(fetch(request).catch(() => {
+      console.error("[SW] API fetch failed:", request.url);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: "Network error" 
+      }), {
+        status: 0,
+        statusText: "Network Unavailable",
+        headers: { "Content-Type": "application/json" }
+      });
+    }));
+    return;
+  }
 
   // Only handle navigation requests for SPA fallback
   if (request.mode === 'navigate') {
@@ -23,15 +43,53 @@ self.addEventListener('fetch', (event) => {
           return caches.match('/index.html') || fetch('/index.html');
         })
         .catch(() => {
+          console.error("[SW] Navigation fetch failed, returning cached index.html");
           return caches.match('/index.html') || fetch('/index.html');
         })
     );
     return;
   }
 
-  // For other requests, try cache first, then network as usual
-  event.respondWith(
-    caches.match(request)
-      .then((response) => response || fetch(request))
-  );
+  // For other requests (non-API, non-navigate)
+  // Only cache successful GET requests
+  if (request.method === 'GET') {
+    event.respondWith(
+      caches.match(request)
+        .then((response) => {
+          if (response) {
+            console.log("[SW] Cache hit for:", request.url);
+            return response;
+          }
+          
+          return fetch(request).then((networkResponse) => {
+            // Only cache successful responses
+            if (!networkResponse || !networkResponse.ok) {
+              console.warn("[SW] Not caching failed response for:", request.url, networkResponse?.status);
+              return networkResponse;
+            }
+            
+            // Cache successful response
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache);
+              console.log("[SW] Cached:", request.url);
+            });
+            
+            return networkResponse;
+          }).catch((error) => {
+            console.error("[SW] Network request failed for:", request.url, error);
+            // Fall back to cached version if available
+            return caches.match(request) || fetch(request);
+          });
+        })
+    );
+    return;
+  }
+
+  // For non-GET requests (POST, PUT, DELETE, etc.), never cache
+  console.log("[SW] Not caching non-GET request:", request.method, request.url);
+  event.respondWith(fetch(request).catch((error) => {
+    console.error("[SW] Request failed:", request.method, request.url, error);
+    throw error;
+  }));
 });
