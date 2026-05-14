@@ -11,6 +11,7 @@ import { useToast } from "../../hooks/use-toast";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -72,7 +73,9 @@ const exportBatchesToPDF = (batches: Batch[]) => {
   document.head.appendChild(script);
 };
 
+
 const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, viewOnly = false }) => {
+
   const [batches, setBatches] = useState<Batch[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -87,24 +90,14 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
     courses: string[];
     faculty: string[];
   }>({ name: "", sections: [], courses: [], faculty: [] });
-  
+
   const [availableCourses, setAvailableCourses] = useState<Array<{ id: string; name: string }>>([]);
   const [availableFaculty, setAvailableFaculty] = useState<Array<{ id: string; name: string }>>([]);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<Batch | null>(null);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [viewBatch, setViewBatch] = useState<Batch | null>(null);
 
-  // Students modal state
-  const [students, setStudents] = useState<Array<any>>([]);
-  const [studentsLoading, setStudentsLoading] = useState(false);
-  const [studentsPage, setStudentsPage] = useState(1);
-  const [studentsTotalPages, setStudentsTotalPages] = useState(1);
-  const [studentsTotal, setStudentsTotal] = useState(0);
-  const STUDENTS_PAGE_SIZE = 8;
-  const [facultyPage, setFacultyPage] = useState(1);
-  const FACULTY_PAGE_SIZE = 8;
+
   const { theme } = useTheme();
 
   const fetchBatches = async () => {
@@ -141,9 +134,9 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
         setAvailableCourses(coursesRes.data.subjects.map(s => ({ id: s.id, name: s.name })));
       }
       if (facultyRes.success && facultyRes.data?.faculties) {
-        setAvailableFaculty(facultyRes.data.faculties.map(f => ({ 
-          id: f.id, 
-          name: `${f.first_name} ${f.last_name || ''}`.trim() 
+        setAvailableFaculty(facultyRes.data.faculties.map(f => ({
+          id: f.id,
+          name: `${f.first_name} ${f.last_name || ''}`.trim()
         })));
       }
     } catch (err) {
@@ -161,80 +154,39 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
     fetchBatches();
   }, [currentPage]);
 
-  const openViewDialog = async (batch: Batch) => {
-    setViewBatch(batch);
-    setViewDialogOpen(true);
-    setStudentsPage(1);
-    setFacultyPage(1);
-    await fetchBatchStudents(batch.id, 1);
-  };
-
-  const fetchBatchStudents = async (batchId: number, page: number = 1) => {
-    setStudentsLoading(true);
-    try {
-      const url = `${API_ENDPOINT}/hod/students/?batch_id=${batchId}&page=${page}&page_size=${STUDENTS_PAGE_SIZE}`;
-      const resp = await fetchWithTokenRefresh(url, { method: 'GET' });
-      const result = await resp.json();
-      if (!resp.ok) {
-        setStudents([]);
-        setStudentsTotal(0);
-        setStudentsTotalPages(1);
-      } else {
-        // DRF paginator returns results list directly
-        const hasResults = result && typeof result === 'object' && Array.isArray(result.results);
-        const list = hasResults ? result.results : (Array.isArray(result) ? result : result || []);
-        setStudents(list.map((s: any) => ({
-          usn: s.usn || s.student_id || s.usn,
-          name: s.name || s.user?.first_name || '',
-          email: s.email || s.user?.email || s.user?.email || '',
-          semester: s.semester || s.semester,
-          section: s.section || s.section,
-        })));
-        const pagination = hasResults ? result : result;
-        setStudentsTotal(pagination.count || (Array.isArray(list) ? list.length : 0));
-        setStudentsTotalPages(Math.max(1, Math.ceil((pagination.count || list.length || 0) / STUDENTS_PAGE_SIZE)));
-      }
-    } catch (e) {
-      setStudents([]);
-      setStudentsTotal(0);
-      setStudentsTotalPages(1);
-    } finally {
-      setStudentsLoading(false);
-    }
-  };
-
   const handleAddBatch = async () => {
+
     if (!newBatch.name.trim()) {
-        if (toast) toast({ variant: "destructive", title: "Error", description: "Batch name is required." });
-        return;
+      if (toast) toast({ variant: "destructive", title: "Error", description: "Batch name is required." });
+      return;
     }
 
     if (newBatch.sections.length === 0) {
-        if (toast) toast({ variant: "destructive", title: "Error", description: "At least one section must be selected." });
-        return;
+      if (toast) toast({ variant: "destructive", title: "Error", description: "At least one section must be selected." });
+      return;
     }
 
     setLoading(true);
     try {
-        const res = await manageBatches(
-            {
-                name: newBatch.name,
-                sections: newBatch.sections,
-            },
-            undefined,
-            "POST"
-        );
-        const dataSource = (res as any).results || res;
-        if (dataSource.success) {
-            fetchBatches();
-            setNewBatch({ name: "", sections: [] });
-            if (toast) toast({ title: "Success", description: "Batch added successfully." });
-        } else {
-            if (toast) toast({ variant: "destructive", title: "Error", description: dataSource.message || "Failed to add batch." });
-        }
+      const res = await manageBatches(
+        {
+          name: newBatch.name,
+          sections: newBatch.sections,
+        },
+        undefined,
+        "POST"
+      );
+      const dataSource = (res as any).results || res;
+      if (dataSource.success) {
+        fetchBatches();
+        setNewBatch({ name: "", sections: [] });
+        if (toast) toast({ title: "Success", description: "Batch added successfully." });
+      } else {
+        if (toast) toast({ variant: "destructive", title: "Error", description: dataSource.message || "Failed to add batch." });
+      }
     } catch (err) {
-        console.error("Error adding batch:", err);
-        if (toast) toast({ variant: "destructive", title: "Error", description: "Network error or server issue." });
+      console.error("Error adding batch:", err);
+      if (toast) toast({ variant: "destructive", title: "Error", description: "Network error or server issue." });
     }
     setLoading(false);
   };
@@ -300,8 +252,8 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
               <div className="flex flex-wrap gap-1.5 items-center p-2 border rounded-md bg-white dark:bg-gray-800 flex-1">
                 <span className="text-[10px] font-bold uppercase text-muted-foreground mr-1">Sections:</span>
                 {["A", "B", "C", "D", "E", "F", "G", "H"].map(sec => (
-                  <Badge 
-                    key={sec} 
+                  <Badge
+                    key={sec}
                     variant={newBatch.sections.includes(sec) ? "default" : "outline"}
                     className={`cursor-pointer h-7 w-7 flex items-center justify-center p-0 text-xs transition-all ${newBatch.sections.includes(sec) ? 'bg-primary shadow-sm' : 'hover:bg-primary/5'}`}
                     onClick={() => setNewBatch({ ...newBatch, sections: toggleItem(newBatch.sections, sec) })}
@@ -321,13 +273,13 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
           <div className="flex items-center justify-between">
             <CardTitle>Existing Batches</CardTitle>
             {batches.length > 0 && (
-             <Button
-  onClick={() => exportBatchesToPDF(batches)}
-  size="sm"
-  className="flex items-center gap-2"
->
-  Export PDF
-</Button>
+              <Button
+                onClick={() => exportBatchesToPDF(batches)}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                Export PDF
+              </Button>
             )}
           </div>
         </CardHeader>
@@ -336,13 +288,13 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left border-collapse">
                 <thead>
-                    <tr className="border-b">
-                      <th className="py-3 px-4">Batch Name</th>
-                      <th className="py-3 px-4">Sections</th>
-                      <th className="py-3 px-4">Faculty</th>
-                      <th className="py-3 px-4 text-center">Students</th>
-                      <th className="py-3 px-4 text-right">View</th>
-                    </tr>
+                  <tr className="border-b">
+                    <th className="py-3 px-4">Batch Name</th>
+                    <th className="py-3 px-4">Sections</th>
+                    <th className="py-3 px-4">Faculty</th>
+                    <th className="py-3 px-4 text-center">Students</th>
+                  </tr>
+
                 </thead>
                 <tbody>
                   {batches.map((batch) => (
@@ -378,12 +330,8 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">{batch.student_count}</td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end">
-                          <Button size="sm" variant="outline" onClick={() => openViewDialog(batch)}>View</Button>
-                        </div>
-                      </td>
                     </tr>
+
                   ))}
                 </tbody>
               </table>
@@ -404,6 +352,9 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Batch: {editingBatch?.name}</DialogTitle>
+            <DialogDescription>
+              Update the batch name, sections, courses, and faculty assignments.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-1 gap-4">
@@ -420,8 +371,8 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
                 <label className="text-sm font-medium mb-2 block">Assign Sections</label>
                 <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/20">
                   {["A", "B", "C", "D", "E", "F", "G", "H"].map(sec => (
-                    <Badge 
-                      key={sec} 
+                    <Badge
+                      key={sec}
                       variant={editForm.sections.includes(sec) ? "default" : "outline"}
                       className={`cursor-pointer px-4 py-1.5 text-sm transition-all ${editForm.sections.includes(sec) ? 'bg-primary text-white shadow-md' : 'hover:bg-primary/10'}`}
                       onClick={() => setEditForm({ ...editForm, sections: toggleItem(editForm.sections, sec) })}
@@ -440,7 +391,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[200px] overflow-y-auto p-2 border rounded-lg bg-muted/20">
                 {availableCourses.map(course => (
                   <label key={course.id} className="flex items-center gap-3 p-2 rounded hover:bg-muted cursor-pointer transition-colors">
-                    <div 
+                    <div
                       className={`w-5 h-5 rounded border flex items-center justify-center ${editForm.courses.includes(course.id.toString()) ? 'bg-primary border-primary' : 'border-border'}`}
                       onClick={() => setEditForm({ ...editForm, courses: toggleItem(editForm.courses, course.id.toString()) })}
                     >
@@ -459,7 +410,7 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[200px] overflow-y-auto p-2 border rounded-lg bg-muted/20">
                 {availableFaculty.map(f => (
                   <label key={f.id} className="flex items-center gap-3 p-2 rounded hover:bg-muted cursor-pointer transition-colors">
-                    <div 
+                    <div
                       className={`w-5 h-5 rounded border flex items-center justify-center ${editForm.faculty.includes(f.id.toString()) ? 'bg-primary border-primary' : 'border-border'}`}
                       onClick={() => setEditForm({ ...editForm, faculty: toggleItem(editForm.faculty, f.id.toString()) })}
                     >
@@ -484,6 +435,9 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Batch</DialogTitle>
+            <DialogDescription>
+              This action removes the selected batch from the system.
+            </DialogDescription>
           </DialogHeader>
           <p>Are you sure you want to delete <span className="font-bold">{batchToDelete?.name}</span>?</p>
           <DialogFooter>
@@ -501,78 +455,8 @@ const BatchManagement: React.FC<BatchManagementProps> = ({ setError, toast, view
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* View Batch Members Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Batch Members - {viewBatch?.name}</DialogTitle>
-          </DialogHeader>
-          <div className="p-2 space-y-4">
-            <h4 className="font-medium">Students</h4>
-            <div className="overflow-x-auto">
-              {studentsLoading ? (
-                <div className="p-4">Loading...</div>
-              ) : students.length === 0 ? (
-                <div className="p-4 text-sm text-muted-foreground">No students found</div>
-              ) : (
-                <table className="w-full text-sm text-left">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="py-2 px-3">USN</th>
-                      <th className="py-2 px-3">Name</th>
-                      <th className="py-2 px-3">Email</th>
-                      <th className="py-2 px-3">Semester</th>
-                      <th className="py-2 px-3">Section</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {students.map((s) => (
-                      <tr key={s.usn} className="border-b hover:bg-muted/20">
-                        <td className="py-2 px-3">{s.usn}</td>
-                        <td className="py-2 px-3">{s.name}</td>
-                        <td className="py-2 px-3">{s.email}</td>
-                        <td className="py-2 px-3">{s.semester}</td>
-                        <td className="py-2 px-3">{s.section}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            {/* Students pagination - show only if more than page size */}
-            {studentsTotal > STUDENTS_PAGE_SIZE && (
-              <div className="flex items-center justify-end gap-2">
-                <Button size="sm" variant="outline" onClick={async () => { const prev = Math.max(1, studentsPage - 1); setStudentsPage(prev); await fetchBatchStudents(viewBatch!.id, prev); }} disabled={studentsPage <= 1}>Prev</Button>
-                <div className="text-sm text-muted-foreground">Page {studentsPage} of {studentsTotalPages}</div>
-                <Button size="sm" onClick={async () => { const next = Math.min(studentsTotalPages, studentsPage + 1); setStudentsPage(next); await fetchBatchStudents(viewBatch!.id, next); }} disabled={studentsPage >= studentsTotalPages}>Next</Button>
-              </div>
-            )}
-
-            <h4 className="font-medium">Faculty</h4>
-            <div className="grid grid-cols-1 gap-2">
-              {(!viewBatch || !(viewBatch.faculty && viewBatch.faculty.length)) ? (
-                <div className="text-sm text-muted-foreground">No faculty assigned</div>
-              ) : (
-                viewBatch.faculty.slice((facultyPage - 1) * FACULTY_PAGE_SIZE, (facultyPage - 1) * FACULTY_PAGE_SIZE + FACULTY_PAGE_SIZE).map((f: any, idx: number) => (
-                  <div key={idx} className="p-2 border rounded">{f.name}</div>
-                ))
-              )}
-            </div>
-            {/* Faculty pagination - show only if more than page size */}
-            {(viewBatch?.faculty?.length || 0) > FACULTY_PAGE_SIZE && (
-              <div className="flex items-center justify-end gap-2">
-                <Button size="sm" variant="outline" onClick={() => setFacultyPage(p => Math.max(1, p - 1))} disabled={facultyPage <= 1}>Prev</Button>
-                <div className="text-sm text-muted-foreground">Page {facultyPage} of {Math.max(1, Math.ceil((viewBatch?.faculty?.length || 0) / FACULTY_PAGE_SIZE))}</div>
-                <Button size="sm" onClick={() => setFacultyPage(p => Math.min(Math.max(1, Math.ceil((viewBatch?.faculty?.length || 0) / FACULTY_PAGE_SIZE)), p + 1))} disabled={facultyPage >= Math.max(1, Math.ceil((viewBatch?.faculty?.length || 0) / FACULTY_PAGE_SIZE))}>Next</Button>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
+
   );
 };
 
