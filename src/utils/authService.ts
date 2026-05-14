@@ -1,78 +1,5 @@
 import { API_ENDPOINT, TOKEN_REFRESH_TIMEOUT } from "./config";
 
-const API_PATH_PREFIX = "/api";
-
-const resolveApiUrl = (url: string): string => {
-  if (url.startsWith(`${API_PATH_PREFIX}/`) || url === API_PATH_PREFIX) {
-    return `${API_ENDPOINT}${url.slice(API_PATH_PREFIX.length)}`;
-  }
-
-  try {
-    const parsedUrl = new URL(url);
-    const currentOrigin = typeof window !== "undefined" ? window.location.origin : "";
-    if (parsedUrl.origin === currentOrigin && parsedUrl.pathname.startsWith(`${API_PATH_PREFIX}/`)) {
-      return `${API_ENDPOINT}${parsedUrl.pathname.slice(API_PATH_PREFIX.length)}${parsedUrl.search}${parsedUrl.hash}`;
-    }
-  } catch {
-    // Relative non-API URLs should pass through unchanged.
-  }
-
-  return url;
-};
-
-const shouldInspectApiResponse = (url: string, response: Response): boolean => {
-  if (!import.meta.env.PROD || !url.includes("/api/")) return false;
-  const contentType = response.headers.get("content-type") || "";
-  return (
-    contentType.includes("application/json") ||
-    contentType.includes("text/") ||
-    contentType.includes("html")
-  );
-};
-
-const inspectApiResponse = async (response: Response, url: string): Promise<Response> => {
-  if (!shouldInspectApiResponse(url, response)) return response;
-
-  let responseText = "";
-  let parsedJson: unknown = null;
-
-  try {
-    responseText = await response.clone().text();
-    try {
-      parsedJson = responseText ? JSON.parse(responseText) : null;
-    } catch {
-      parsedJson = null;
-    }
-
-    console.log("[API DEBUG] final request URL:", url);
-    console.log("[API DEBUG] response status:", response.status);
-    console.log("[API DEBUG] response text:", responseText);
-    console.log("[API DEBUG] parsed JSON:", parsedJson);
-
-    const contentType = response.headers.get("content-type") || "";
-    const looksLikeHtml = contentType.includes("html") || responseText.trim().startsWith("<");
-    if (looksLikeHtml) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: "Expected JSON from API but received HTML response",
-          request_url: url,
-          status: response.status,
-        }),
-        {
-          status: response.ok ? 502 : response.status,
-          statusText: response.statusText,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-  } catch (error) {
-    console.warn("[API DEBUG] Failed to inspect API response:", url, error);
-  }
-
-  return response;
-};
-
 // Type definitions for request and response data
 interface AuthResponse {
   success: boolean;
@@ -151,7 +78,6 @@ interface RefreshTokenResponse {
 // Wrapper function to handle token refresh on 401 errors
 export const fetchWithTokenRefresh = async (url: string, options: RequestInit = {}): Promise<Response> => {
   try {
-    const finalUrl = resolveApiUrl(url);
     const accessToken = localStorage.getItem("access_token");
     if (!accessToken) {
       throw new Error("No access token available");
@@ -161,7 +87,7 @@ export const fetchWithTokenRefresh = async (url: string, options: RequestInit = 
       Authorization: `Bearer ${accessToken}`,
     };
     options.headers = safeHeaders;
-    const response = await inspectApiResponse(await fetch(finalUrl, options), finalUrl);
+    const response = await fetch(url, options);
 
     if (response.status === 401) {
       const refreshResult = await refreshToken();
@@ -174,7 +100,7 @@ export const fetchWithTokenRefresh = async (url: string, options: RequestInit = 
           ...options.headers,
           Authorization: `Bearer ${refreshResult.access}`,
         };
-        return inspectApiResponse(await fetch(finalUrl, options), finalUrl);
+        return fetch(url, options);
       } else {
         localStorage.clear();
         stopTokenRefresh();

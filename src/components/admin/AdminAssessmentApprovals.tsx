@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithTokenRefresh } from "@/utils/authService";
-import { API_ENDPOINT } from "@/utils/config";
 import { Eye, CheckCircle, XCircle, ChevronDown, ChevronUp, Archive, RefreshCw } from "lucide-react";
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
@@ -65,14 +64,14 @@ const AdminAssessmentApprovals = () => {
   useEffect(() => { if (activeTab === 'pending') fetchPendingAssessments(); else fetchArchivedAssessments(); }, [activeTab]);
 
   const fetchPendingAssessments = async () => {
-    try { setLoading(true); const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/assessments/?status=pending`); if (!response.ok) throw new Error('Failed to fetch assessments'); const data = await response.json(); const pendingAssessments = data.results?.assessments || data.assessments || data.results || data; setAssessments(Array.isArray(pendingAssessments) ? pendingAssessments : []); setCurrentPage(1); } catch (error) { console.error('Error fetching assessments:', error); toast({ title: 'Error', description: 'Failed to load pending assessments', variant: 'destructive' }); } finally { setLoading(false); } };
+    try { setLoading(true); const response = await fetchWithTokenRefresh('/api/assessment/assessments/?status=pending'); if (!response.ok) throw new Error('Failed to fetch assessments'); const data = await response.json(); const pendingAssessments = data.results?.assessments || data.assessments || data.results || data; setAssessments(Array.isArray(pendingAssessments) ? pendingAssessments : []); setCurrentPage(1); } catch (error) { console.error('Error fetching assessments:', error); toast({ title: 'Error', description: 'Failed to load pending assessments', variant: 'destructive' }); } finally { setLoading(false); } };
 
   const fetchArchivedAssessments = async () => {
     try {
       setLoading(true);
       const [approvedResponse, rejectedResponse] = await Promise.all([
-        fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/assessments/?status=approved`),
-        fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/assessments/?status=rejected`)
+        fetchWithTokenRefresh('/api/assessment/assessments/?status=approved'),
+        fetchWithTokenRefresh('/api/assessment/assessments/?status=rejected')
       ]);
 
       let archived: Assessment[] = [];
@@ -93,7 +92,7 @@ const AdminAssessmentApprovals = () => {
     if (action === 'reject' && !actionComment) { MySwal.fire('Comment Required', 'Please provide a comment when rejecting an assessment', 'warning'); return; }
     const result = await MySwal.fire({ title: `${action === 'approve' ? 'Approve' : 'Reject'} Assessment?`, text: `Are you sure you want to ${action} this assessment?`, icon: 'question', showCancelButton: true, confirmButtonColor: action === 'approve' ? '#22c55e' : '#ef4444', cancelButtonColor: '#6c757d', confirmButtonText: `Yes, ${action === 'approve' ? 'Approve' : 'Reject'}`, cancelButtonText: 'Cancel' });
     if (!result.isConfirmed) return;
-    try { setProcessingId(assessmentId); const response = await fetchWithTokenRefresh(`${API_ENDPOINT}/assessment/assessments/${assessmentId}/${action}/`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: actionComment || '' }) }); if (!response.ok) throw new Error(`Failed to ${action} assessment`); toast({ title: 'Success', description: `Assessment ${action === 'approve' ? 'approved' : 'rejected'} successfully` }); setAssessments(prev => prev.filter(a => a.id !== assessmentId)); setComment(prev => { const newComment = { ...prev }; delete newComment[assessmentId]; return newComment; }); if (activeTab === 'archived') fetchArchivedAssessments(); } catch (error) { console.error(`Error ${action}ing assessment:`, error); MySwal.fire('Error', `Failed to ${action} assessment. Please try again.`, 'error'); } finally { setProcessingId(null); } };
+    try { setProcessingId(assessmentId); const response = await fetchWithTokenRefresh(`/api/assessment/assessments/${assessmentId}/${action}/`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: actionComment || '' }) }); if (!response.ok) throw new Error(`Failed to ${action} assessment`); toast({ title: 'Success', description: `Assessment ${action === 'approve' ? 'approved' : 'rejected'} successfully` }); setAssessments(prev => prev.filter(a => a.id !== assessmentId)); setComment(prev => { const newComment = { ...prev }; delete newComment[assessmentId]; return newComment; }); if (activeTab === 'archived') fetchArchivedAssessments(); } catch (error) { console.error(`Error ${action}ing assessment:`, error); MySwal.fire('Error', `Failed to ${action} assessment. Please try again.`, 'error'); } finally { setProcessingId(null); } };
 
   const handleRefresh = () => { if (activeTab === 'pending') fetchPendingAssessments(); else fetchArchivedAssessments(); };
 

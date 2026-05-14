@@ -24,7 +24,6 @@ import { Button } from "../ui/button";
 import { Check, X, UploadCloud } from "lucide-react";
 import { takeAttendance, aiAttendance, ClassStudent } from "@/utils/faculty_api";
 import { fetchWithTokenRefresh } from '@/utils/authService';
-import { API_ENDPOINT } from '@/utils/config';
 import { useTheme } from "@/context/ThemeContext";
 import { SkeletonTable } from "@/components/ui/skeleton";
 
@@ -55,7 +54,7 @@ const TakeAttendance = () => {
     let mounted = true;
     const fetchBatches = async () => {
       try {
-        const resp = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/batches/`, { method: 'GET' });
+        const resp = await fetchWithTokenRefresh(`/api/assessment/batches/`, { method: 'GET' });
         const json = await resp.json();
         const batchList = json.results?.batches || json.batches || json.results || json || [];
         if (!mounted) return;
@@ -81,7 +80,7 @@ const TakeAttendance = () => {
     const fetchStudents = async () => {
       setLoadingStudents(true);
       try {
-        const res = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/students/?batch_id=${selectedBatch}`);
+        const res = await fetchWithTokenRefresh(`/api/faculty/students/?batch_id=${selectedBatch}`);
         const json = await res.json();
         const studentList = json.results?.data || json.data || json.results || json || [];
         if (!mounted) return;
