@@ -831,7 +831,6 @@ const StudentManagement = () => {
                       <td className="py-3 px-3 md:px-4 text-sm md:text-base">{student.email}</td>
                       <td className="hidden sm:table-cell py-3 px-3 md:px-4 text-sm md:text-base">{student.phone && student.phone.trim() ? student.phone : '-'}</td>
                       <td className="hidden md:table-cell py-3 px-3 md:px-4 text-sm md:text-base">Section {student.section}</td>
-                      <td className="py-3 px-3 md:px-4 text-sm md:text-base">{formatSemesterDisplay(student)}</td>
                       <td className="py-3 px-3 md:px-4 text-sm md:text-base flex gap-2 md:gap-3 items-center">
                         <button
                           onClick={() => openEdit(student)}
