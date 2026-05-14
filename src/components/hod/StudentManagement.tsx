@@ -820,7 +820,6 @@ const StudentManagement = () => {
                     <th className="py-3 px-3 md:px-4 text-sm md:text-base font-medium">Email</th>
                     <th className="hidden sm:table-cell py-3 px-3 md:px-4 text-sm md:text-base font-medium">Phone</th>
                     <th className="hidden md:table-cell py-3 px-3 md:px-4 text-sm md:text-base font-medium">Section</th>
-                    <th className="py-3 px-3 md:px-4 text-sm md:text-base font-medium">Semester</th>
                     <th className="py-3 px-3 md:px-4 text-sm md:text-base font-medium">Actions</th>
                   </tr>
                 </thead>
