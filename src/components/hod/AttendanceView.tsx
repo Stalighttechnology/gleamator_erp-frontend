@@ -28,8 +28,8 @@ interface Student {
   attendance_percentage: number | string;
   total_sessions?: number;
   present_sessions?: number;
-  semester?: number | string;
   section?: string;
+
 }
 
 interface Section {
@@ -234,7 +234,8 @@ useEffect(() => {
 
 // Use fuzzy search on backend results with a fallback substring search for short queries
 const fuse = new Fuse(state.students, {
-  keys: ["name", "usn", "semester", "section"],
+  keys: ["name", "usn", "section"],
+
   threshold: 0.35,
   includeScore: true,
   ignoreLocation: true,
@@ -253,10 +254,10 @@ if (state.search && state.search.trim().length > 0) {
     searched = backendFiltered.filter((s) => {
       const name = (s.name || "").toString().toLowerCase();
       const usn = (s.usn || "").toString().toLowerCase();
-      const sem = (s.semester || "").toString().toLowerCase();
       const sec = (s.section || "").toString().toLowerCase();
-      return name.includes(q) || usn.includes(q) || sem.includes(q) || sec.includes(q);
+      return name.includes(q) || usn.includes(q) || sec.includes(q);
     });
+
   }
 }
 
@@ -286,14 +287,15 @@ const handlePrev = () => {
   const handleExportPDF = () => {
     const doc = new jsPDF();
     doc.text(`All Students Attendance Report - ${state.branch.toUpperCase()} - Page ${state.pagination.page}`, 14, 16);
-    const tableColumn = ["Name", "USN", "Attendance", "Semester", "Section"];
+    const tableColumn = ["Name", "USN", "Attendance", "Section"];
+
     const tableRows = currentStudents.map((student) => [
       student.name,
       student.usn,
       formatAttendancePercentage(student.attendance_percentage),
-      student.semester || "-",
       student.section || "-",
     ]);
+
 
     autoTable(doc, {
       head: [tableColumn],
@@ -427,11 +429,11 @@ const handlePrev = () => {
             <table className="w-full table-fixed border-collapse">
               <thead className={`text-left sticky top-0 z-10 ${theme === 'dark' ? 'bg-card text-foreground border-border' : 'bg-gray-100 text-gray-900 border-gray-300'}`}>
                 <tr>
-                  <th className={`p-3 border w-[24%] ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>Student</th>
-                  <th className={`p-3 border w-[32%] ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>Attendance</th>
-                  <th className={`p-3 border w-[12%] ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>Semester</th>
+                  <th className={`p-3 border w-[32%] ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>Student</th>
+                  <th className={`p-3 border w-[40%] ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>Attendance</th>
                   <th className={`p-3 border w-[12%] ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>Section</th>
-                  <th className={`p-3 border w-[20%] ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>Actions</th>
+                  <th className={`p-3 border w-[16%] ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>Actions</th>
+
                 </tr>
               </thead>
 
@@ -457,8 +459,8 @@ const handlePrev = () => {
                       </div>
                     </td>
 
-                    <td className={`p-3 border ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>{student.semester || "-"}</td>
                     <td className={`p-3 border ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>{student.section || "-"}</td>
+
 
                     <td className={`p-3 border ${theme === 'dark' ? 'border-border' : 'border-gray-300'}`}>
                       <Button
