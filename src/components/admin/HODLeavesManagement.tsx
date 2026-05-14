@@ -416,7 +416,12 @@ const HODLeavesManagement = ({ setError, toast }: HODLeavesManagementProps) => {
                     >
                       <td className="py-3 px-2 md:px-4">
                         <div className={`font-medium ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>{leave.name}</div>
-                        <div className={`text-xs ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>{leave.role.toUpperCase()} - {leave.department}</div>
+                        <div className={`text-xs ${theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                          {leave.role?.toLowerCase() === "hod"
+                            ? "Counselor"
+                            : leave.role?.toUpperCase()
+                          } - {leave.department}
+                        </div>
                       </td>
                       <td className={`py-3 px-2 md:px-4 text-sm ${theme === 'dark' ? 'text-foreground' : 'text-gray-900'}`}>
                         {leave.from} <span className={theme === 'dark' ? 'text-muted-foreground' : 'text-gray-500'}>to</span> {leave.to}
