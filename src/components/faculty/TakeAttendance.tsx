@@ -54,9 +54,17 @@ const TakeAttendance = () => {
     let mounted = true;
     const fetchBatches = async () => {
       try {
-        const resp = await fetchWithTokenRefresh(`/api/assessment/batches/`, { method: 'GET' });
-        const json = await resp.json();
-        const batchList = json.results?.batches || json.batches || json.results || json || [];
+        const resp = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/batches/`, { method: 'GET' });
+        const text = await resp.text();
+        let json: any;
+        try {
+          json = JSON.parse(text);
+        } catch (parseErr) {
+          console.error('Failed to parse batches JSON. Raw text:', text.substring(0, 200));
+          if (mounted) setBatches([]);
+          return;
+        }
+        const batchList = json.data || json.results?.batches || json.batches || json.results || json || [];
         if (!mounted) return;
         setBatches(Array.isArray(batchList) ? batchList : []);
       } catch (e) {
@@ -80,8 +88,19 @@ const TakeAttendance = () => {
     const fetchStudents = async () => {
       setLoadingStudents(true);
       try {
-        const res = await fetchWithTokenRefresh(`/api/faculty/students/?batch_id=${selectedBatch}`);
-        const json = await res.json();
+        const res = await fetchWithTokenRefresh(`${API_ENDPOINT}/faculty/students/?batch_id=${selectedBatch}`);
+        const text = await res.text();
+        let json: any;
+        try {
+          json = JSON.parse(text);
+        } catch (parseErr) {
+          console.error('Failed to parse students JSON. Raw text:', text.substring(0, 200));
+          if (mounted) {
+            setStudents([]);
+            setErrorMsg('Failed to fetch students. Invalid response.');
+          }
+          return;
+        }
         const studentList = json.results?.data || json.data || json.results || json || [];
         if (!mounted) return;
         setStudents(Array.isArray(studentList) ? studentList : []);
@@ -91,7 +110,7 @@ const TakeAttendance = () => {
         console.error('Error fetching students', err);
         if (mounted) {
           setStudents([]);
-          setErrorMsg('Failed to load students');
+          setErrorMsg('Failed to fetch students. Please try again.');
         }
       } finally {
         if (mounted) setLoadingStudents(false);

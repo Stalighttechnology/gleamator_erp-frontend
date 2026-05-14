@@ -286,9 +286,7 @@ const CreateAssessment = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-wrap gap-3">
-                <Button onClick={() => saveAssessment('draft')} variant="outline" disabled={saving} className="flex-1 md:flex-none">
-                  {saving ? 'Saving...' : 'Save as Draft'}
-                </Button>
+  
                 <Button onClick={() => saveAssessment('pending_approval')} disabled={saving} className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white">
                   {saving ? 'Submitting...' : 'Submit for Approval'}
                 </Button>
